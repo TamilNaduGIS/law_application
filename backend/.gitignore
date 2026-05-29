@@ -1,0 +1,29 @@
+# Vendor
+/vendor/
+
+# Node modules
+/node_modules/
+
+# Environment files
+.env
+
+# Logs
+*.log
+
+# Cache
+/cache/
+/tmp/
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Uploads
+/uploads/
+
+# WAMP config
+wamp/
