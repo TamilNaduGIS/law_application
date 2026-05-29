@@ -159,17 +159,17 @@
 
                 <div class="d-flex justify-content-center gap-2 mb-3">
 
-                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+                    <input id="otpbox1" type="text" maxlength="1" class="otp-box form-control text-center">
 
-                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+                    <input id="otpbox2" type="text" maxlength="1" class="otp-box form-control text-center">
 
-                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+                    <input id="otpbox3" type="text" maxlength="1" class="otp-box form-control text-center">
 
-                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+                    <input id="otpbox4" type="text" maxlength="1" class="otp-box form-control text-center">
 
-                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+                    <input id="otpbox5" type="text" maxlength="1" class="otp-box form-control text-center">
 
-                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+                    <input id="otpbox6" type="text" maxlength="1" class="otp-box form-control text-center">
 
                 </div>
 
@@ -221,6 +221,9 @@
         $(document).ready(function(){
             applyInputValidation('enrolmentNumber', [11]);
             applyInputValidation('mobileNumber', [3]);
+            // otpbox1
+            
+
         })
 
       const otpModal =
@@ -231,7 +234,12 @@
 let generatedOtp = "123456";
 let timer;
 let countdown = 60;
-
+applyInputValidation('otpbox1', [2]);
+applyInputValidation('otpbox2', [2]);
+applyInputValidation('otpbox3', [2]);
+applyInputValidation('otpbox4', [2]);
+applyInputValidation('otpbox5', [2]);
+applyInputValidation('otpbox6', [2]);
 document
 .getElementById('loginForm')
 .addEventListener('submit', function(e){

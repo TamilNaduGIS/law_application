@@ -16,6 +16,7 @@ function applyInputValidation(inputId, rules = []) {
             if (rules.includes(1)) {
                 value = value.replace(/[^0-9]/g, '');
             }
+            
             if (rules.includes(4)) {
                 value = value.replace(/[^a-zA-Z0-9]/g, '');
             }
@@ -51,8 +52,11 @@ function applyInputValidation(inputId, rules = []) {
                     value = '';
                 }
             }
-            if (rules.includes(2) && value.length > 10) {
-                value = value.substring(0, 10);
+            if (rules.includes(2)) {
+                value = value.replace(/[^0-9]/g, ''); // Remove anything that's not a digit
+                if (value.length > 10) {
+                    value = value.substring(0, 10);
+                }
             }
     
             if (rules.includes(3)) {
