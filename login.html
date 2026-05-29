@@ -11,12 +11,16 @@
     <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
     <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-      .otp-box{
-    width:50px;
-    height:55px;
-    font-size:22px;
-    font-weight:600;
-}
+        .mandatory {
+            color: red;
+            font-weight: bold;
+        }
+        .otp-box{
+                width:50px;
+                height:55px;
+                font-size:22px;
+                font-weight:600;
+            }
 
 .modal-content{
     border-radius:16px;
@@ -125,56 +129,30 @@
         <div id="successMsg" class="success-msg"></div>
         <div id="errorMsg" class="error-msg"></div>
         <form id="loginForm">
-          <label for="enrolmentNumber">Bar Council Enrolment No.</label>
-          <input type="text" id="enrolmentNumber" placeholder="e.g. TN/12345/2015" required autocomplete="username">
-            
-          <label for="mobileNumber">Mobile Number</label>
-<input type="tel"
-       id="mobileNumber"
-       placeholder="Enter registered mobile number"
-       maxlength="10"
-       required>
-       <button type="submit" class="btn-primary">
-    Get OTP
-</button>
-
-
-<div class="text-center mt-3">
-    <span class="text-muted">New Applicant?</span>
-    <a href="sign-up.html" class="register-link">
-        Create Account
-    </a>
-</div>
-
-          
-          <!-- <button type="submit" class="btn-primary">Login</button> -->
+            <label for="enrolmentNumber">Bar Council Enrolment No. <span class="mandatory">*</span></label>
+            <input type="text" id="enrolmentNumber" placeholder="Enter Bar Council Number" required autocomplete="username">
+            <label for="mobileNumber">Mobile Number <span class="mandatory">*</span></label>
+            <input type="text" id="mobileNumber"placeholder="Enter mobile number" maxlength="10" required>
+            <button type="submit" class="btn-primary">Get OTP</button>
+            <div class="text-center mt-3">
+                <span class="text-muted">New Applicant?</span>
+                <a href="sign-up.html" class="register-link"> Create Account</a>
+            </div>
         </form>
-       
         <a href="index.html" class="back-home">← Back to Home</a>
       </div>
     </div>
-
-
-
-    <!-- otp modal -->
     <!-- OTP Modal -->
 <div class="modal fade" id="otpModal" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow">
 
             <div class="modal-header">
-                <h5 class="modal-title">
-                    Verify OTP
-                </h5>
-
-                <button type="button"
-                        class="btn-close"
-                        data-bs-dismiss="modal">
-                </button>
+                <h5 class="modal-title"> Verify OTP </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"> </button>
             </div>
 
             <div class="modal-body">
-
                 <p class="text-muted mb-3">
                     OTP has been sent to your registered mobile number.
                 </p>
@@ -236,9 +214,15 @@
     <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
     <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
     <script src="assets/js/main.js"></script>
+    <script src="./assets/js/helper.js"></script>
 
 
     <script>
+        $(document).ready(function(){
+            applyInputValidation('enrolmentNumber', [11]);
+            applyInputValidation('mobileNumber', [3]);
+        })
+
       const otpModal =
     new bootstrap.Modal(
         document.getElementById('otpModal')
