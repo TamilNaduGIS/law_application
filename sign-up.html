@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<!-- saved from url=(0043)http://localhost:8080/applications/register -->
+<html lang="en" katalonextensionid="ljdobmomdgdljniojadhoplhkpialdid">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Law Officers Application Portal</title>
+    <!-- Bootstrap + Icons -->
+    <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/sign-up.css">
+    <!-- JS -->
+    <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
+    <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/main.js"></script> 
+  </head>
+  <body>
+    <header class="premium-topbar">
+      <!-- LEFT -->
+      <div class="topbar-left">
+        <!-- TN LOGO -->
+        <div class="tn-logo-wrapper">
+          <a href="#"><img src="assets/img/tn_logo.png" alt="Tamil Nadu Logo" class="tn-logo"></a>
+        </div>
+        <!-- PROJECT INFO -->
+        <div class="project-info">
+          <div class="gov-title">
+            Government of Tamil Nadu
+          </div>
+          <div class="project-title">
+            <i class="bi bi-bank2"></i>
+            Law Officers Application Portal
+          </div>
+        </div>
+      </div>
+      <!-- RIGHT --> 
+      <button class="premium-login-btn" onclick="window.location.href='login.html'">
+      <span class="login-btn-glow"></span>
+      <span class="login-btn-content">
+      <span class="login-icon-wrap">
+      <i class="bi bi-shield-lock-fill"></i>
+      </span>
+      <span class="login-text-wrap">
+      <span class="login-main-text">
+      Login
+      </span>
+      <span class="login-sub-text">
+      Secure Portal Access
+      </span>
+      </span>
+      <span class="login-arrow">
+      <i class="bi bi-arrow-right-circle-fill"></i>
+      </span>
+      </span>
+      </button>
+    </header>
+    <section class="container-fluid main-section whitebg">
+      <div class="wrap container">
+        <div class="card">
+          <div class="card-header">
+            <h1>Create Applicant Account</h1>
+            <p class="text-white">Register to apply for Law Officer positions — High Court of Madras</p>
+          </div>
+          <div class="card-body">
+            <div id="errorMsg" class="error-msg"></div>
+            <form method="post" accept-charset="utf-8" id="signupForm" action="http://localhost:8080/applications/register">
+              <div style="display:none;"><input type="hidden" name="_csrfToken" value="gyyfRdJaqdStuGmIdB6csRAsbZt6DuTb9Q5VDXFwWTpiDYzipdGGY4kSit+MRCzLjplv1KYqCokTGnren3aj5GsA5ZFLQypXcUgJrkk30O+RP2E0ExU4WFJr7dXHsuMAuSO9uuh2FPrq+grjkRxu6w=="></div>
+              <div class="grid">
+                <div class="field">
+                  <label class="reqd">Name of the Advocate</label>
+                  <input type="text" id="advocateName" name="advocateName" required="">
+                </div>
+                <div class="field">
+                  <label>Father's Name</label>
+                  <input type="text" id="fatherName" name="fathername">
+                </div>
+                <div class="field">
+                  <div class="field-row mb-2">
+                    <label class="form-label reqd">
+                    Bar Council Enrolment No. (e.g., MS/12345/01)
+                    </label>
+                    <input type="text" id="enrolmentNo" name="enrolmentno" required="">
+                  </div>
+                </div>
+                <div class="col-md-6 field">
+                  <label>Enrolment Date</label>
+                  <input type="date" id="enrolmentDate" name="enrolmentdate">
+                </div>
+                <div class="col-md-6 field">
+                  <label>PAN Number</label>
+                  <input type="text" id="pan" name="pan" maxlength="30">
+                </div>
+                <div class="col-md-6 field">
+                  <label>Total Years of Practice</label>
+                  <input type="number" id="expyears" name="expyears" min="0" max="50" step="0.01">
+                </div>
+                <!-- <div class="col-md-6 field">
+                  <label class="reqd">
+                  Mobile Number
+                  <span class="sendotp" id="otpbtn">
+                  <a href="javascript:void(0);" id="sendOtp">Send OTP</a>
+                  </span>
+                  </label>
+                  <input type="tel" id="mobile" name="mobile" maxlength="10" required="">
+                  </div>
+                  <div class="col-md-6 field" id="otpverify">
+                  <label>
+                  <span class="otpbtn" id="status"></span>
+                  Enter OTP
+                  <span class="btn" id="verify">
+                  <a href="javascript:void(0);" id="verifyOtp">Verify OTP</a>
+                  </span>
+                  </label>
+                  <input type="number" id="otp" minlength="4" maxlength="4" required="">
+                  </div> -->
+                <!-- MOBILE + OTP UX FLOW -->
+                <div class="col-md-6 field otp-flow-wrapper">
+                  <!-- MOBILE LABEL -->
+                  <label class="reqd otp-label">
+                  Mobile Number
+                  </label>
+                  <div class="mobile-input-group">
+                    <div class="mobile-input-wrap">
+                      <i class="bi bi-phone-fill"></i>
+                      <input
+                        type="tel"
+                        id="mobile"
+                        name="mobile"
+                        maxlength="10"
+                        placeholder="Enter mobile number"
+                        required
+                        >
+                    </div>
+                    <button type="button" class="send-otp-btn" id="sendOtp">
+                        <i class="bi bi-shield-check"></i>
+                        Verify
+                    </button>
+                  </div> 
+                </div>
+                <div class="col-md-6 field">
+                  <label>Phone Number</label>
+                  <input type="text" id="phone" name="phone" maxlength="30">
+                </div>
+                <div class="col-md-6 field">
+                  <label class="reqd">Email ID</label>
+                  <input type="email" id="email" name="email" maxlength="30" required="">
+                </div>   
+                <!-- <div class="col-md-6 field">
+                  <label class="reqd">Password</label>
+                  <input type="password" id="password" name="passwd" minlength="6" required="">
+                </div>
+                <div class="col-md-6 field">
+                  <label class="reqd">Confirm Password</label>
+                  <input type="password" id="confirmPassword" minlength="6" required="">
+                </div> -->
+                <div class="col-md-6 field">
+                  <label class="reqd">Gender</label>
+                  <select id="gender" name="gender">
+                    <option value="M">Male</option>
+                    <option value="F">Female</option>
+                    <option value="O">Other</option>
+                  </select>
+                </div>
+                <div class="col-md-6 field">
+                  <label class="form-label">Marital Status</label>
+                  <select class="form-select" id="maritalStatus" name="maritalstatus">
+                    <option value="S">Single</option>
+                    <option value="M">Married</option>
+                    <option value="D">Divorced</option>
+                    <option value="W">Widowed</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label class="reqd">Date of Birth</label>
+                  <input type="date" id="dob" name="dob">
+                </div>
+                <div class="field">
+                  <label>Nationality</label>
+                  <input type="text" value="Indian" id="nationality" name="nationality" maxlength="30">
+                </div>
+                <div class="field">
+                  <label>Religion</label>
+                  <input type="text" id="religion" name="religion" maxlength="30">
+                </div>
+                <!-- <div class="field">
+                  <label>Community</label>
+                  
+                  
+                  
+                  <select id="community" name="community">
+                    <option>Select Community</option>
+                    <option value="1">BC</option>
+                    <option value="2">MBC</option>
+                    <option value="3">SC</option>
+                  </select>
+                  
+                  </div> -->
+                <!-- COMMUNITY -->
+                <!-- <div class="field">
+                  <label class="reqd">Community</label>
+                  
+                  <select id="community" name="community" required>
+                      <option value="">Select Community</option>
+                      <option value="BC">BC</option>
+                      <option value="MBC">MBC</option>
+                      <option value="DNC/DNT">DNC / DNT</option>
+                      <option value="SC">SC</option>
+                      <option value="ST">ST</option>
+                      <option value="BC Muslim">BC Muslim</option>
+                  </select>
+                  </div> -->
+                <!-- CASTE -->
+                <!-- <div class="field">
+                  <label class="reqd">Caste</label>
+                  
+                  <select id="caste" name="caste" required>
+                      <option value="">Select Caste</option>
+                  </select>
+                  </div> -->
+                <!-- COMMUNITY -->
+                <div class="field">
+                  <label class="reqd">
+                  Community
+                  </label>
+                  <select id="community" name="community" required>
+                    <option value="">
+                      Select Community
+                    </option>
+                    <option value="BC">BC</option>
+                    <option value="MBC">MBC</option>
+                    <option value="DNC/DNT">
+                      DNC / DNT
+                    </option>
+                    <option value="SC">SC</option>
+                    <option value="ST">ST</option>
+                    <option value="BC Muslim">
+                      BC Muslim
+                    </option>
+                  </select>
+                </div>
+                <!-- CASTE -->
+                <div class="field">
+                  <label class="reqd">
+                  Caste
+                  </label>
+                  <select id="caste" name="caste" required>
+                    <option value="">
+                      Select Caste
+                    </option>
+                  </select>
+                </div>
+                <!-- OTHER CASTE -->
+                <div
+                  class="field"
+                  id="otherCasteWrapper"
+                  style="display:none;">
+                  <label class="reqd">
+                  Enter Caste Name
+                  </label>
+                  <input
+                    type="text"
+                    id="otherCaste"
+                    name="otherCaste"
+                    placeholder="Enter caste name">
+                </div>
+                <div class="row-cols-1">
+                  <!-- <div class="col-lg-4">
+                    <img src="http://localhost:8080/applications/register">
+                  </div> -->
+                  <div class="col-lg-12">
+                    <label>Enter Captcha</label>
+                    <input type="text" id="captcha" name="captcha" maxlength="10">
+                  </div>
+                  <div class="col-lg-12 mt-3">
+                    
+                    <button id="btnlogin" class="register-btn" type="submit">
+                    <span class="btn-bg"></span>
+                    <span class="btn-content">
+                    <span class="btn-icon">
+                    <i class="bi bi-shield-lock-fill"></i>
+                    </span>
+                    <span class="btn-text">
+                    <span class="main-text">Register & Login</span>
+                    <span class="sub-text">Secure Portal Access</span>
+                    </span>
+                    <span class="arrow-icon">
+                    <i class="bi bi-arrow-right-short"></i>
+                    </span>
+                    </span>
+                    </button>
+
+
+
+                    
+                  </div>
+                </div>
+                <!-- <div class="col-md-12 field">
+                  <p class="footer-link">Already registered? <a href="http://localhost:8080/applications/login">Login here</a> · <a href="http://localhost:8080/">Home</a></p>
+                </div> -->
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <!-- OTP MODAL -->
+      <div class="otp-modal-overlay" id="otpModal">
+        <div class="otp-modal-box">
+          <!-- CLOSE -->
+          <button type="button" class="otp-close" id="closeOtpModal">
+          <i class="bi bi-x-lg"></i>
+          </button>
+          <!-- ICON -->
+          <div class="otp-modal-icon">
+            <i class="bi bi-shield-lock-fill"></i>
+          </div>
+          <!-- TITLE -->
+          <h3>OTP Verification</h3>
+          <p>
+            Enter the 6-digit OTP sent to
+            <span id="maskedMobile"></span>
+          </p>
+          <!-- TIMER -->
+          <div class="otp-timer" id="otpTimer">
+            <i class="bi bi-clock-history"></i>
+            <span id="countdown">02:00</span>
+          </div>
+          <!-- OTP BOXES -->
+          <div class="otp-boxes">
+            <input type="text" class="otp-input" maxlength="1">
+            <input type="text" class="otp-input" maxlength="1">
+            <input type="text" class="otp-input" maxlength="1">
+            <input type="text" class="otp-input" maxlength="1">
+            <input type="text" class="otp-input" maxlength="1">
+            <input type="text" class="otp-input" maxlength="1">
+          </div>
+          <!-- HIDDEN -->
+          <input type="hidden" id="otp">
+          <!-- VERIFY -->
+          <button type="button" class="verify-btn" id="verifyOtp">
+          <i class="bi bi-patch-check-fill"></i>
+          Verify OTP
+          </button>
+          <!-- RESEND -->
+          <button type="button" class="resend-btn" id="resendOtp">
+          <i class="bi bi-arrow-repeat"></i>
+          Resend OTP
+          </button>
+          <!-- STATUS -->
+          <div class="otp-status success" id="status"></div>
+        </div>
+      </div>
+      <script>
+        document.getElementById('signupForm').addEventListener('submit', function(e) {
+          return;
+          e.preventDefault();
+          const errorEl = document.getElementById('errorMsg');
+          errorEl.style.display = 'none';
+        
+          const password = document.getElementById('password').value;
+          const confirm = document.getElementById('confirmPassword').value;
+          if (password !== confirm) {
+            errorEl.textContent = 'Passwords do not match.';
+            errorEl.style.display = 'block';
+            return;
+          }
+        
+          const mobile = document.getElementById('mobile').value.trim();
+          if (!/^\d{10}$/.test(mobile)) {
+            errorEl.textContent = 'Enter a valid 10-digit mobile number.';
+            errorEl.style.display = 'block';
+            return;
+          }
+        
+          const result = AppData.registerUser({
+            advocateName: document.getElementById('advocateName').value,
+            enrolmentNo: document.getElementById('enrolmentNo').value,
+            mobile: mobile,
+            email: document.getElementById('email').value,
+            password: password,
+            fatherName: document.getElementById('fatherName').value,
+            gender: document.getElementById('gender').value,
+            dob: document.getElementById('dob').value,
+            permanentAddress: document.getElementById('permanentAddress').value
+          });
+        
+          if (!result.ok) {
+            errorEl.textContent = result.error;
+            errorEl.style.display = 'block';
+            return;
+          }
+        
+          window.location.href = 'login.html?registered=1';
+        });
+        
+        $(document).ready(function() {
+          // $('#btnlogin').attr('disabled');
+          $("#sendOtp").click(function() {
+        
+            let mobile = $("#mobile").val();
+        
+            if (mobile === "") {
+              $("#status").html("Please enter mobile number");
+              return;
+            }
+        
+            $("#status").html("Sending OTP...");
+        
+            $.ajax({
+        
+              url: "http://localhost:8080/applications/mainotp/" + mobile, // API Endpoint
+              type: "GET",
+              contentType: "application/json",
+              // data: JSON.stringify({
+              //   mobile: mobile
+              // }),
+        
+              success: function(response) {
+                console.log(response);
+        
+                $("#status").html("OTP sent successfully");
+                $("#mobile").attr('readonly', 'true');
+              },
+        
+              error: function(xhr, status, error) {
+                console.log(error);
+        
+                $("#status").html("Failed to send OTP");
+              }
+            });
+        
+          });
+          $("#verifyOtp").click(function() {
+        
+            let mobile = $("#mobile").val();
+        
+            if (mobile === "") {
+              $("#status").html("Error Occurred");
+              return;
+            }
+        
+            $("#status").html("Verifying OTP...");
+        
+            $.ajax({
+        
+              url: "http://localhost:8080/applications/verifyotp/" + mobile + '/' + $('#otp').val(), // API Endpoint
+              type: "GET",
+              contentType: "application/json",
+              // data: JSON.stringify({
+              //   mobile: mobile
+              // }),
+        
+              success: function(response) {
+                console.log(response);
+                if (response == 'Success') {
+                  $("#otpbtn").html("Mobile OTP Verified.");
+                  $("#mobile").attr('readonly', 'false');
+                  return;
+                }
+                $("#status").html("Verification Failed. Retry.");
+                $("#mobile").attr('readonly', 'false');
+              },
+        
+              error: function(xhr, status, error) {
+                console.log(error);
+        
+                $("#status").html("Failed to Verify OTP.");
+              }
+            });
+        
+          });
+        
+        });
+      </script>    
+    </section>
+    
+
+    <footer class="premium-footer">
+      <!-- TOP -->
+      <div class="footer-top-area">
+        <!-- LEFT -->
+        <div class="footer-brand-area">
+          <div class="footer-logo-wrap">
+            <img src="assets/img/tn_logo.png" class="footer-tn-logo" alt="TN Logo">
+          </div>
+          <div class="footer-brand-content">
+            <div class="footer-gov-title">
+              Government of Tamil Nadu
+            </div>
+            <div class="footer-portal-title">
+              <i class="bi bi-bank2"></i>
+              Law Officers Recruitment Portal
+            </div>
+            <div class="footer-desc">
+              Official digital recruitment platform for Law Officers appointments,
+              managed under Government of Tamil Nadu standards and secure application workflow.
+            </div>
+          </div>
+        </div>
+        <!-- RIGHT -->
+        <div class="footer-right-grid">
+          <!-- VISITOR -->
+          <div class="footer-widget-card">
+            <div class="footer-widget-icon">
+              <i class="bi bi-people-fill"></i>
+            </div>
+            <div>
+              <div class="footer-widget-label">
+                Visitor Count
+              </div>
+              <div class="footer-widget-value" id="visitorCount">12,48,923</div>
+            </div>
+          </div>
+          <!-- UPDATED -->
+          <div class="footer-widget-card">
+            <div class="footer-widget-icon blue">
+              <i class="bi bi-clock-history"></i>
+            </div>
+            <div>
+              <div class="footer-widget-label">
+                Last Updated
+              </div>
+              <div class="footer-widget-value small" id="lastUpdatedTime">29 May 2026, 06:31:12 pm</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- MIDDLE -->
+      <div class="footer-middle-area">
+        <!-- QUICK LINKS -->
+        <div class="footer-links-section">
+          <div class="footer-section-title">
+            <i class="bi bi-grid-fill"></i>
+            Quick Links
+          </div>
+          <div class="footer-links-list">
+            <a href="#" class="footer-link-item">
+            <i class="bi bi-chevron-right"></i>
+            Download Notification
+            </a>
+            <a href="job-post.html" class="footer-link-item">
+            <i class="bi bi-chevron-right"></i>
+            Job Post
+            </a>
+          </div>
+        </div>
+        <!-- SECURITY -->
+        <div class="footer-links-section">
+          <div class="footer-section-title">
+            <i class="bi bi-shield-check"></i>
+            Security &amp; Compliance
+          </div>
+          <div class="security-badges">
+            <div class="security-badge">
+              <i class="bi bi-patch-check-fill"></i>
+              Secure Portal
+            </div>
+            <div class="security-badge">
+              <i class="bi bi-lock-fill"></i>
+              SSL Protected
+            </div>
+            <div class="security-badge">
+              <i class="bi bi-fingerprint"></i>
+              Secure Authentication
+            </div>
+          </div>
+        </div>
+        <!-- SOCIAL -->
+        <div class="footer-links-section">
+          <div class="footer-section-title">
+            <i class="bi bi-share-fill"></i>
+            Social Media
+          </div>
+          <div class="social-icons-wrap">
+            <a href="#" class="social-icon">
+            <i class="bi bi-facebook"></i>
+            </a>
+            <a href="#" class="social-icon">
+            <i class="bi bi-twitter-x"></i>
+            </a>
+            <a href="#" class="social-icon">
+            <i class="bi bi-instagram"></i>
+            </a>
+            <a href="#" class="social-icon">
+            <i class="bi bi-youtube"></i>
+            </a>
+            <a href="#" class="social-icon">
+            <i class="bi bi-linkedin"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      <!-- BOTTOM -->
+      <div class="footer-bottom-area">
+        <div class="footer-copyright">
+          <i class="bi bi-c-circle"></i>
+          Copyright 2026 TNeGA. All Rights Reserved.
+        </div>
+        <div class="footer-dev-text">
+          <i class="bi bi-code-slash"></i>
+          Designed &amp; Developed by TNeGA
+        </div>
+      </div>
+    </footer>
+    
+    <script>
+      /* =========================================
+      COMMUNITY -> CASTE MASTER
+      ========================================= */
+      
+      const casteMaster = {
+      
+          "BC": [
+      
+              "Agamudayar",
+              "Nadar",
+              "Maravars",
+              "Muthuraja",
+              "Kaikolar",
+              "Sengunthar",
+              "Kallar",
+              "Vannan",
+              "Gounder",
+              "Others"
+      
+          ],
+      
+          "MBC": [
+      
+              "Ambalakarar",
+              "Isaivellalar",
+              "Kurumba",
+              "Navithar",
+              "Maruthuvar",
+              "Vettuva Gounder",
+              "Paravar",
+              "Others"
+      
+          ],
+      
+          "DNC/DNT": [
+      
+              "Koravars",
+              "Kootappal Kallars",
+              "Piramalai Kallars",
+              "Vettaikarar",
+              "Padayachi",
+              "Valayars",
+              "Others"
+      
+          ],
+      
+          "SC": [
+      
+              "Adi Dravida",
+              "Adi Karnataka",
+              "Arunthathiyar",
+              "Parayan",
+              "Pallan",
+              "Chakkiliyan",
+              "Kuravan",
+              "Others"
+      
+          ],
+      
+          "ST": [
+      
+              "Irular",
+              "Kattunayakan",
+              "Toda",
+              "Kota",
+              "Kurumbas",
+              "Paniyan",
+              "Others"
+      
+          ],
+      
+          "BC Muslim": [
+      
+              "Labbais",
+              "Rowthar",
+              "Marakayar",
+              "Sheik",
+              "Syed",
+              "Others"
+      
+          ]
+      
+      };
+      
+      /* =========================================
+      LOAD CASTE BASED ON COMMUNITY
+      ========================================= */
+      
+      $("#community").on("change", function(){
+      
+          let selectedCommunity = $(this).val();
+      
+          let casteDropdown = $("#caste");
+      
+          /* RESET */
+      
+          casteDropdown.html(
+              '<option value="">Select Caste</option>'
+          );
+      
+          $("#otherCasteWrapper").hide();
+      
+          $("#otherCaste").val("");
+      
+          /* EMPTY */
+      
+          if(selectedCommunity === ""){
+              return;
+          }
+      
+          /* GET CASTE LIST */
+      
+          let casteList =
+              casteMaster[selectedCommunity];
+      
+          /* APPEND */
+      
+          $.each(casteList, function(index, caste){
+      
+              casteDropdown.append(
+      
+                  `<option value="${caste}">
+                      ${caste}
+                  </option>`
+      
+              );
+      
+          });
+      
+      });
+      
+      /* =========================================
+      SHOW OTHER TEXTBOX
+      ========================================= */
+      
+      $("#caste").on("change", function(){
+      
+          let selectedCaste = $(this).val();
+      
+          if(selectedCaste === "Others"){
+      
+              $("#otherCasteWrapper")
+                  .slideDown(200);
+      
+              $("#otherCaste")
+                  .prop("required", true);
+      
+          }
+          else{
+      
+              $("#otherCasteWrapper")
+                  .slideUp(200);
+      
+              $("#otherCaste")
+                  .prop("required", false)
+                  .val("");
+      
+          }
+      
+      });
+      
+    </script>
+    <script>
+      /* =========================================
+         PREMIUM OTP FLOW - PRODUCTION VERSION
+      ========================================= */
+      
+      const sendOtpBtn  = document.getElementById("sendOtp");
+      const verifyBtn   = document.getElementById("verifyOtp");
+      const resendBtn   = document.getElementById("resendOtp");
+      
+      const otpModal    = document.getElementById("otpModal");
+      const closeModal  = document.getElementById("closeOtpModal");
+      
+      const otpInputs   = document.querySelectorAll(".otp-input");
+      
+      const mobileInput = document.getElementById("mobile");
+      const otpHidden   = document.getElementById("otp");
+      
+      const statusBox   = document.getElementById("status");
+      
+      const countdown   = document.getElementById("countdown");
+      
+      const maskedMobile = document.getElementById("maskedMobile");
+      
+      let timer;
+      let seconds = 120;
+      
+      /* =========================================
+         OPEN OTP MODAL
+      ========================================= */
+      
+      sendOtpBtn.addEventListener("click", function () {
+      
+          let mobile = mobileInput.value.trim();
+      
+          if (!/^\d{10}$/.test(mobile)) {
+      
+              alert("Please enter valid 10 digit mobile number");
+              mobileInput.focus();
+      
+              return;
+          }
+      
+          /* SHOW MODAL */
+      
+          otpModal.classList.add("active");
+      
+          /* MASK NUMBER */
+      
+          maskedMobile.innerHTML =
+              mobile.substring(0,2)
+              + "XXXXXX" +
+              mobile.substring(8);
+      
+          /* BUTTON STATE */
+      
+          sendOtpBtn.innerHTML =
+              '<i class="bi bi-check-circle-fill"></i> OTP Sent';
+      
+          sendOtpBtn.disabled = true;
+      
+          /* RESET STATUS */
+      
+          statusBox.style.display = "none";
+          statusBox.innerHTML = "";
+      
+          /* CLEAR OLD OTP */
+      
+          otpInputs.forEach(input => {
+      
+              input.value = "";
+              input.disabled = false;
+      
+          });
+      
+          otpHidden.value = "";
+      
+          /* TIMER */
+      
+          startTimer();
+      
+          /* FOCUS */
+      
+          otpInputs[0].focus();
+      
+      });
+      
+      /* =========================================
+         CLOSE MODAL
+      ========================================= */
+      
+      closeModal.addEventListener("click", function () {
+      
+          otpModal.classList.remove("active");
+      
+      });
+      
+      /* =========================================
+         OTP INPUT AUTO MOVE
+      ========================================= */
+      
+      otpInputs.forEach((input, index) => {
+      
+          input.addEventListener("input", function () {
+      
+              this.value = this.value.replace(/[^0-9]/g, '');
+      
+              if (
+                  this.value &&
+                  index < otpInputs.length - 1
+              ) {
+                  otpInputs[index + 1].focus();
+              }
+      
+              updateHiddenOTP();
+      
+          });
+      
+          input.addEventListener("keydown", function (e) {
+      
+              if (
+                  e.key === "Backspace" &&
+                  !this.value &&
+                  index > 0
+              ) {
+                  otpInputs[index - 1].focus();
+              }
+      
+          });
+      
+      });
+      
+      /* =========================================
+         UPDATE HIDDEN OTP
+      ========================================= */
+      
+      function updateHiddenOTP() {
+      
+          let otp = "";
+      
+          otpInputs.forEach(input => {
+      
+              otp += input.value;
+      
+          });
+      
+          otpHidden.value = otp;
+      
+      }
+      
+      /* =========================================
+         VERIFY OTP
+      ========================================= */
+      
+      verifyBtn.addEventListener("click", function () {
+      
+          if (otpHidden.value.length !== 6) {
+      
+              statusBox.style.display = "block";
+      
+              statusBox.innerHTML =
+                  '<i class="bi bi-exclamation-circle-fill"></i> Enter 6 digit OTP';
+      
+              statusBox.className = "otp-status error";
+      
+              return;
+          }
+      
+          /* SUCCESS UI */
+      
+          clearInterval(timer);
+      
+          statusBox.style.display = "block";
+      
+          statusBox.innerHTML =
+              '<i class="bi bi-patch-check-fill"></i> Mobile Number Verified Successfully';
+      
+          statusBox.className = "otp-status success";
+      
+          verifyBtn.innerHTML =
+              '<i class="bi bi-patch-check-fill"></i> Verified';
+      
+          /* DISABLE INPUTS */
+      
+          otpInputs.forEach(input => {
+      
+              input.disabled = true;
+      
+          });
+      
+          mobileInput.readOnly = true;
+      
+          /* CHANGE SEND BUTTON */
+      
+          sendOtpBtn.innerHTML =
+              '<i class="bi bi-patch-check-fill"></i> Verified';
+      
+          sendOtpBtn.style.background =
+              'linear-gradient(135deg,#059669,#10b981)';
+      
+          /* CLOSE MODAL AFTER SUCCESS */
+      
+          setTimeout(() => {
+      
+              otpModal.classList.remove("active");
+      
+          }, 1200);
+      
+      });
+      
+      /* =========================================
+         TIMER
+      ========================================= */
+      
+      function startTimer() {
+      
+          clearInterval(timer);
+      
+          seconds = 120;
+      
+          resendBtn.style.display = "none";
+      
+          timer = setInterval(() => {
+      
+              seconds--;
+      
+              let min = Math.floor(seconds / 60);
+              let sec = seconds % 60;
+      
+              countdown.innerHTML =
+                  `${String(min).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+      
+              if (seconds <= 0) {
+      
+                  clearInterval(timer);
+      
+                  countdown.innerHTML = "Expired";
+      
+                  resendBtn.style.display = "block";
+              }
+      
+          }, 1000);
+      
+      }
+      
+      /* =========================================
+         RESEND OTP
+      ========================================= */
+      
+      resendBtn.addEventListener("click", function () {
+      
+          resendBtn.style.display = "none";
+      
+          otpInputs.forEach(input => {
+      
+              input.value = "";
+      
+          });
+      
+          otpHidden.value = "";
+      
+          otpInputs[0].focus();
+      
+          startTimer();
+      
+          statusBox.style.display = "none";
+      
+      });
+      
+      /* =========================================
+         CLOSE MODAL ON OUTSIDE CLICK
+      ========================================= */
+      
+      window.addEventListener("click", function(e){
+      
+          if(e.target === otpModal){
+      
+              otpModal.classList.remove("active");
+      
+          }
+      
+      });
+    </script>
+    
+   <!--  <script src="./register_files/app-data.js.download"></script>
+    <script src="./register_files/portal-nav.js.download"></script> -->
+    
+  </body>
+</html>

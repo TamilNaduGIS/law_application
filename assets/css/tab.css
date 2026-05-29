@@ -1,0 +1,60 @@
+#tab1 {
+  position: relative;
+}
+
+/* ===== TAB BAR ===== */
+.custom-tabs {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+} 
+
+/* ===== TAB ITEM ===== */
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  font-size: 13px;
+  color: #334155;
+  transition: all 0.25s ease;
+}
+
+/* ICON */
+.tab-item i {
+  font-size: 16px;
+}
+
+/* HOVER */
+.tab-item:hover {
+  background: #f8fafc;
+  transform: translateY(-1px);
+}
+
+/* ACTIVE (GRADIENT) */
+.tab-item.active {
+/*  background: linear-gradient(135deg, #6366f1, #4f46e5);*/
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #fff;
+  border: none;
+  box-shadow: 0 6px 16px rgba(99,102,241,0.25);
+}
+
+/* ===== CONTENT ===== */
+.tab-content {
+  display: none;
+  background: #ffffff;
+  padding: 10px 20px;
+  border-radius: 16px;
+/*  box-shadow: 0 4px 12px rgba(0,0,0,0.05);*/
+box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+}
+
+.tab-content.active {
+  display: block;
+}

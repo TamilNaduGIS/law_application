@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Applicant Login | Law Officers Recruitment</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <!-- <link rel="stylesheet" href="font/bootstrap-icons.min.css"> -->
+    <!-- Bootstrap + Icons -->
+    <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+      .otp-box{
+    width:50px;
+    height:55px;
+    font-size:22px;
+    font-weight:600;
+}
+
+.modal-content{
+    border-radius:16px;
+}
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #eef2ff 0%, #e2e8f0 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      }
+      .login-card {
+      width: 100%;
+      max-width: 420px;
+      background: white;
+      border-radius: 18px;
+      overflow: hidden;
+      box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+      }
+      .login-header {
+      background: #1f3291;
+      color: white;
+      padding: 1.25rem 1.5rem;
+      }
+      .login-header h1 { font-size: 1.25rem; font-weight: 600; }
+      .login-header p { font-size: 0.8rem; opacity: 0.9; margin-top: 0.25rem; }
+      .login-body { padding: 1.75rem 1.5rem; }
+      label { display: block; margin-bottom: 0.4rem; font-weight: 500; color: #1f3291; font-size: 0.9rem; }
+      input {
+      width: 100%;
+      height: 48px;
+      border: 1px solid #d7d7d7;
+      border-radius: 10px;
+      padding: 0 15px;
+      font-size: 15px;
+      margin-bottom: 1.1rem;
+      }
+      input:focus { border-color: #1f3291; outline: none; }
+      .btn-primary {
+      width: 100%;
+      height: 48px;
+      border: none;
+      border-radius: 10px;
+      background: #1f3291;
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      }
+      .btn-primary:hover { background: #16256d; }
+      .links {
+      display: flex;
+      justify-content: space-between;
+      margin: 0.5rem 0 1.25rem;
+      font-size: 0.85rem;
+      }
+      .links a { color: #1f3291; text-decoration: none; font-weight: 500; }
+      .links a:hover { text-decoration: underline; }
+      .back-home {
+      display: block;
+      text-align: center;
+      margin-top: 1rem;
+      color: #64748b;
+      font-size: 0.85rem;
+      text-decoration: none;
+      }
+      .error-msg, .success-msg {
+      padding: 0.65rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+      display: none;
+      }
+      .error-msg { background: #fee2e2; color: #b91c1c; }
+      .success-msg { background: #dcfce7; color: #15803d; }
+      .demo-hint {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      background: #f8fafc;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      color: #475569;
+      border-left: 4px solid #1f3291;
+      }
+      .register-link{
+    color:#1f3291;
+    font-weight:600;
+    text-decoration:none;
+}
+
+.register-link:hover{
+    text-decoration:underline;
+}
+    </style>
+  </head>
+  <body>
+    <div class="login-card">
+      <div class="login-header">
+        <h1>Applicant Login</h1>
+        <p>High Court of Madras — Law Officers Recruitment</p>
+      </div>
+      <div class="login-body">
+        <div id="successMsg" class="success-msg"></div>
+        <div id="errorMsg" class="error-msg"></div>
+        <form id="loginForm">
+          <label for="enrolmentNumber">Bar Council Enrolment No.</label>
+          <input type="text" id="enrolmentNumber" placeholder="e.g. TN/12345/2015" required autocomplete="username">
+            
+          <label for="mobileNumber">Mobile Number</label>
+<input type="tel"
+       id="mobileNumber"
+       placeholder="Enter registered mobile number"
+       maxlength="10"
+       required>
+       <button type="submit" class="btn-primary">
+    Get OTP
+</button>
+
+
+<div class="text-center mt-3">
+    <span class="text-muted">New Applicant?</span>
+    <a href="sign-up.html" class="register-link">
+        Create Account
+    </a>
+</div>
+
+          
+          <!-- <button type="submit" class="btn-primary">Login</button> -->
+        </form>
+       
+        <a href="index.html" class="back-home">← Back to Home</a>
+      </div>
+    </div>
+
+
+
+    <!-- otp modal -->
+    <!-- OTP Modal -->
+<div class="modal fade" id="otpModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    Verify OTP
+                </h5>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="modal">
+                </button>
+            </div>
+
+            <div class="modal-body">
+
+                <p class="text-muted mb-3">
+                    OTP has been sent to your registered mobile number.
+                </p>
+
+                <div class="d-flex justify-content-center gap-2 mb-3">
+
+                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+
+                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+
+                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+
+                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+
+                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+
+                    <input type="text" maxlength="1" class="otp-box form-control text-center">
+
+                </div>
+
+                <div class="text-center">
+
+                    <span id="timerText">
+                        Resend OTP in 60s
+                    </span>
+
+                    <br>
+
+                    <button
+                        id="resendBtn"
+                        class="btn btn-link p-0 mt-2"
+                        style="display:none;">
+                        Resend OTP
+                    </button>
+
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+
+                <button
+                    class="btn btn-primary w-100"
+                    id="verifyOtpBtn">
+
+                    Verify OTP
+
+                </button>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+    <!-- otp modal -->
+
+
+     <!-- JS -->
+    <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
+    <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/main.js"></script>
+
+
+    <script>
+      const otpModal =
+    new bootstrap.Modal(
+        document.getElementById('otpModal')
+    );
+
+let generatedOtp = "123456";
+let timer;
+let countdown = 60;
+
+document
+.getElementById('loginForm')
+.addEventListener('submit', function(e){
+
+    e.preventDefault();
+
+    const mobile =
+        document.getElementById('mobileNumber')
+        .value.trim();
+
+    if(!/^[6-9]\d{9}$/.test(mobile))
+    {
+        showError(
+            "Enter valid mobile number"
+        );
+        return;
+    }
+
+    otpModal.show();
+
+    startOtpTimer();
+});
+
+function showError(message){
+
+    const errorEl =
+        document.getElementById('errorMsg');
+
+    errorEl.textContent = message;
+    errorEl.style.display = 'block';
+}
+
+const otpInputs =
+document.querySelectorAll('.otp-box');
+
+otpInputs.forEach((input,index)=>{
+
+    input.addEventListener('input',()=>{
+
+        if(input.value.length===1 &&
+           otpInputs[index+1]){
+
+            otpInputs[index+1].focus();
+        }
+    });
+
+    input.addEventListener('keydown',(e)=>{
+
+        if(e.key==="Backspace" &&
+           !input.value &&
+           otpInputs[index-1]){
+
+            otpInputs[index-1].focus();
+        }
+    });
+
+});
+
+function startOtpTimer(){
+
+    clearInterval(timer);
+
+    countdown = 60;
+
+    document.getElementById(
+        'resendBtn'
+    ).style.display='none';
+
+    timer =
+    setInterval(()=>{
+
+        countdown--;
+
+        document.getElementById(
+            'timerText'
+        ).innerHTML =
+        `Resend OTP in ${countdown}s`;
+
+        if(countdown<=0){
+
+            clearInterval(timer);
+
+            document.getElementById(
+                'timerText'
+            ).innerHTML='';
+
+            document.getElementById(
+                'resendBtn'
+            ).style.display='inline-block';
+        }
+
+    },1000);
+}
+
+document
+.getElementById('resendBtn')
+.addEventListener('click',()=>{
+
+    generatedOtp = "123456";
+
+    startOtpTimer();
+
+    alert(
+        "OTP resent successfully"
+    );
+});
+
+document
+.getElementById('verifyOtpBtn')
+.addEventListener('click',()=>{
+
+    let enteredOtp = '';
+
+    document
+    .querySelectorAll('.otp-box')
+    .forEach(box=>{
+
+        enteredOtp += box.value;
+    });
+
+    if(enteredOtp !== generatedOtp){
+
+        alert("Invalid OTP");
+        return;
+    }
+
+    window.location.href =
+        'dashboard.html';
+});
+    </script>
+
+
+  </body>
+</html>
