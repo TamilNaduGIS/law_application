@@ -12,7 +12,7 @@ class Database
     private static ?PDO $instance = null;
     private static ?PDO $umisInstance = null;
 
-    public static function getConnection(): PDO
+    public static function ReadDatabaseConnection(): PDO
     {
         // Fetch credentials from AWS Secret Manager or .env
         // $host = AWSSecretManager::getSecret('host', AWSSecretManager::getSecret('host'));
