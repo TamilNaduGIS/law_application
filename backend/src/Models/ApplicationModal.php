@@ -36,7 +36,7 @@ class ApplicationModal
             error_log('resolveApplicationId: ' . $e->getMessage());
         }
 
-        return $applicantId;
+        return 0;
     }
 
     /**
@@ -151,8 +151,21 @@ class ApplicationModal
         return null;
     }
 
-    public static function saveEducation(int $applicationId, array $education): array
+    /**
+     * @param array<string, mixed> $payload
+     * @return array{ok: bool, message?: string, error?: string}
+     */
+    public static function saveEducation(array $payload): array
     {
-        return self::callJsonProcedure('sp_application_save_education', $education);
+        return self::callJsonProcedure('sp_application_save_education', $payload);
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array{ok: bool, message?: string, error?: string}
+     */
+    public static function saveAdditionalQualification(array $payload): array
+    {
+        return self::callJsonProcedure('sp_application_save_additional_qualification', $payload);
     }
 }

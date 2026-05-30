@@ -96,6 +96,7 @@
                     utils.previewFieldRow('Examination', a.exam) +
                     utils.previewFieldRow('Year', a.year) +
                     utils.previewFieldRow('Board', a.board) +
+                    utils.previewFieldRow('Institution', a.institution) +
                     utils.previewFieldRow('Subject', a.subject) +
                     utils.previewFieldRow('% Marks', a.percentage)
                 );

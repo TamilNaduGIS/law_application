@@ -86,14 +86,25 @@ class VacancyController extends Controller
     $this->setUserId($request);
     $data = is_array($this->requestData) ? $this->requestData : [];
 
-    $applicationId = (int) ($data['application_id'] ?? $data['applicationId'] ?? 0);
+    $applicantId = (int) (
+      $data['applicant_id']
+      ?? $data['applicantId']
+      ?? $this->sessionUserId
+      ?? 0
+    );
+
+    if ($applicantId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
+    }
+
+    $applicationId = ApplicationModal::resolveApplicationId($applicantId, $data);
+    if ($applicationId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Invalid Application Id. Save Tab 1 first.']);
+    }
+
     $documentType = strtoupper(trim((string) ($data['document_type'] ?? $data['documentType'] ?? '')));
     $fileName = trim((string) ($data['file_name'] ?? $data['fileName'] ?? ''));
     $fileContent = (string) ($data['file_content'] ?? $data['fileContent'] ?? $data['file_base64'] ?? '');
-
-    if ($applicationId <= 0) {
-      return $this->encryptResponse(['ok' => false, 'error' => 'Application ID is required.']);
-    }
 
     if ($documentType === '') {
       return $this->encryptResponse(['ok' => false, 'error' => 'Document type is required.']);
@@ -266,10 +277,85 @@ class VacancyController extends Controller
   public function saveEducation(Request $request): Response
   {
     $this->setUserId($request);
-    $data = $this->requestData;
-    $applicationId = (int) ($data['application_id'] ?? $data['applicationId'] ?? 0);
-    $education = (array) ($data['education'] ?? $data['education'] ?? []);
-    $result = ApplicationModal::saveEducation($applicationId, $education);
+    $data = is_array($this->requestData) ? $this->requestData : [];
+
+    $applicantId = (int) (
+      $data['applicant_id']
+      ?? $data['applicantId']
+      ?? $this->sessionUserId
+      ?? 0
+    );
+
+    if ($applicantId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
+    }
+
+    $applicationId = ApplicationModal::resolveApplicationId($applicantId, $data);
+    if ($applicationId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Invalid Application Id. Save Tab 1 first.']);
+    }
+    $createdBy = (int) ($data['created_by'] ?? $data['createdBy'] ?? $applicantId);
+
+    $payload = [
+      'application_id' => $applicationId,
+      'created_by' => $createdBy > 0 ? $createdBy : $applicantId,
+      'education' => array_values((array) ($data['education'] ?? [])),
+    ];
+
+    if (!empty($data['applicant_id']) || !empty($data['applicantId'])) {
+      $payload['applicant_id'] = $applicantId;
+    }
+
+    $result = ApplicationModal::saveEducation($payload);
+    $result['application_id'] = $applicationId;
+    $result['applicant_id'] = $applicantId;
+
+    return $this->encryptResponse($result);
+  }
+
+  public function saveAdditionalQualification(Request $request): Response
+  {
+    $this->setUserId($request);
+    $data = is_array($this->requestData) ? $this->requestData : [];
+
+    $applicantId = (int) (
+      $data['applicant_id']
+      ?? $data['applicantId']
+      ?? $this->sessionUserId
+      ?? 0
+    );
+
+    if ($applicantId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
+    }
+
+    $applicationId = ApplicationModal::resolveApplicationId($applicantId, $data);
+    if ($applicationId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Invalid Application Id. Save Tab 1 first.']);
+    }
+    $createdBy = (int) ($data['created_by'] ?? $data['createdBy'] ?? $applicantId);
+
+    $additionalRows = array_values((array) (
+      $data['additional_qualification']
+      ?? $data['additionalQualification']
+      ?? $data['additional']
+      ?? []
+    ));
+
+    $payload = [
+      'application_id' => $applicationId,
+      'created_by' => $createdBy > 0 ? $createdBy : $applicantId,
+      'additional_qualification' => $additionalRows,
+    ];
+
+    if (!empty($data['applicant_id']) || !empty($data['applicantId'])) {
+      $payload['applicant_id'] = $applicantId;
+    }
+
+    $result = ApplicationModal::saveAdditionalQualification($payload);
+    $result['application_id'] = $applicationId;
+    $result['applicant_id'] = $applicantId;
+
     return $this->encryptResponse($result);
   }
 }

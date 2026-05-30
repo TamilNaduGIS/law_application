@@ -222,13 +222,10 @@
     }
 
     function buildPersonalSavePayload(personal) {
-        const applicantId = getApplicantId();
-        const storedAppId = global.sessionStorage.getItem('applicationId');
-        const applicationId = storedAppId ? parseInt(storedAppId, 10) : parseInt(applicantId, 10);
+        const applicantId = parseInt(getApplicantId(), 10) || 0;
 
-        return {
+        const payload = {
             applicant_id: applicantId,
-            application_id: applicationId,
             applicant_name: personal.advocateName,
             father_name: personal.fatherName,
             bar_council_enrollement_number: personal.enrolmentNo,
@@ -250,6 +247,13 @@
             permanent_address: formVal('permanent_address') || personal.permanentAddress,
             created_by: applicantId
         };
+
+        const storedAppId = parseInt(global.sessionStorage.getItem('applicationId'), 10);
+        if (!isNaN(storedAppId) && storedAppId > 0) {
+            payload.application_id = storedAppId;
+        }
+
+        return payload;
     }
 
     function unwrapApiResult(res) {
@@ -326,14 +330,18 @@
 
         return promise.then(function (fileData) {
             return ensureSessionTokens().then(function () {
-                return global.LawPortal.apiRequest('vacancy/document/upload', 'POST', {
+                const uploadPayload = {
                     applicant_id: applicantId,
-                    application_id: appId || parseInt(applicantId, 10),
                     document_type: documentType,
                     file_name: fileData.file_name,
                     file_content: fileData.file_content,
                     uploaded_by: applicantId
-                });
+                };
+                const resolvedAppId = parseInt(appId, 10);
+                if (!isNaN(resolvedAppId) && resolvedAppId > 0) {
+                    uploadPayload.application_id = resolvedAppId;
+                }
+                return global.LawPortal.apiRequest('vacancy/document/upload', 'POST', uploadPayload);
             });
         }).then(function (res) {
             const body = unwrapApiResult(res);
@@ -424,23 +432,36 @@
         return Math.round(n * 100) / 100;
     }
 
+    function buildTab2SaveMeta() {
+        const applicantId = parseInt(getApplicantId(), 10) || 0;
+        return {
+            applicant_id: applicantId,
+            created_by: applicantId
+        };
+    }
+
+    function requireApplicantId() {
+        const applicantId = parseInt(getApplicantId(), 10);
+        if (!applicantId) {
+            return Promise.reject(new Error('Applicant ID is missing. Please log in again.'));
+        }
+        return Promise.resolve(applicantId);
+    }
+
     function mapEduItemToPayload(item) {
         const year = parseYearOfPassing(item.year);
         const marks = parseMarksPercentage(item.percentage);
         const row = {
             education_id: parseInt(item.educationId, 10) || 0,
-            qualification_name: String(item.exam || '').trim(),
-            university_name: String(item.board || '').trim(),
-            specialization: String(item.special || '').trim(),
-            certificate_path: String(item.certificatePath || '').trim(),
+            qualification_name: trimStr(item.exam),
+            year_of_passing: year !== null ? year : 0,
+            university_name: trimStr(item.board),
+            institution_name: trimStr(item.institution),
+            specialization: trimStr(item.special),
+            marks_percentage: marks !== null ? marks : 0,
+            certificate_path: trimStr(item.certificatePath),
             is_deleted: !!item.isDeleted
         };
-        if (year !== null) {
-            row.year_of_passing = year;
-        }
-        if (marks !== null) {
-            row.marks_percentage = marks;
-        }
         return row;
     }
 
@@ -454,11 +475,39 @@
         return uploadDocument(applicationId, documentType, fileOrPreview);
     }
 
-    function buildEducationSavePayload(eduItems) {
-        const applicantId = getApplicantId();
-        const applicationId = getApplicationId();
-        const createdBy = parseInt(applicantId, 10) || applicationId;
+    function trimStr(val) {
+        return val != null ? String(val).trim() : '';
+    }
 
+    function isAdditionalRowEmpty(item) {
+        if (!item) return true;
+        return !trimStr(item.exam)
+            && !trimStr(item.year)
+            && !trimStr(item.board)
+            && !trimStr(item.institution)
+            && !trimStr(item.subject)
+            && !trimStr(item.percentage)
+            && !trimStr(item.certificatePath);
+    }
+
+    function mapAdditionalItemToPayload(item) {
+        const year = parseYearOfPassing(item.year);
+        const marks = parseMarksPercentage(item.percentage);
+        return {
+            additional_qualification_id: parseInt(item.additionalId, 10) || 0,
+            qualification_name: trimStr(item.exam),
+            year_of_passing: year !== null ? year : 0,
+            university_name: trimStr(item.board),
+            institution_name: trimStr(item.institution),
+            specialization: trimStr(item.subject),
+            marks_percentage: marks !== null ? marks : 0,
+            certificate_path: trimStr(item.certificatePath),
+            is_deleted: !!item.isDeleted
+        };
+    }
+
+    function buildEducationSavePayload(eduItems) {
+        const meta = buildTab2SaveMeta();
         const education = (eduItems || [])
             .filter(function (item) {
                 return item && !item.isDeleted;
@@ -466,10 +515,91 @@
             .map(mapEduItemToPayload);
 
         return {
-            application_id: applicationId,
-            created_by: createdBy,
+            applicant_id: meta.applicant_id,
+            created_by: meta.created_by,
             education: education
         };
+    }
+
+    function buildAdditionalSavePayload(additionalItems) {
+        const meta = buildTab2SaveMeta();
+        const rows = (additionalItems || [])
+            .filter(function (item) {
+                return item && !item.isDeleted && !isAdditionalRowEmpty(item);
+            })
+            .map(mapAdditionalItemToPayload);
+
+        return {
+            applicant_id: meta.applicant_id,
+            created_by: meta.created_by,
+            additional_qualification: rows
+        };
+    }
+
+    function getAdditionalRowsForSave(additionalItems) {
+        return buildAdditionalSavePayload(additionalItems).additional_qualification;
+    }
+
+    function collectAdditionalItemsFromDom() {
+        const container = document.getElementById('additionalListContainer');
+        if (!container) {
+            return [];
+        }
+
+        let rows = container.querySelectorAll('.list-item');
+        if (!rows.length) {
+            rows = container.querySelectorAll('.add-card');
+        }
+        if (!rows.length && container.children.length) {
+            rows = container.children;
+        }
+
+        const previous = AF.state.additionalItems || [];
+        const items = [];
+
+        rows.forEach(function (row, idx) {
+            const getVal = function (sel) {
+                const el = row.querySelector(sel);
+                return el && el.value != null ? String(el.value).trim() : '';
+            };
+            const prev = previous[idx] || {};
+            const fileInput = row.querySelector('.add-cert-file');
+            let certName = row.getAttribute('data-cert-name') || prev.certificateFileName || '';
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                certName = fileInput.files[0].name;
+            }
+
+            const item = {
+                additionalId: prev.additionalId || parseInt(row.getAttribute('data-additional-id'), 10) || 0,
+                exam: getVal('.add-exam'),
+                year: getVal('.add-year'),
+                board: getVal('.add-board'),
+                institution: getVal('.add-inst'),
+                subject: getVal('.add-subject'),
+                percentage: getVal('.add-perc'),
+                certificatePath: prev.certificatePath || row.getAttribute('data-cert-path') || '',
+                certificateFileName: certName,
+                isDeleted: false
+            };
+
+            if (!isAdditionalRowEmpty(item)) {
+                items.push(item);
+            }
+        });
+
+        AF.state.additionalItems = items;
+        return items;
+    }
+
+    function syncTab2AdditionalFromDom() {
+        if (AF.tab2 && typeof AF.tab2.syncAdditional === 'function') {
+            AF.tab2.syncAdditional();
+        }
+        return collectAdditionalItemsFromDom();
+    }
+
+    function hasAdditionalQualificationToSave() {
+        return collectAdditionalItemsFromDom().length > 0;
     }
 
     let tab2EducationSavePromise = null;
@@ -497,18 +627,53 @@
         });
     }
 
+    function postAdditionalSave(payload) {
+        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+            return Promise.reject(new Error('API client is not loaded.'));
+        }
+        console.log('[Tab2] Additional qualification save payload:', payload);
+        return ensureSessionTokens().then(function () {
+            return global.LawPortal.apiRequest(
+                'vacancy/additional/save',
+                'POST',
+                payload
+            );
+        }).then(function (res) {
+            const body = unwrapApiResult(res);
+            if (!body.ok) {
+                throw new Error(body.error || 'Unable to save additional qualifications.');
+            }
+            if (body.application_id) {
+                global.sessionStorage.setItem('applicationId', String(body.application_id));
+            }
+            return body;
+        });
+    }
+
     function saveEducation(eduItems) {
         return postEducationSave(buildEducationSavePayload(eduItems));
     }
 
-    function getTab2CertificateSources() {
+    function saveAdditionalQualification(additionalItems) {
+        syncTab2AdditionalFromDom();
+        const items = additionalItems || AF.state.additionalItems || [];
+        const rows = getAdditionalRowsForSave(items);
+        if (!rows.length) {
+            return Promise.resolve({ ok: true, skipped: true });
+        }
+        return postAdditionalSave(buildAdditionalSavePayload(items));
+    }
+
+    function getTab2CertificateSources(containerId, previewPrefix) {
         const previews = AF.state.filePreviews || {};
         const sources = [];
+        const container = document.getElementById(containerId);
+        if (!container) return sources;
 
-        document.querySelectorAll('#eduListContainer .list-item').forEach(function (row, idx) {
-            const input = row.querySelector('.certificateUpload');
+        container.querySelectorAll('.list-item').forEach(function (row, idx) {
+            const input = row.querySelector('.certificateUpload, .add-cert-file');
             const file = (input && input.files && input.files[0]) ? input.files[0] : null;
-            const preview = previews['edu-' + idx] || null;
+            const preview = previews[previewPrefix + idx] || null;
             sources.push({
                 index: idx,
                 file: file,
@@ -519,7 +684,7 @@
         return sources;
     }
 
-    function uploadCertificatesThenSave(items, applicationId, sources) {
+    function uploadCertificateSources(applicationId, items, sources, documentType) {
         let chain = Promise.resolve();
 
         sources.forEach(function (src) {
@@ -528,9 +693,8 @@
             if (!fileOrPreview || (row && row.certificatePath)) {
                 return;
             }
-            const docType = 'EDUCATION_CERTIFICATE';
             chain = chain.then(function () {
-                return uploadEducationCertificate(applicationId, docType, fileOrPreview)
+                return uploadEducationCertificate(applicationId, documentType, fileOrPreview)
                     .then(function (body) {
                         if (body.file_path && items[src.index]) {
                             items[src.index].certificatePath = body.file_path;
@@ -539,9 +703,55 @@
             });
         });
 
-        return chain.then(function () {
-            return postEducationSave(buildEducationSavePayload(items));
+        return chain;
+    }
+
+    function saveAdditionalQualificationFromDom(applicantId) {
+        const addItems = collectAdditionalItemsFromDom();
+        if (!addItems.length) {
+            console.log('[Tab2] No additional qualification rows — skipping additional/save');
+            return Promise.resolve({ ok: true, skippedAdditional: true });
+        }
+
+        console.log('[Tab2] Additional qualification rows:', addItems.length);
+        const addSources = getTab2CertificateSources('additionalListContainer', 'add-');
+        const uploadAppId = getApplicationId() || applicantId;
+
+        return uploadCertificateSources(
+            uploadAppId,
+            addItems,
+            addSources,
+            'ADDITIONAL_QUALIFICATION_CERTIFICATE'
+        ).then(function () {
+            const freshItems = collectAdditionalItemsFromDom();
+            return postAdditionalSave(buildAdditionalSavePayload(freshItems));
         });
+    }
+
+    function uploadCertificatesThenSave(applicantId) {
+        const eduSources = getTab2CertificateSources('eduListContainer', 'edu-');
+        const uploadAppId = getApplicationId() || applicantId;
+
+        return uploadCertificateSources(
+            uploadAppId,
+            AF.state.eduItems || [],
+            eduSources,
+            'EDUCATION_CERTIFICATE'
+        )
+            .then(function () {
+                if (AF.tab2 && typeof AF.tab2.syncEdu === 'function') {
+                    AF.tab2.syncEdu();
+                }
+                return postEducationSave(buildEducationSavePayload(AF.state.eduItems));
+            })
+            .then(function (eduResult) {
+                if (!hasAdditionalQualificationToSave()) {
+                    return eduResult;
+                }
+                return saveAdditionalQualificationFromDom(applicantId).then(function (addResult) {
+                    return { education: eduResult, additional: addResult };
+                });
+            });
     }
 
     function saveTab2WithCertificates() {
@@ -552,16 +762,12 @@
         if (AF.tab2 && typeof AF.tab2.syncEdu === 'function') {
             AF.tab2.syncEdu();
         }
+        syncTab2AdditionalFromDom();
 
-        const applicationId = getApplicationId();
-        if (!applicationId) {
-            return Promise.reject(new Error('Application ID is missing. Complete Tab 1 first.'));
-        }
-
-        const items = (AF.state.eduItems || []).slice();
-        const sources = getTab2CertificateSources();
-
-        tab2EducationSavePromise = uploadCertificatesThenSave(items, applicationId, sources)
+        tab2EducationSavePromise = requireApplicantId()
+            .then(function (applicantId) {
+                return uploadCertificatesThenSave(applicantId);
+            })
             .finally(function () {
                 tab2EducationSavePromise = null;
             });
@@ -580,8 +786,11 @@
         uploadDocument: uploadDocument,
         saveTab1WithDocuments: saveTab1WithDocuments,
         getApplicationId: getApplicationId,
+        requireApplicantId: requireApplicantId,
         buildEducationSavePayload: buildEducationSavePayload,
+        buildAdditionalSavePayload: buildAdditionalSavePayload,
         saveEducation: saveEducation,
+        saveAdditionalQualification: saveAdditionalQualification,
         uploadEducationCertificate: uploadEducationCertificate,
         saveTab2WithCertificates: saveTab2WithCertificates
     };

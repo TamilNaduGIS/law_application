@@ -61,7 +61,7 @@
             '<div class="col-md-3"><label class="add-label"><i class="bi bi-building-fill"></i>Board</label>' +
             '<input class="form-control add-input add-board" value="' + escapeHtml(item.board || '') + '"></div>' +
             '<div class="col-md-3"><label class="add-label"><i class="bi bi-bank2"></i>Institution</label>' +
-            '<input class="form-control add-input add-board" value="' + escapeHtml(item.board || '') + '"></div>' +
+            '<input class="form-control add-input add-inst" value="' + escapeHtml(item.institution || '') + '"></div>' +
             '<div class="col-md-2"><label class="add-label"><i class="bi bi-book-half"></i>Subject</label>' +
             '<input class="form-control add-input add-subject" value="' + escapeHtml(item.subject || '') + '"></div>' +
             '<div class="col-md-2"><label class="add-label"><i class="bi bi-percent"></i>Marks</label>' +
@@ -102,14 +102,26 @@
     }
 
     function syncAdditional() {
+        const previous = AF.state.additionalItems || [];
         AF.state.additionalItems = [];
-        document.querySelectorAll('#additionalListContainer .list-item').forEach(function (item) {
+        document.querySelectorAll('#additionalListContainer .list-item').forEach(function (item, idx) {
+            const prev = previous[idx] || {};
+            const fileInput = item.querySelector('.add-cert-file');
+            let certName = item.getAttribute('data-cert-name') || prev.certificateFileName || '';
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                certName = fileInput.files[0].name;
+            }
             AF.state.additionalItems.push({
+                additionalId: prev.additionalId || parseInt(item.getAttribute('data-additional-id'), 10) || 0,
                 exam: item.querySelector('.add-exam') && item.querySelector('.add-exam').value,
                 year: item.querySelector('.add-year') && item.querySelector('.add-year').value,
                 board: item.querySelector('.add-board') && item.querySelector('.add-board').value,
+                institution: item.querySelector('.add-inst') && item.querySelector('.add-inst').value,
                 subject: item.querySelector('.add-subject') && item.querySelector('.add-subject').value,
-                percentage: item.querySelector('.add-perc') && item.querySelector('.add-perc').value
+                percentage: item.querySelector('.add-perc') && item.querySelector('.add-perc').value,
+                certificatePath: prev.certificatePath || item.getAttribute('data-cert-path') || '',
+                certificateFileName: certName,
+                isDeleted: false
             });
         });
     }
@@ -209,11 +221,23 @@
         }
     }
 
+    function hasAdditionalCertificate(item, idx) {
+        if (trimVal(item.certificatePath)) return true;
+        const rows = document.querySelectorAll('#additionalListContainer .list-item');
+        const row = rows[idx];
+        if (!row) return false;
+        const input = row.querySelector('.add-cert-file');
+        if (input && input.files && input.files[0]) return true;
+        const preview = AF.state.filePreviews && AF.state.filePreviews['add-' + idx];
+        return !!(preview && preview.name);
+    }
+
     function isAdditionalRowStarted(item) {
         return !!(
             trimVal(item.exam)
             || trimVal(item.year)
             || trimVal(item.board)
+            || trimVal(item.institution)
             || trimVal(item.subject)
             || trimVal(item.percentage)
         );
@@ -223,11 +247,11 @@
         syncEdu();
         syncAdditional();
 
-        const appId = AF.api && typeof AF.api.getApplicationId === 'function'
-            ? AF.api.getApplicationId()
-            : parseInt(sessionStorage.getItem('applicationId'), 10);
-        if (!appId) {
-            alert('Please complete Tab 1 (Personal Information) and save before continuing.');
+        const applicantId = AF.api && typeof AF.api.requireApplicantId === 'function'
+            ? parseInt(sessionStorage.getItem('applicantId'), 10)
+            : 0;
+        if (!applicantId) {
+            alert('Applicant ID is missing. Please log in again.');
             return false;
         }
 
@@ -325,6 +349,12 @@
                 return false;
             }
 
+            if (!trimVal(add.institution)) {
+                alert(addLabel + ': Please enter the institution name.');
+                scrollToAdditionalRow(j);
+                return false;
+            }
+
             if (!trimVal(add.subject)) {
                 alert(addLabel + ': Please enter the subject.');
                 scrollToAdditionalRow(j);
@@ -333,6 +363,12 @@
 
             if (!isValidMarks(add.percentage)) {
                 alert(addLabel + ': Please enter marks between 0 and 100.');
+                scrollToAdditionalRow(j);
+                return false;
+            }
+
+            if (!hasAdditionalCertificate(add, j)) {
+                alert(addLabel + ': Please upload the certificate (PDF, DOC, or DOCX).');
                 scrollToAdditionalRow(j);
                 return false;
             }

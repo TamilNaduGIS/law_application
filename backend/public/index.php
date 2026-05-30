@@ -107,6 +107,12 @@ $router->add('POST', '/api/vacancy/education/save', [VacancyController::class, '
     new CSRFMiddleware(),
 ]);
 
+$router->add('POST', '/api/vacancy/additional/save', [VacancyController::class, 'saveAdditionalQualification'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
 // Dispatch the request
 
 $request = new Request();
