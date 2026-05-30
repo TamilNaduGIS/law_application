@@ -100,6 +100,13 @@ $router->add('POST', '/api/vacancy/document/upload', [VacancyController::class, 
     new AuthMiddleware(),
     new CSRFMiddleware(),
 ]);
+
+$router->add('POST', '/api/vacancy/education/save', [VacancyController::class, 'saveEducation'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
 // Dispatch the request
 
 $request = new Request();
