@@ -94,7 +94,7 @@ class VacancyController extends Controller
   {
     $this->setUserId($request);
     $data = is_array($this->requestData) ? $this->requestData : [];
-    
+
     $applicantId = (int) (
       $data['applicant_id']
       ?? $data['applicantId']
@@ -179,7 +179,7 @@ class VacancyController extends Controller
   private function buildPersonalInfoPayload(array $data, int $applicantId, int $applicationId): array
   {
 
-   
+
     $enrolment = strtoupper(trim((string) (
       $data['bar_council_enrollement_number']
       ?? $data['enrollment_no']
@@ -419,6 +419,76 @@ class VacancyController extends Controller
     return $this->encryptResponse($result);
   }
 
+
+  public function saveExperience(Request $request): Response
+  {
+    $this->setUserId($request);
+    $data = is_array($this->requestData) ? $this->requestData : [];
+
+    // Normalize the incoming data
+    $normalizedData = $this->normalizeExperienceData($data);
+
+    $applicantId = $normalizedData['applicant_id'];
+    if ($applicantId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
+    }
+
+    // Prepare payload for stored procedure
+    $payload = [
+      'applicant_id' => $applicantId,
+      'created_by' => $normalizedData['created_by'],
+      'law_degree_recognized' => $normalizedData['law_degree_recognized'],
+      'govt_law_officer_experience' => $normalizedData['govt_law_officer_experience'],
+      'provide_details_if_yes' => $normalizedData['provide_details_if_yes'],
+      'current_facing_criminal_proceedings' => $normalizedData['current_facing_criminal_proceedings'],
+      'current_criminal_cases_details' => $normalizedData['current_criminal_cases_details'],
+      'current_criminal_cases_present_status' => $normalizedData['current_criminal_cases_present_status'],
+      'current_disciplinary_proceeding_details' => $normalizedData['current_disciplinary_proceeding_details'],
+      'current_disciplinary_proceeding_present_status' => $normalizedData['current_disciplinary_proceeding_present_status'],
+      'past_facing_criminal_proceedings' => $normalizedData['past_facing_criminal_proceedings'],
+      'past_criminal_cases_details' => $normalizedData['past_criminal_cases_details'],
+      'past_criminal_cases_present_status' => $normalizedData['past_criminal_cases_present_status'],
+      'past_disciplinary_proceeding_details' => $normalizedData['past_disciplinary_proceeding_details'],
+      'past_disciplinary_proceeding_present_status' => $normalizedData['past_disciplinary_proceeding_present_status'],
+      'professional_achievement' => $normalizedData['professional_achievement'],
+      'achievement_remarks' => $normalizedData['achievement_remarks'],
+      'achievement_support_document' => $normalizedData['achievement_support_document'],
+      'total_bar_experience_years' => $normalizedData['total_bar_experience_years'],
+      'total_practice_years' => $normalizedData['total_practice_years'],
+      'drafting_experience_years' => $normalizedData['drafting_experience_years'],
+      'bar_practice' => $normalizedData['bar_practice'],
+      'court_practice' => $normalizedData['court_practice'],
+      'judgements' => $normalizedData['judgements'],
+    ];
+
+    $result = ApplicationModal::saveExperience($payload);
+    $result['applicant_id'] = $applicantId;
+
+    return $this->encryptResponse($result);
+  }
+
+  public function fetchExperience(Request $request): Response
+  {
+    $this->setUserId($request);
+    $data = is_array($this->requestData) ? $this->requestData : [];
+
+
+    $applicantId = $data['applicant_id'];
+    if ($applicantId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
+    }
+
+    // // Prepare payload for stored procedure
+    // $payload = [
+    //   'applicant_id' => $applicantId
+    // ];
+
+    $result = ApplicationModal::getExperienceDataById($applicantId);
+    $result['applicant_id'] = $applicantId;
+
+    return $this->encryptResponse($result);
+  }
+
   /**
    * POST /api/vacancy/additional/save
    * Calls public.sp_application_save_additional_qualification(p_input jsonb, p_output jsonb).
@@ -521,6 +591,306 @@ class VacancyController extends Controller
 
     return $normalized;
   }
+
+  private function normalizeExperienceData(array $data): array
+  {
+    $normalized = [];
+
+    // Basic Fields
+    $normalized['applicant_id'] = (int) ($data['applicant_id'] ?? $data['applicantId'] ?? 0);
+    $normalized['created_by'] = (int) ($data['created_by'] ?? $data['createdBy'] ?? $normalized['applicant_id']);
+
+    // Law Degree
+    $normalized['law_degree_recognized'] = filter_var(
+      $data['law_degree_recognized'] ?? $data['lawDegreeRecognized'] ?? false,
+      FILTER_VALIDATE_BOOLEAN
+    );
+
+    // Government Law Officer Experience
+    $normalized['govt_law_officer_experience'] = filter_var(
+      $data['govt_law_officer_experience'] ?? $data['previously_worked'] ?? $data['previouslyWorked'] ?? false,
+      FILTER_VALIDATE_BOOLEAN
+    );
+    $normalized['provide_details_if_yes'] = trim((string) (
+      $data['provide_details_if_yes'] ??
+      $data['previously_worked_details'] ??
+      $data['previouslyWorkedDetails'] ??
+      ''
+    ));
+
+    // Current Criminal Proceedings
+    $normalized['current_facing_criminal_proceedings'] = filter_var(
+      $data['current_facing_criminal_proceedings'] ?? $data['current_proceeding'] ?? $data['currentProceeding'] ?? false,
+      FILTER_VALIDATE_BOOLEAN
+    );
+    $normalized['current_criminal_cases_details'] = trim((string) (
+      $data['current_criminal_cases_details'] ??
+      $data['current_criminal_details'] ??
+      $data['currentCriminalDetails'] ??
+      ''
+    ));
+    $normalized['current_criminal_cases_present_status'] = trim((string) (
+      $data['current_criminal_cases_present_status'] ??
+      $data['current_criminal_status'] ??
+      $data['currentCriminalStatus'] ??
+      ''
+    ));
+
+    // Current Disciplinary Proceedings
+    $normalized['current_disciplinary_proceeding_details'] = trim((string) (
+      $data['current_disciplinary_proceeding_details'] ??
+      $data['current_disciplinary_details'] ??
+      $data['currentDisciplinaryDetails'] ??
+      ''
+    ));
+    $normalized['current_disciplinary_proceeding_present_status'] = trim((string) (
+      $data['current_disciplinary_proceeding_present_status'] ??
+      $data['current_disciplinary_status'] ??
+      $data['currentDisciplinaryStatus'] ??
+      ''
+    ));
+
+    // Past Criminal Proceedings
+    $normalized['past_facing_criminal_proceedings'] = filter_var(
+      $data['past_facing_criminal_proceedings'] ?? $data['past_proceeding'] ?? $data['pastProceeding'] ?? false,
+      FILTER_VALIDATE_BOOLEAN
+    );
+    $normalized['past_criminal_cases_details'] = trim((string) (
+      $data['past_criminal_cases_details'] ??
+      $data['past_criminal_details'] ??
+      $data['pastCriminalDetails'] ??
+      ''
+    ));
+    $normalized['past_criminal_cases_present_status'] = trim((string) (
+      $data['past_criminal_cases_present_status'] ??
+      $data['past_criminal_status'] ??
+      $data['pastCriminalStatus'] ??
+      ''
+    ));
+
+    // Past Disciplinary Proceedings
+    $normalized['past_disciplinary_proceeding_details'] = trim((string) (
+      $data['past_disciplinary_proceeding_details'] ??
+      $data['past_disciplinary_details'] ??
+      $data['pastDisciplinaryDetails'] ??
+      ''
+    ));
+    $normalized['past_disciplinary_proceeding_present_status'] = trim((string) (
+      $data['past_disciplinary_proceeding_present_status'] ??
+      $data['past_disciplinary_status'] ??
+      $data['pastDisciplinaryStatus'] ??
+      ''
+    ));
+
+    // Professional Achievement
+    $normalized['professional_achievement'] = filter_var(
+      $data['professional_achievement'] ?? $data['has_achievements'] ?? $data['hasAchievements'] ?? false,
+      FILTER_VALIDATE_BOOLEAN
+    );
+    $normalized['achievement_remarks'] = trim((string) (
+      $data['achievement_remarks'] ??
+      $data['achievement_details'] ??
+      $data['achievementDetails'] ??
+      ''
+    ));
+    $normalized['achievement_support_document'] = trim((string) (
+      $data['achievement_support_document'] ??
+      ($data['achievement_files'][0] ?? '')
+    ));
+
+    // Experience Years
+    $normalized['total_bar_experience_years'] = (float) (
+      $data['total_bar_experience_years'] ??
+      $data['total_bar_years'] ??
+      $data['totalBarYears'] ??
+      0
+    );
+    $normalized['total_practice_years'] = (float) (
+      $data['total_practice_years'] ??
+      $data['total_practice_years'] ??
+      0
+    );
+    $normalized['drafting_experience_years'] = (float) (
+      $data['drafting_experience_years'] ??
+      $data['drafting_years'] ??
+      $data['draftingYears'] ??
+      0
+    );
+
+    // Bar Practice
+    $normalized['bar_practice'] = $this->normalizeBarPracticeRows(
+      $data['bar_practice'] ?? $data['bar_experiences'] ?? []
+    );
+
+    // Court Practice
+    $normalized['court_practice'] = $this->normalizeCourtPracticeRows(
+      $data['court_practice'] ?? $data['practice_items'] ?? []
+    );
+
+    // Judgements
+    $normalized['judgements'] = $this->normalizeJudgementRows(
+      $data['judgements'] ?? $this->buildJudgementsFromCitations($data)
+    );
+
+    return $normalized;
+  }
+
+  private function normalizeBarPracticeRows(array $rows): array
+  {
+    $normalized = [];
+
+    foreach ($rows as $row) {
+      if (!is_array($row)) {
+        continue;
+      }
+
+      $item = [
+        'bar_practice_id' => (int) ($row['bar_practice_id'] ?? $row['id'] ?? 0),
+        'years_experience' => (float) ($row['years_experience'] ?? $row['years'] ?? $row['yearsExperience'] ?? 0),
+        'from_date' => $this->normalizeDate($row['from_date'] ?? $row['fromDate'] ?? null),
+        'to_date' => $this->normalizeDate($row['to_date'] ?? $row['toDate'] ?? null),
+        'bar_council_name' => trim((string) ($row['bar_council_name'] ?? $row['bar_council'] ?? $row['barCouncil'] ?? '')),
+        'supporting_document' => trim((string) ($row['supporting_document'] ?? $row['document_file'] ?? '')),
+        'is_deleted' => filter_var($row['is_deleted'] ?? $row['isDeleted'] ?? false, FILTER_VALIDATE_BOOLEAN),
+      ];
+
+      $normalized[] = $item;
+    }
+
+    return $normalized;
+  }
+
+  private function normalizeCourtPracticeRows(array $rows): array
+  {
+    $normalized = [];
+
+    foreach ($rows as $row) {
+      if (!is_array($row)) {
+        continue;
+      }
+
+      $item = [
+        'court_practice_id' => (int) ($row['court_practice_id'] ?? $row['id'] ?? 0),
+        'court_name' => trim((string) ($row['court_name'] ?? $row['courtName'] ?? '')),
+        'years_experience' => (float) ($row['years_experience'] ?? $row['years'] ?? $row['yearsExperience'] ?? 0),
+        'from_date' => $this->normalizeDate($row['from_date'] ?? $row['fromDate'] ?? null),
+        'to_date' => $this->normalizeDate($row['to_date'] ?? $row['toDate'] ?? null),
+        'practice_document' => trim((string) ($row['practice_document'] ?? $row['document_file'] ?? '')),
+        'is_deleted' => filter_var($row['is_deleted'] ?? $row['isDeleted'] ?? false, FILTER_VALIDATE_BOOLEAN),
+      ];
+
+      $normalized[] = $item;
+    }
+
+    return $normalized;
+  }
+
+  private function normalizeJudgementRows(array $rows): array
+  {
+    $normalized = [];
+
+    foreach ($rows as $row) {
+      if (!is_array($row)) {
+        continue;
+      }
+
+      $citations = [];
+      $citationRows = $row['citations'] ?? [];
+
+      foreach ($citationRows as $citation) {
+        if (!is_array($citation)) {
+          continue;
+        }
+
+        $citations[] = [
+          'citation_type' => trim((string) ($citation['citation_type'] ?? $citation['citationType'] ?? '')),
+          'case_title' => trim((string) ($citation['case_title'] ?? $citation['caseTitle'] ?? '')),
+          'case_citation' => trim((string) ($citation['case_citation'] ?? $citation['caseCitation'] ?? $citation['citation'] ?? '')),
+        ];
+      }
+
+      $item = [
+        'category' => trim((string) ($row['category'] ?? '')),
+        'citations' => $citations,
+      ];
+
+      $normalized[] = $item;
+    }
+
+    return $normalized;
+  }
+
+  private function buildJudgementsFromCitations(array $data): array
+  {
+    $judgements = [];
+
+    // Build AAG Judgements (7_YEAR)
+    $aagCitations = $data['judgment_aag_citations'] ?? $data['judgmentAAGCitations'] ?? [];
+    if (is_array($aagCitations) && !empty($aagCitations)) {
+      $aagCitationItems = [];
+      foreach ($aagCitations as $citation) {
+        if (!empty(trim((string) $citation))) {
+          $aagCitationItems[] = [
+            'citation_type' => '7_YEAR',
+            'case_title' => '',
+            'case_citation' => trim((string) $citation),
+          ];
+        }
+      }
+
+      if (!empty($aagCitationItems)) {
+        $judgements[] = [
+          'category' => 'AAG',
+          'citations' => $aagCitationItems,
+        ];
+      }
+    }
+
+    // Build AGP Judgements (5_YEAR)
+    $agpCitations = $data['judgment_agp_citations'] ?? $data['judgmentAGPCitations'] ?? [];
+    if (is_array($agpCitations) && !empty($agpCitations)) {
+      $agpCitationItems = [];
+      foreach ($agpCitations as $citation) {
+        if (!empty(trim((string) $citation))) {
+          $agpCitationItems[] = [
+            'citation_type' => '5_YEAR',
+            'case_title' => '',
+            'case_citation' => trim((string) $citation),
+          ];
+        }
+      }
+
+      if (!empty($agpCitationItems)) {
+        $judgements[] = [
+          'category' => 'AGP',
+          'citations' => $agpCitationItems,
+        ];
+      }
+    }
+
+    return $judgements;
+  }
+
+  private function normalizeDate($date): ?string
+  {
+    if (empty($date)) {
+      return null;
+    }
+
+    // If already in Y-m-d format
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+      return $date;
+    }
+
+    // Try to convert from various formats
+    $timestamp = strtotime($date);
+    if ($timestamp !== false) {
+      return date('Y-m-d', $timestamp);
+    }
+
+    return null;
+  }
+
 
   /**
    * @param array<int, mixed> $rows

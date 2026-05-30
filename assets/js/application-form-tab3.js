@@ -1,9 +1,13 @@
 /**
- * Tab 3: Experience Details - With DB Format Transformation
+ * Tab 3: Experience Details - With File Upload Support
  */
-(function (AF) {
+(function (AF, global) {
+    'use strict';
+    
     const escapeHtml = AF.utils.escapeHtml;
     const buildFileUploadHtml = AF.files.buildFileUploadHtml;
+    let initDone = false;
+    let tab3Saving = false;
     
     // Counter for unique IDs
     let barSectionCounter = 1;
@@ -18,8 +22,107 @@
         return null;
     }
     
-    // Transform payload to database format
-    function transformToDBFormat(formData) {
+    // Helper function to trim string
+    function trimStr(val) {
+        return val != null ? String(val).trim() : '';
+    }
+    
+    // Ensure session tokens
+    function ensureSessionTokens() {
+        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+            return Promise.resolve();
+        }
+        if (global.sessionStorage.getItem('encryption_key') && global.sessionStorage.getItem('csrf_token')) {
+            return Promise.resolve();
+        }
+        return global.LawPortal.apiRequest('getTOKENS', 'GET').then(function (res) {
+            if (res && res.encryption_key) {
+                global.sessionStorage.setItem('encryption_key', res.encryption_key);
+            }
+            if (res && res.csrf_token) {
+                global.sessionStorage.setItem('csrf_token', res.csrf_token);
+            }
+        }).catch(function () { /* optional */ });
+    }
+    
+    // Unwrap API result
+    function unwrapApiResult(res) {
+        if (!res) {
+            return { ok: false, error: 'Empty response from server.' };
+        }
+        if (res.ok === false || res.error) {
+            return { ok: false, error: res.error || res.message || 'Request failed.' };
+        }
+        return res;
+    }
+    
+    // Get applicant ID
+    function getApplicantId() {
+        if (AF.config && AF.config.userId) {
+            return String(AF.config.userId).trim();
+        }
+        const session = global.AppData && typeof global.AppData.getSession === 'function'
+            ? global.AppData.getSession()
+            : null;
+        if (session) {
+            return String(session.applicantId || session.userId || '').trim();
+        }
+        return String(global.sessionStorage.getItem('applicantId') || '').trim();
+    }
+    
+    // Get application ID
+    function getApplicationId() {
+        const applicantId = getApplicantId();
+        const storedAppId = global.sessionStorage.getItem('applicationId');
+        if (storedAppId) {
+            const parsed = parseInt(storedAppId, 10);
+            if (!isNaN(parsed) && parsed > 0) {
+                return parsed;
+            }
+        }
+        const parsedApplicant = parseInt(applicantId, 10);
+        return !isNaN(parsedApplicant) && parsedApplicant > 0 ? parsedApplicant : 0;
+    }
+    
+    // Build meta data for save
+    function buildExperienceSaveMeta() {
+        const applicantId = parseInt(getApplicantId(), 10) || 0;
+        return {
+            applicant_id: applicantId,
+            created_by: applicantId
+        };
+    }
+    
+    // Transform bar practice item to payload
+    function mapBarPracticeToPayload(item) {
+        return {
+            bar_practice_id: 0,
+            years_experience: parseFloat(item.years) || 0,
+            from_date: item.from_date || null,
+            to_date: item.to_date || null,
+            bar_council_name: trimStr(item.bar_council),
+            supporting_document: null,
+            is_deleted: false
+        };
+    }
+    
+    // Transform court practice item to payload
+    function mapCourtPracticeToPayload(item) {
+        return {
+            court_practice_id: 0,
+            court_name: trimStr(item.court_name),
+            years_experience: parseFloat(item.years) || 0,
+            from_date: item.from_date || null,
+            to_date: item.to_date || null,
+            practice_document: null,
+            is_deleted: false
+        };
+    }
+    
+    // Build experience save payload
+    function buildExperienceSavePayload(formData) {
+        const meta = buildExperienceSaveMeta();
+        
         // Calculate total bar experience years
         let totalBarExperienceYears = 0;
         if (formData.bar_experiences && Array.isArray(formData.bar_experiences)) {
@@ -46,36 +149,18 @@
         const draftingYears = formData.drafting_years ? parseFloat(formData.drafting_years) : 0;
         
         // Transform bar practice
-        const barPractice = [];
-        if (formData.bar_experiences && Array.isArray(formData.bar_experiences)) {
-            formData.bar_experiences.forEach((exp, index) => {
-                barPractice.push({
-                    bar_practice_id: 0,
-                    years_experience: parseInt(exp.years) || 0,
-                    from_date: exp.from_date || null,
-                    to_date: exp.to_date || null,
-                    bar_council_name: exp.bar_council || "",
-                    supporting_document: null,
-                    is_deleted: false
-                });
-            });
-        }
+        const barPractice = (formData.bar_experiences || [])
+            .filter(function(item) {
+                return item && (item.years || item.from_date || item.to_date || item.bar_council);
+            })
+            .map(mapBarPracticeToPayload);
         
         // Transform court practice
-        const courtPractice = [];
-        if (formData.practice_items && Array.isArray(formData.practice_items)) {
-            formData.practice_items.forEach((practice, index) => {
-                courtPractice.push({
-                    court_practice_id: 0,
-                    court_name: practice.court_name || "",
-                    years_experience: parseInt(practice.years) || 0,
-                    from_date: practice.from_date || null,
-                    to_date: practice.to_date || null,
-                    practice_document: null,
-                    is_deleted: false
-                });
-            });
-        }
+        const courtPractice = (formData.practice_items || [])
+            .filter(function(item) {
+                return item && (item.court_name || item.years || item.from_date || item.to_date);
+            })
+            .map(mapCourtPracticeToPayload);
         
         // Transform judgments with categories
         const judgements = [];
@@ -123,24 +208,24 @@
         }
         
         // Build the final payload
-        const dbPayload = {
-            applicant_id: AF.state.applicant_id || 1,
-            created_by: AF.state.created_by || 1,
+        return {
+            applicant_id: meta.applicant_id,
+            created_by: meta.created_by,
             law_degree_recognized: formData.law_degree_recognized || false,
             govt_law_officer_experience: formData.previously_worked || false,
-            provide_details_if_yes: formData.previously_worked_details || "",
+            provide_details_if_yes: trimStr(formData.previously_worked_details),
             current_facing_criminal_proceedings: formData.current_proceeding || false,
-            current_criminal_cases_details: formData.current_criminal_details || "",
-            current_criminal_cases_present_status: formData.current_criminal_status || "",
-            current_disciplinary_proceeding_details: formData.current_disciplinary_details || "",
-            current_disciplinary_proceeding_present_status: formData.current_disciplinary_status || "",
+            current_criminal_cases_details: trimStr(formData.current_criminal_details),
+            current_criminal_cases_present_status: trimStr(formData.current_criminal_status),
+            current_disciplinary_proceeding_details: trimStr(formData.current_disciplinary_details),
+            current_disciplinary_proceeding_present_status: trimStr(formData.current_disciplinary_status),
             past_facing_criminal_proceedings: formData.past_proceeding || false,
-            past_criminal_cases_details: formData.past_criminal_details || "",
-            past_criminal_cases_present_status: formData.past_criminal_status || "",
-            past_disciplinary_proceeding_details: formData.past_disciplinary_details || "",
-            past_disciplinary_proceeding_present_status: formData.past_disciplinary_status || "",
+            past_criminal_cases_details: trimStr(formData.past_criminal_details),
+            past_criminal_cases_present_status: trimStr(formData.past_criminal_status),
+            past_disciplinary_proceeding_details: trimStr(formData.past_disciplinary_details),
+            past_disciplinary_proceeding_present_status: trimStr(formData.past_disciplinary_status),
             professional_achievement: formData.has_achievements || false,
-            achievement_remarks: formData.achievement_details || "",
+            achievement_remarks: trimStr(formData.achievement_details),
             achievement_support_document: formData.achievement_files && formData.achievement_files.length > 0 ? formData.achievement_files[0] : null,
             total_bar_experience_years: totalBarExperienceYears,
             total_practice_years: totalPracticeYears,
@@ -149,8 +234,96 @@
             court_practice: courtPractice,
             judgements: judgements
         };
+    }
+    
+    // Post experience save API call
+    function postExperienceSave(payload) {
+        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+            return Promise.reject(new Error('API client is not loaded.'));
+        }
+        console.log('[Tab3] Experience save payload:', payload);
+        return ensureSessionTokens().then(function () {
+            return global.LawPortal.apiRequest(
+                'vacancy/experience/saveExperience',
+                'POST',
+                payload
+            );
+        }).then(function (res) {
+            const body = unwrapApiResult(res);
+            if (!body.ok) {
+                throw new Error(body.error || 'Unable to save experience details.');
+            }
+            if (body.application_id) {
+                global.sessionStorage.setItem('applicationId', String(body.application_id));
+            }
+            return body;
+        });
+    }
+    
+    // Save experience data
+    function saveExperienceData() {
+        const rawPayload = collectExperienceData();
+        const dbPayload = buildExperienceSavePayload(rawPayload);
+        return postExperienceSave(dbPayload);
+    }
+    
+    // Initialize file upload handlers for dynamically added elements
+    function initFileUploadHandlers() {
+        // Handle bar document file upload button clicks
+        $(document).off('click', '.bar-doc-file + .btn, .bar-doc-file ~ .btn').on('click', '.bar-doc-file + .btn, .bar-doc-file ~ .btn', function(e) {
+            e.preventDefault();
+            const fileInput = $(this).siblings('.bar-doc-file');
+            if (fileInput.length) {
+                fileInput.click();
+            }
+        });
         
-        return dbPayload;
+        // Handle practice document file upload button clicks
+        $(document).off('click', '.practice-doc-file + .btn, .practice-doc-file ~ .btn').on('click', '.practice-doc-file + .btn, .practice-doc-file ~ .btn', function(e) {
+            e.preventDefault();
+            const fileInput = $(this).siblings('.practice-doc-file');
+            if (fileInput.length) {
+                fileInput.click();
+            }
+        });
+        
+        // Handle file selection for bar documents
+        $(document).off('change', '.bar-doc-file').on('change', '.bar-doc-file', function() {
+            const fileInput = $(this);
+            const fileName = fileInput.val().split('\\').pop();
+            const uploadBox = fileInput.closest('.compact-upload-box');
+            
+            if (fileName && uploadBox.length) {
+                const uploadTitle = uploadBox.find('.upload-title');
+                if (uploadTitle.length) {
+                    uploadTitle.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(fileName));
+                }
+                // Store file preview
+                if (fileInput[0].files && fileInput[0].files[0] && AF.files && typeof AF.files.storeFilePreview === 'function') {
+                    const previewKey = fileInput.attr('id') || 'bar-doc';
+                    AF.files.storeFilePreview(previewKey, fileInput[0].files[0]);
+                }
+            }
+        });
+        
+        // Handle file selection for practice documents
+        $(document).off('change', '.practice-doc-file').on('change', '.practice-doc-file', function() {
+            const fileInput = $(this);
+            const fileName = fileInput.val().split('\\').pop();
+            const uploadBox = fileInput.closest('.practice-upload-box');
+            
+            if (fileName && uploadBox.length) {
+                const uploadTitle = uploadBox.find('.practice-upload-title');
+                if (uploadTitle.length) {
+                    uploadTitle.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(fileName));
+                }
+                // Store file preview
+                if (fileInput[0].files && fileInput[0].files[0] && AF.files && typeof AF.files.storeFilePreview === 'function') {
+                    const previewKey = fileInput.attr('id') || 'practice-doc';
+                    AF.files.storeFilePreview(previewKey, fileInput[0].files[0]);
+                }
+            }
+        });
     }
     
     // Optimized date validation
@@ -255,7 +428,7 @@
         
         // 5. Bar Experiences
         payload.bar_experiences = [];
-        $('#barExpContainer .bar-item').each(function(index) {
+        $('#barExpContainer .bar-item').each(function() {
             const $item = $(this);
             const years = ($item.find('.bar-years').val() || '').trim();
             const fromDate = $item.find('.bar-from').val() || null;
@@ -277,7 +450,7 @@
         
         // 6. Practice Items
         payload.practice_items = [];
-        $('#courtPracticeContainer .practice-item').each(function(index) {
+        $('#courtPracticeContainer .practice-item').each(function() {
             const $item = $(this);
             const courtName = ($item.find('.practice-court').val() || '').trim();
             const years = ($item.find('.practice-years').val() || '').trim();
@@ -433,7 +606,10 @@
                             </div>
                         </div>
                         <div class="upload-right">
-                            ${buildFileUploadHtml('bar-doc-' + sectionNumber, 'Choose Files', '', 'bar-doc-file', '.pdf,.doc,.docx', true)}
+                            <input type="file" class="bar-doc-file d-none" id="bar-doc-${sectionNumber}" accept=".pdf,.doc,.docx">
+                            <button type="button" class="btn btn-outline-primary btn-upload-file">
+                                <i class="bi bi-cloud-upload-fill me-2"></i>Choose Files
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -498,7 +674,10 @@
                             </div>
                         </div>
                         <div class="practice-upload-right">
-                            ${buildFileUploadHtml('practice-doc-' + sectionNumber, 'Choose Files', '', 'practice-doc-file', '.pdf,.doc,.docx', true)}
+                            <input type="file" class="practice-doc-file d-none" id="practice-doc-${sectionNumber}" accept=".pdf,.doc,.docx">
+                            <button type="button" class="btn btn-outline-primary btn-upload-file">
+                                <i class="bi bi-cloud-upload-fill me-2"></i>Choose Files
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -518,6 +697,8 @@
         });
         
         barSectionCounter = Math.max(...sections) + 1;
+        // Re-initialize file upload handlers after rendering
+        initFileUploadHandlers();
     }
     
     // Render initial practice sections
@@ -532,6 +713,8 @@
         });
         
         practiceSectionCounter = Math.max(...sections) + 1;
+        // Re-initialize file upload handlers after rendering
+        initFileUploadHandlers();
     }
     
     // Add new bar section
@@ -545,6 +728,8 @@
         AF.state.barSections = sections;
         
         recalculateTotalYears();
+        // Re-initialize file upload handlers for the new section
+        initFileUploadHandlers();
     }
     
     // Add new practice section
@@ -556,6 +741,9 @@
         const sections = AF.state.practiceSections || [1];
         sections.push(newSectionNum);
         AF.state.practiceSections = sections;
+        
+        // Re-initialize file upload handlers for the new section
+        initFileUploadHandlers();
     }
     
     // Remove bar section
@@ -786,6 +974,146 @@
     }
     
     // ============================================================
+    // VALIDATION FUNCTIONS
+    // ============================================================
+    
+    function validateStep3() {
+        // Validate Law Degree
+        const lawDegree = $('#lawDegreeRecognized1').val();
+        if (!lawDegree) {
+            alert('Please select whether Law Degree is recognized by Bar Council of India.');
+            $('#lawDegreeRecognized1').focus();
+            return false;
+        }
+        
+        // Validate Previous Worked
+        const previousWorked = $('#previousWorked').val();
+        if (!previousWorked) {
+            alert('Please select whether previously worked or presently working as Law Officer.');
+            $('#previousWorked').focus();
+            return false;
+        }
+        
+        // If previously worked is Yes, check details
+        if (previousWorked === 'Yes') {
+            const details = $('#previousWorkedDetails').val().trim();
+            if (!details) {
+                alert('Please provide details of previous/present work as Law Officer.');
+                $('#previousWorkedDetails').focus();
+                return false;
+            }
+        }
+        
+        // Validate Bar Experiences
+        const barItems = $('#barExpContainer .bar-item');
+        if (barItems.length === 0) {
+            alert('Please add at least one Bar Practice Experience.');
+            return false;
+        }
+        
+        let hasValidBarExperience = false;
+        let barValidationPassed = true;
+        
+        barItems.each(function(index) {
+            const $item = $(this);
+            const years = $item.find('.bar-years').val();
+            const fromDate = $item.find('.bar-from').val();
+            const toDate = $item.find('.bar-to').val();
+            const courtType = $item.find('.bar-court-type').val();
+            const barCouncil = $item.find('.bar-council').val().trim();
+            
+            if (years || fromDate || toDate || courtType || barCouncil) {
+                hasValidBarExperience = true;
+                
+                if (!barCouncil) {
+                    alert(`Bar Practice #${index + 1}: Please enter the Bar Council / Court name.`);
+                    $item.find('.bar-council').focus();
+                    barValidationPassed = false;
+                    return false;
+                }
+                
+                if (!courtType) {
+                    alert(`Bar Practice #${index + 1}: Please select Court Type.`);
+                    $item.find('.bar-court-type').focus();
+                    barValidationPassed = false;
+                    return false;
+                }
+            }
+        });
+        
+        if (!barValidationPassed) return false;
+        
+        if (!hasValidBarExperience) {
+            alert('Please fill at least one Bar Practice Experience with valid data.');
+            return false;
+        }
+        
+        // Validate at least one court practice has data
+        const practiceItems = $('#courtPracticeContainer .practice-item');
+        let hasValidPractice = false;
+        practiceItems.each(function() {
+            const courtName = $(this).find('.practice-court').val().trim();
+            if (courtName) {
+                hasValidPractice = true;
+            }
+        });
+        
+        if (!hasValidPractice) {
+            alert('Please add at least one Court Practice Experience.');
+            return false;
+        }
+        
+        return true;
+    }
+    
+    function syncBarSections() {
+        const sections = [];
+        $('#barExpContainer .bar-item').each(function() {
+            const sectionNum = parseInt($(this).attr('data-section'));
+            if (!isNaN(sectionNum)) {
+                sections.push(sectionNum);
+            }
+        });
+        AF.state.barSections = sections.length > 0 ? sections : [1];
+        
+        // Sync bar items data
+        AF.state.barItems = [];
+        $('#barExpContainer .bar-item').each(function(index) {
+            const $item = $(this);
+            AF.state.barItems.push({
+                years: $item.find('.bar-years').val() || '',
+                from: $item.find('.bar-from').val() || '',
+                to: $item.find('.bar-to').val() || '',
+                barCouncil: $item.find('.bar-council').val() || '',
+                courtType: $item.find('.bar-court-type').val() || ''
+            });
+        });
+    }
+    
+    function syncPracticeSections() {
+        const sections = [];
+        $('#courtPracticeContainer .practice-item').each(function() {
+            const sectionNum = parseInt($(this).attr('data-section'));
+            if (!isNaN(sectionNum)) {
+                sections.push(sectionNum);
+            }
+        });
+        AF.state.practiceSections = sections.length > 0 ? sections : [1];
+        
+        // Sync practice items data
+        AF.state.practiceItems = [];
+        $('#courtPracticeContainer .practice-item').each(function(index) {
+            const $item = $(this);
+            AF.state.practiceItems.push({
+                courtName: $item.find('.practice-court').val() || '',
+                years: $item.find('.practice-years').val() || '',
+                from: $item.find('.practice-from').val() || '',
+                to: $item.find('.practice-to').val() || ''
+            });
+        });
+    }
+    
+    // ============================================================
     // INITIALIZATION FUNCTIONS
     // ============================================================
 
@@ -869,6 +1197,50 @@
         if (!AF.state.draftingYears) {
             AF.state.draftingYears = '';
         }
+        
+        // Initialize barItems and practiceItems
+        if (!AF.state.barItems) {
+            AF.state.barItems = [{}];
+        }
+        if (!AF.state.practiceItems) {
+            AF.state.practiceItems = [{}];
+        }
+    }
+
+    // ============================================================
+    // SAVE AND CONTINUE HANDLER
+    // ============================================================
+    
+    function onSaveAndContinue() {
+        if (tab3Saving) return;
+        
+        if (!validateStep3()) return;
+        
+        tab3Saving = true;
+        const nextBtn = document.getElementById('experienceSave');
+        
+        if (nextBtn) {
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'Saving...';
+        }
+        
+        saveExperienceData()
+            .then(function(response) {
+                console.log('[Tab3] Experience saved successfully:', response);
+                AF.data.saveDraft();
+                if (AF.nav) AF.nav.switchTab(4);
+            })
+            .catch(function(err) {
+                console.error('[Tab3] Save error:', err);
+                alert(err && err.message ? err.message : 'Failed to save experience data. Please try again.');
+            })
+            .finally(function() {
+                tab3Saving = false;
+                if (nextBtn) {
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = 'Save and Continue';
+                }
+            });
     }
 
     // ============================================================
@@ -876,18 +1248,26 @@
     // ============================================================
 
     function init() {
+        if (initDone) return;
+        initDone = true;
+        
         initOptimizedDateValidation();
         initDefaultItems();
         initJudgmentCitationHandlers();
         initProceedingToggles();
         initConditionalFields();
         initDraftingExperience();
+        initFileUploadHandlers();
         
         renderBarSections();
         renderPracticeSections();
         renderJudgmentAAG();
         renderJudgmentAGP();
-        
+        loadExperienceData().then(function() {
+            console.log('[Tab3] Experience data loaded');
+        }).catch(function(err) {
+            console.warn('[Tab3] Could not load experience data:', err);
+        });
         $(document).on('input', '.bar-years, .practice-years, .bar-from, .bar-to, .practice-from, .practice-to', function() {
             recalculateTotalYears();
         });
@@ -896,28 +1276,11 @@
             recalculateTotalYears();
         });
         
-        // Save button handler - Transforms to DB format
-        $('#experienceSave').on('click', function(e){
-            e.preventDefault();
-            
-            // Collect raw form data
-            const rawPayload = collectExperienceData();
-            console.log('Raw Form Data:', rawPayload);
-            
-            // Transform to database format
-            const dbPayload = transformToDBFormat(rawPayload);
-            console.log('Database Format Payload:', dbPayload);
-            console.log('Whole Payload:', JSON.stringify(dbPayload, null, 2));
-            
-            // Store in AF state
-            AF.state.experienceData = rawPayload;
-            AF.state.dbExperienceData = dbPayload;
-            
-            if (AF.data && AF.data.saveDraft) AF.data.saveDraft();
-            
-            alert('Experience data collected! Check console for payload.');
-            return dbPayload;
-        });
+        // Save and Continue button handler
+        const nextBtn = document.getElementById('experienceSave');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', onSaveAndContinue);
+        }
         
         $('#addBarExpBtn').off('click').on('click', function() {
             addBarSection();
@@ -956,10 +1319,319 @@
     // EXPOSED API
     // ============================================================
 
+    // Add to AF.api like Tab 2
+    AF.api = AF.api || {};
+    AF.api.saveExperience = saveExperienceData;
+    AF.api.postExperienceSave = postExperienceSave;
+    AF.api.buildExperienceSavePayload = buildExperienceSavePayload;
+    AF.api.collectExperienceData = collectExperienceData;
+
     AF.tab3 = {
         init: init,
         collectData: collectExperienceData,
-        transformToDBFormat: transformToDBFormat
+        buildPayload: buildExperienceSavePayload,
+        saveExperience: saveExperienceData,
+        validateStep3: validateStep3,
+        onSaveAndContinue: onSaveAndContinue,
+        fetchExperienceData: fetchExperienceData,
+        loadExperienceData: loadExperienceData,
+        populateExperienceData: populateExperienceData
     };
     
-})(window.ApplicationForm);
+    function fetchExperienceData(applicationId) {
+    if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+        return Promise.reject(new Error('API client is not loaded.'));
+    }
+    
+    const applicantId = getApplicantId();
+    const idToUse = parseInt(applicationId, 10) || parseInt(applicantId, 10);
+    
+    if (!idToUse) {
+        return Promise.reject(new Error('Application ID or Applicant ID is required.'));
+    }
+    
+    const payload = {
+        applicant_id: idToUse
+    };
+    
+    console.log('[Tab3] Fetching experience data for applicant:', idToUse);
+    
+    return ensureSessionTokens().then(function () {
+        return global.LawPortal.apiRequest(
+            'vacancy/experience/fetchExperience',
+            'POST',
+            payload
+        );
+    }).then(function (res) {
+        const body = unwrapApiResult(res);
+        if (!body.ok) {
+            throw new Error(body.error || 'Unable to fetch experience details.');
+        }
+        console.log('[Tab3] Experience data fetched:', body);
+        return body;
+    });
+}
+
+    function populateExperienceData(response) {
+    if (!response || !response.ok) {
+        console.log('[Tab3] No experience data to populate or response not ok');
+        return;
+    }
+    
+    // Parse the nested JSON string from the response
+    let expData = null;
+    if (response[0] && response[0].fn_application_get_experience_details) {
+        try {
+            const parsed = JSON.parse(response[0].fn_application_get_experience_details);
+            expData = parsed;
+            console.log('[Tab3] Parsed experience data:', expData);
+        } catch (e) {
+            console.error('[Tab3] Failed to parse experience data:', e);
+            return;
+        }
+    }
+    
+    if (!expData) {
+        console.log('[Tab3] No experience data found');
+        return;
+    }
+    
+    const experience = expData.experience || {};
+    const barPractice = expData.bar_practice || [];
+    const courtPractice = expData.court_practice || [];
+    const judgements = expData.judgements || [];
+    
+    // 1. Basic Fields
+    if (experience.law_degree_recognized !== undefined) {
+        const lawDegreeVal = experience.law_degree_recognized === true || experience.law_degree_recognized === 'true' || experience.law_degree_recognized === 1 ? 'Yes' : 'No';
+        $('#lawDegreeRecognized1').val(lawDegreeVal);
+    }
+    
+    if (experience.govt_law_officer_experience !== undefined) {
+        const govtVal = experience.govt_law_officer_experience === true || experience.govt_law_officer_experience === 'true' || experience.govt_law_officer_experience === 1 ? 'Yes' : 'No';
+        $('#previousWorked').val(govtVal).trigger('change');
+    }
+    
+    if (experience.provide_details_if_yes) {
+        $('#previousWorkedDetails').val(experience.provide_details_if_yes);
+    }
+    
+    // 2. Current Proceedings
+    if (experience.current_facing_criminal_proceedings !== undefined) {
+        const isCurrentProceeding = experience.current_facing_criminal_proceedings === true || experience.current_facing_criminal_proceedings === 'true' || experience.current_facing_criminal_proceedings === 1;
+        if (isCurrentProceeding) {
+            $('#currentProceedingYes').prop('checked', true);
+        } else {
+            $('#currentProceedingNo').prop('checked', true);
+        }
+        $('#currentProceedingYes, #currentProceedingNo').trigger('change');
+    }
+    
+    if (experience.current_criminal_cases_details) {
+        const $currentDetails = $('#currentProceedingDetails');
+        $currentDetails.find('textarea').eq(0).val(experience.current_criminal_cases_details);
+    }
+    
+    if (experience.current_criminal_cases_present_status) {
+        const $currentDetails = $('#currentProceedingDetails');
+        $currentDetails.find('textarea').eq(1).val(experience.current_criminal_cases_present_status);
+    }
+    
+    if (experience.current_disciplinary_proceeding_details) {
+        const $currentDetails = $('#currentProceedingDetails');
+        $currentDetails.find('textarea').eq(2).val(experience.current_disciplinary_proceeding_details);
+    }
+    
+    if (experience.current_disciplinary_proceeding_present_status) {
+        const $currentDetails = $('#currentProceedingDetails');
+        $currentDetails.find('textarea').eq(3).val(experience.current_disciplinary_proceeding_present_status);
+    }
+    
+    // 3. Past Proceedings
+    if (experience.past_facing_criminal_proceedings !== undefined) {
+        const isPastProceeding = experience.past_facing_criminal_proceedings === true || experience.past_facing_criminal_proceedings === 'true' || experience.past_facing_criminal_proceedings === 1;
+        if (isPastProceeding) {
+            $('#pastProceedingYes').prop('checked', true);
+        } else {
+            $('#pastProceedingNo').prop('checked', true);
+        }
+        $('#pastProceedingYes, #pastProceedingNo').trigger('change');
+    }
+    
+    if (experience.past_criminal_cases_details) {
+        const $pastDetails = $('#pastProceedingDetails');
+        $pastDetails.find('textarea').eq(0).val(experience.past_criminal_cases_details);
+    }
+    
+    if (experience.past_criminal_cases_present_status) {
+        const $pastDetails = $('#pastProceedingDetails');
+        $pastDetails.find('textarea').eq(1).val(experience.past_criminal_cases_present_status);
+    }
+    
+    if (experience.past_disciplinary_proceeding_details) {
+        const $pastDetails = $('#pastProceedingDetails');
+        $pastDetails.find('textarea').eq(2).val(experience.past_disciplinary_proceeding_details);
+    }
+    
+    if (experience.past_disciplinary_proceeding_present_status) {
+        const $pastDetails = $('#pastProceedingDetails');
+        $pastDetails.find('textarea').eq(3).val(experience.past_disciplinary_proceeding_present_status);
+    }
+    
+    // 4. Achievement Section
+    if (experience.professional_achievement !== undefined) {
+        const hasAchievement = experience.professional_achievement === true || experience.professional_achievement === 'true' || experience.professional_achievement === 1 ? 'Yes' : 'No';
+        $('#achievmenetWrap').val(hasAchievement).trigger('change');
+    }
+    
+    if (experience.achievement_remarks) {
+        $('#achievementDetails').val(experience.achievement_remarks);
+    }
+    
+    // 5. Bar Experiences
+    if (barPractice && barPractice.length > 0) {
+        // Clear existing sections
+        $('#barExpContainer').empty();
+        AF.state.barSections = [];
+        AF.state.barItems = [];
+        
+        barPractice.forEach(function(practice, index) {
+            const sectionNum = index + 1;
+            AF.state.barSections.push(sectionNum);
+            AF.state.barItems.push({
+                years: practice.years_experience || '',
+                from: practice.from_date || '',
+                to: practice.to_date || '',
+                barCouncil: practice.bar_council_name || '',
+                courtType: ''
+            });
+        });
+        
+        barSectionCounter = barPractice.length + 1;
+        renderBarSections();
+        
+        // Populate values after render
+        barPractice.forEach(function(practice, index) {
+            const $item = $('#barExpContainer .bar-item').eq(index);
+            if ($item.length) {
+                $item.find('.bar-years').val(practice.years_experience || '');
+                $item.find('.bar-from').val(practice.from_date || '');
+                $item.find('.bar-to').val(practice.to_date || '');
+                $item.find('.bar-council').val(practice.bar_council_name || '');
+            }
+        });
+    }
+    
+    // 6. Court Practices
+    if (courtPractice && courtPractice.length > 0) {
+        // Clear existing sections
+        $('#courtPracticeContainer').empty();
+        AF.state.practiceSections = [];
+        AF.state.practiceItems = [];
+        
+        courtPractice.forEach(function(practice, index) {
+            const sectionNum = index + 1;
+            AF.state.practiceSections.push(sectionNum);
+            AF.state.practiceItems.push({
+                courtName: practice.court_name || '',
+                years: practice.years_experience || '',
+                from: practice.from_date || '',
+                to: practice.to_date || ''
+            });
+        });
+        
+        practiceSectionCounter = courtPractice.length + 1;
+        renderPracticeSections();
+        
+        // Populate values after render
+        courtPractice.forEach(function(practice, index) {
+            const $item = $('#courtPracticeContainer .practice-item').eq(index);
+            if ($item.length) {
+                $item.find('.practice-court').val(practice.court_name || '');
+                $item.find('.practice-years').val(practice.years_experience || '');
+                $item.find('.practice-from').val(practice.from_date || '');
+                $item.find('.practice-to').val(practice.to_date || '');
+            }
+        });
+    }
+    
+    // 7. Judgments/Citations
+    if (judgements && judgements.length > 0) {
+        // Separate AAG and AGP citations
+        const aagCitations = [];
+        const agpCitations = [];
+        
+        judgements.forEach(function(judgement) {
+            if (judgement.category === 'AAG' && judgement.citations && judgement.citations.length > 0) {
+                judgement.citations.forEach(function(citation) {
+                    if (citation.case_citation && citation.case_citation.trim()) {
+                        aagCitations.push(citation.case_citation);
+                    }
+                });
+            }
+            if (judgement.category === 'AGP' && judgement.citations && judgement.citations.length > 0) {
+                judgement.citations.forEach(function(citation) {
+                    if (citation.case_citation && citation.case_citation.trim()) {
+                        agpCitations.push(citation.case_citation);
+                    }
+                });
+            }
+        });
+        
+        if (aagCitations.length > 0) {
+            AF.state.judgmentAAGCitations = aagCitations;
+            renderJudgmentAAG();
+        }
+        
+        if (agpCitations.length > 0) {
+            AF.state.judgmentAGPCitations = agpCitations;
+            renderJudgmentAGP();
+        }
+    }
+    
+    // 8. Drafting Experience
+    if (experience.drafting_experience_years) {
+        $('#draftingYears').val(experience.drafting_experience_years);
+    }
+    
+    // 9. Total Bar Years (calculated field - display only, not populated from API)
+    if (experience.total_bar_experience_years) {
+        $('#totalBarYears').val(experience.total_bar_experience_years + ' years');
+    }
+    
+    // Trigger recalculation to ensure all totals are correct
+    recalculateTotalYears();
+    
+    console.log('[Tab3] Experience data populated successfully');
+}
+
+    /**
+     * Load experience data when tab is opened
+     */
+    function loadExperienceData() {
+    const applicationId = getApplicationId();
+    const applicantId = getApplicantId();
+    
+    const idToUse = parseInt(applicationId, 10) || parseInt(applicantId, 10);
+    
+    if (!idToUse) {
+        console.log('[Tab3] No application ID or applicant ID found, skipping load');
+        return Promise.resolve(null);
+    }
+    
+    return fetchExperienceData(idToUse)
+        .then(function(response) {
+            if (response && response.ok) {
+                populateExperienceData(response);
+            }
+            return response;
+        })
+        .catch(function(err) {
+            console.warn('[Tab3] Failed to load experience data:', err);
+            return null;
+        });
+}
+
+})(window.ApplicationForm, window);
+
+

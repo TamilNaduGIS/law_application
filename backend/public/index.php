@@ -23,7 +23,8 @@ use App\Controllers\OtpController;
 use App\Controllers\VacancyController;
 use App\Middleware\CSRFMiddleware;
 
-if (session_status() === PHP_SESSION_NONE) {    session_set_cookie_params([
+if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
         'lifetime' => 86400,
         'path' => '/',
         'httponly' => true,
@@ -125,7 +126,13 @@ $router->add('POST', '/api/vacancy/additional/save', [VacancyController::class, 
     new CSRFMiddleware(),
 ]);
 
-$router->add('POST', '/api/vacancy/additional/delete', [VacancyController::class, 'deleteAdditionalQualification'], [
+$router->add('POST', '/api/vacancy/experience/saveExperience', [VacancyController::class, 'saveExperience'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
+$router->add('POST', '/api/vacancy/experience/fetchExperience', [VacancyController::class, 'fetchExperience'], [
     new RateLimitMiddleware(20, 60),
     new AuthMiddleware(),
     new CSRFMiddleware(),
