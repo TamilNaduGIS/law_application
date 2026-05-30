@@ -14,7 +14,11 @@
 
 
 
+    let bootstrapDone = false;
+
     function bootstrapForm(applicantRow) {
+        if (bootstrapDone) return;
+        bootstrapDone = true;
 
         PortalNav.mount('portalNavMount', {
 

@@ -32,12 +32,12 @@
             <div class="col-md-2">
                 <label class="premium-label"><i class="bi bi-calendar-event-fill"></i>From</label>
                 <input type="date" class="form-control premium-input bar-from"
-                       value="${escapeHtml(item.from || '')}" placeholder="From">
+                       value="${escapeHtml(AF.utils.formatDateForInput(item.from))}" placeholder="From">
             </div>
             <div class="col-md-2">
                 <label class="premium-label"><i class="bi bi-calendar-range-fill"></i>To</label>
                 <input type="date" class="form-control premium-input bar-to"
-                       value="${escapeHtml(item.to || '')}" placeholder="To">
+                       value="${escapeHtml(AF.utils.formatDateForInput(item.to))}" placeholder="To">
             </div>
             <div class="col-md-6">
                 <label class="premium-label"><i class="bi bi-bank2"></i>Name of the Bar Council</label>

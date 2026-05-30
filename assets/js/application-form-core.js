@@ -1,6 +1,6 @@
 window.PortalNav = window.PortalNav || {
-    mount: function () {},
-    render: function () {}
+    mount: function () { },
+    render: function () { }
 };
 
 /**
@@ -58,6 +58,17 @@ window.ApplicationForm = (function () {
     const tabButtons = document.querySelectorAll('.main-tab');
 
     const FILE_NAME_MAX_LEN = 20;
+
+    function formatDateForInput(val) {
+        if (val === undefined || val === null || val === '') {
+            return '';
+        }
+        const s = String(val).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+            return s;
+        }
+        return '';
+    }
 
     function escapeHtml(str) {
         if (!str) return '';
@@ -150,7 +161,7 @@ window.ApplicationForm = (function () {
         const drafting = document.getElementById('draftingUpload');
         if (drafting && drafting.files && drafting.files.length) storeFilesPreview('drafting', drafting.files);
         document.querySelectorAll('#eduListContainer .list-item').forEach(function (item, idx) {
-            const fi = item.querySelector('.edu-cert-file');
+            const fi = item.querySelector('.certificateUpload');
             if (fi && fi.files && fi.files[0]) storeFilePreview('edu-' + idx, fi.files[0]);
         });
         document.querySelectorAll('#additionalListContainer .list-item').forEach(function (item, idx) {
@@ -300,11 +311,58 @@ window.ApplicationForm = (function () {
 
         const sel = document.getElementById('courtBenchSelect');
         if (sel && formMode !== 'previewOnly') {
-            sel.addEventListener('change', function () {
+            sel.onchange = function () {
                 sessionStorage.setItem('courtBench', sel.value);
                 saveDraft();
-            });
+            };
         }
+    }
+
+    const LIST_CONTAINER_IDS = {
+        edu: 'eduListContainer',
+        add: 'additionalListContainer',
+        bar: 'barExpContainer',
+        practice: 'courtPracticeContainer',
+        judgmentAAG: 'judgmentAAGContainer',
+        judgmentAGP: 'judgmentAGPContainer'
+    };
+
+    function getListSyncHandler(type) {
+        const syncMap = {
+            edu: function () { if (AF.tab2) AF.tab2.syncEdu(); },
+            add: function () { if (AF.tab2) AF.tab2.syncAdditional(); },
+            bar: function () { if (AF.tab3) AF.tab3.syncBar(); },
+            practice: function () { if (AF.tab3) AF.tab3.syncPractice(); },
+            judgmentAAG: function () { if (AF.tab3) AF.tab3.syncJudgmentAAG(); },
+            judgmentAGP: function () { if (AF.tab3) AF.tab3.syncJudgmentAGP(); }
+        };
+        return syncMap[type] || null;
+    }
+
+    /** One delegated listener per list container — safe across renderList re-renders. */
+    function initListDelegations() {
+        Object.keys(LIST_CONTAINER_IDS).forEach(function (type) {
+            const containerId = LIST_CONTAINER_IDS[type];
+            const container = document.getElementById(containerId);
+            if (!container || container.getAttribute('data-delegation-bound') === '1') {
+                return;
+            }
+            container.setAttribute('data-delegation-bound', '1');
+
+            const syncFn = getListSyncHandler(type);
+            if (syncFn) {
+                container.addEventListener('change', function (e) {
+                    if (!e.target || !e.target.matches('input, select, textarea')) return;
+                    syncFn();
+                });
+            }
+
+            container.addEventListener('click', function (e) {
+                const btn = e.target.closest('.remove-item[data-type="' + type + '"]');
+                if (!btn || !container.contains(btn)) return;
+                handleRemove({ target: btn });
+            });
+        });
     }
 
     function renderList(containerId, items, renderItemFn, type) {
@@ -318,39 +376,9 @@ window.ApplicationForm = (function () {
             div.innerHTML = renderItemFn(item, idx, type);
             container.appendChild(div);
         });
-        attachRemoveEvents(type);
-        attachSyncEvents(type);
-        initFileUploadButtons(container);
-    }
-
-    function attachRemoveEvents(type) {
-        document.querySelectorAll('.remove-item[data-type="' + type + '"]').forEach(function (btn) {
-            btn.onclick = handleRemove;
-        });
-    }
-
-    function attachSyncEvents(type) {
-        const map = {
-            edu: '#eduListContainer input',
-            add: '#additionalListContainer input',
-            bar: '#barExpContainer input',
-            practice: '#courtPracticeContainer input',
-            judgmentAAG: '#judgmentAAGContainer input',
-            judgmentAGP: '#judgmentAGPContainer input'
-        };
-        const sel = map[type];
-        if (!sel) return;
-        const syncMap = {
-            edu: function () { AF.tab2.syncEdu(); },
-            add: function () { AF.tab2.syncAdditional(); },
-            bar: function () { AF.tab3.syncBar(); },
-            practice: function () { AF.tab3.syncPractice(); },
-            judgmentAAG: function () { AF.tab3.syncJudgmentAAG(); },
-            judgmentAGP: function () { AF.tab3.syncJudgmentAGP(); }
-        };
-        document.querySelectorAll(sel).forEach(function (inp) {
-            inp.onchange = syncMap[type];
-        });
+        if (container.querySelector('.custom-file-upload')) {
+            initFileUploadButtons(container);
+        }
     }
 
     function handleRemove(e) {
@@ -540,6 +568,7 @@ window.ApplicationForm = (function () {
         tabs: tabs,
         utils: {
             escapeHtml: escapeHtml,
+            formatDateForInput: formatDateForInput,
             truncateFileName: truncateFileName,
             pv: function (val) { return escapeHtml(val || '—'); },
             previewFieldRow: function (label, value) {
@@ -574,7 +603,8 @@ window.ApplicationForm = (function () {
         lists: {
             renderList: renderList,
             renderAll: renderAll,
-            handleRemove: handleRemove
+            handleRemove: handleRemove,
+            initListDelegations: initListDelegations
         },
         nav: {
             switchTab: switchTab,
@@ -593,6 +623,8 @@ window.ApplicationForm = (function () {
         tab3: null,
         tab4: null
     };
+
+    initListDelegations();
 
     return AF;
 })();

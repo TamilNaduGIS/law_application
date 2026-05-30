@@ -3,6 +3,13 @@
  */
 (function (AF) {
     const escapeHtml = AF.utils.escapeHtml;
+    let initDone = false;
+    let tab2Saving = false;
+
+    function formatYearForInput(year) {
+        const y = parseYearOfPassing(year);
+        return y !== null ? String(y) : '';
+    }
 
     function renderEduItem(item, idx) {
         let defaultExam = '';
@@ -20,7 +27,7 @@
             '<div class="col-md-2"><label class="edu-label"><i class="bi bi-journal-bookmark-fill"></i>Examination</label>' +
             '<input class="form-control edu-input edu-exam" value="' + escapeHtml(item.exam || defaultExam) + '"></div>' +
             '<div class="col-md-2"><label class="edu-label"><i class="bi bi-calendar-event-fill"></i>Year</label>' +
-            '<input type="date" class="form-control edu-input edu-year" value="' + escapeHtml(item.year || '') + '"></div>' +
+            '<input type="number" class="form-control edu-input edu-year" min="1950" max="' + new Date().getFullYear() + '" placeholder="YYYY" value="' + escapeHtml(formatYearForInput(item.year)) + '"></div>' +
             '<div class="col-md-3"><label class="edu-label"><i class="bi bi-building-fill"></i>University</label>' +
             '<input class="form-control edu-input edu-board" value="' + escapeHtml(item.board || '') + '"></div>' +
             '<div class="col-md-2"><label class="edu-label"><i class="bi bi-bank2"></i>Institution</label>' +
@@ -50,7 +57,7 @@
             '<div class="col-md-3"><label class="add-label"><i class="bi bi-journal-bookmark-fill"></i>Examination</label>' +
             '<input class="form-control add-input add-exam" value="' + escapeHtml(item.exam || '') + '"></div>' +
             '<div class="col-md-2"><label class="add-label"><i class="bi bi-calendar-event-fill"></i>Year</label>' +
-            '<input class="form-control add-input add-year" value="' + escapeHtml(item.year || '') + '"></div>' +
+            '<input type="number" class="form-control add-input add-year" min="1950" max="' + new Date().getFullYear() + '" placeholder="YYYY" value="' + escapeHtml(formatYearForInput(item.year)) + '"></div>' +
             '<div class="col-md-3"><label class="add-label"><i class="bi bi-building-fill"></i>Board</label>' +
             '<input class="form-control add-input add-board" value="' + escapeHtml(item.board || '') + '"></div>' +
             '<div class="col-md-3"><label class="add-label"><i class="bi bi-bank2"></i>Institution</label>' +
@@ -70,19 +77,26 @@
     }
 
     function syncEdu() {
+        const previous = AF.state.eduItems || [];
         AF.state.eduItems = [];
-        document.querySelectorAll('#eduListContainer .list-item').forEach(function (item) {
-            const fileInput = item.querySelector('.edu-cert-file');
-            let certName = item.getAttribute('data-cert-name') || '';
-            if (fileInput && fileInput.files && fileInput.files[0]) certName = fileInput.files[0].name;
+        document.querySelectorAll('#eduListContainer .list-item').forEach(function (item, idx) {
+            const prev = previous[idx] || {};
+            const fileInput = item.querySelector('.certificateUpload');
+            let certName = item.getAttribute('data-cert-name') || prev.certificateFileName || '';
+            if (fileInput && fileInput.files && fileInput.files[0]) {
+                certName = fileInput.files[0].name;
+            }
             AF.state.eduItems.push({
+                educationId: prev.educationId || parseInt(item.getAttribute('data-education-id'), 10) || 0,
                 exam: item.querySelector('.edu-exam') && item.querySelector('.edu-exam').value,
                 year: item.querySelector('.edu-year') && item.querySelector('.edu-year').value,
                 board: item.querySelector('.edu-board') && item.querySelector('.edu-board').value,
                 institution: item.querySelector('.edu-inst') && item.querySelector('.edu-inst').value,
                 special: item.querySelector('.edu-special') && item.querySelector('.edu-special').value,
                 percentage: item.querySelector('.edu-perc') && item.querySelector('.edu-perc').value,
-                certificateFileName: certName
+                certificatePath: prev.certificatePath || item.getAttribute('data-cert-path') || '',
+                certificateFileName: certName,
+                isDeleted: false
             });
         });
     }
@@ -109,21 +123,33 @@
     }
 
     function initUploadHandlers() {
-        $(document).on('change', '.certificateUpload', function () {
-            const fileCount = this.files.length;
-            const uploadTitle = $(this).closest('.edu-upload-box').find('.edu-upload-title');
-            if (fileCount > 0) {
-                uploadTitle.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + fileCount + ' file(s) selected');
-            }
-        });
+        const eduContainer = document.getElementById('eduListContainer');
+        if (eduContainer && eduContainer.getAttribute('data-cert-ui-bound') !== '1') {
+            eduContainer.setAttribute('data-cert-ui-bound', '1');
+            eduContainer.addEventListener('change', function (e) {
+                if (!e.target.classList.contains('certificateUpload')) return;
+                const fileCount = e.target.files ? e.target.files.length : 0;
+                const box = e.target.closest('.edu-upload-box');
+                const uploadTitle = box ? box.querySelector('.edu-upload-title') : null;
+                if (uploadTitle && fileCount > 0) {
+                    uploadTitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + fileCount + ' file(s) selected';
+                }
+            });
+        }
 
-        $(document).on('change', '.add-cert-file', function () {
-            const fileCount = this.files.length;
-            const title = $(this).closest('.add-upload-box').find('.add-upload-title');
-            if (fileCount > 0) {
-                title.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + fileCount + ' file(s) selected');
-            }
-        });
+        const addContainer = document.getElementById('additionalListContainer');
+        if (addContainer && addContainer.getAttribute('data-cert-ui-bound') !== '1') {
+            addContainer.setAttribute('data-cert-ui-bound', '1');
+            addContainer.addEventListener('change', function (e) {
+                if (!e.target.classList.contains('add-cert-file')) return;
+                const fileCount = e.target.files ? e.target.files.length : 0;
+                const box = e.target.closest('.add-upload-box');
+                const title = box ? box.querySelector('.add-upload-title') : null;
+                if (title && fileCount > 0) {
+                    title.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + fileCount + ' file(s) selected';
+                }
+            });
+        }
     }
 
     function initDefaultEduItems() {
@@ -137,7 +163,188 @@
         }
     }
 
+    function trimVal(value) {
+        return value != null ? String(value).trim() : '';
+    }
+
+    function parseYearOfPassing(val) {
+        const s = trimVal(val);
+        if (!s) return null;
+        const iso = s.match(/^(\d{4})-\d{2}-\d{2}/);
+        if (iso) return parseInt(iso[1], 10);
+        const yearOnly = s.match(/^(\d{4})$/);
+        if (yearOnly) return parseInt(yearOnly[1], 10);
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) return d.getFullYear();
+        return null;
+    }
+
+    function isValidMarks(val) {
+        const n = parseFloat(String(val || '').replace(/[^\d.]/g, ''));
+        return !isNaN(n) && n >= 0 && n <= 100;
+    }
+
+    function hasEduCertificate(item, idx) {
+        if (trimVal(item.certificatePath)) return true;
+        const rows = document.querySelectorAll('#eduListContainer .list-item');
+        const row = rows[idx];
+        if (!row) return false;
+        const input = row.querySelector('.certificateUpload');
+        if (input && input.files && input.files[0]) return true;
+        const preview = AF.state.filePreviews && AF.state.filePreviews['edu-' + idx];
+        return !!(preview && preview.name);
+    }
+
+    function scrollToEduRow(idx) {
+        const rows = document.querySelectorAll('#eduListContainer .list-item');
+        if (rows[idx]) {
+            rows[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function scrollToAdditionalRow(idx) {
+        const rows = document.querySelectorAll('#additionalListContainer .list-item');
+        if (rows[idx]) {
+            rows[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function isAdditionalRowStarted(item) {
+        return !!(
+            trimVal(item.exam)
+            || trimVal(item.year)
+            || trimVal(item.board)
+            || trimVal(item.subject)
+            || trimVal(item.percentage)
+        );
+    }
+
+    function validateStep2() {
+        syncEdu();
+        syncAdditional();
+
+        const appId = AF.api && typeof AF.api.getApplicationId === 'function'
+            ? AF.api.getApplicationId()
+            : parseInt(sessionStorage.getItem('applicationId'), 10);
+        if (!appId) {
+            alert('Please complete Tab 1 (Personal Information) and save before continuing.');
+            return false;
+        }
+
+        const eduItems = AF.state.eduItems || [];
+        if (!eduItems.length) {
+            alert('Please add at least one educational qualification.');
+            return false;
+        }
+
+        const currentYear = new Date().getFullYear();
+
+        for (let i = 0; i < eduItems.length; i++) {
+            const item = eduItems[i];
+            const rowLabel = 'Educational qualification #' + (i + 1);
+
+            if (!trimVal(item.exam)) {
+                alert(rowLabel + ': Please enter the examination passed.');
+                scrollToEduRow(i);
+                return false;
+            }
+
+            const year = parseYearOfPassing(item.year);
+            if (year === null) {
+                alert(rowLabel + ': Please enter a valid year of passing.');
+                scrollToEduRow(i);
+                return false;
+            }
+            if (year < 1950 || year > currentYear) {
+                alert(rowLabel + ': Year of passing must be between 1950 and ' + currentYear + '.');
+                scrollToEduRow(i);
+                return false;
+            }
+
+            if (!trimVal(item.board)) {
+                alert(rowLabel + ': Please enter the university / board.');
+                scrollToEduRow(i);
+                return false;
+            }
+
+            if (!trimVal(item.institution)) {
+                alert(rowLabel + ': Please enter the institution name.');
+                scrollToEduRow(i);
+                return false;
+            }
+
+            if (!trimVal(item.special)) {
+                alert(rowLabel + ': Please enter the main subject / specialization.');
+                scrollToEduRow(i);
+                return false;
+            }
+
+            if (!isValidMarks(item.percentage)) {
+                alert(rowLabel + ': Please enter marks between 0 and 100.');
+                scrollToEduRow(i);
+                return false;
+            }
+
+            if (!hasEduCertificate(item, i)) {
+                alert(rowLabel + ': Please upload the certificate (PDF, DOC, or DOCX).');
+                scrollToEduRow(i);
+                return false;
+            }
+        }
+
+        const additionalItems = AF.state.additionalItems || [];
+        for (let j = 0; j < additionalItems.length; j++) {
+            const add = additionalItems[j];
+            if (!isAdditionalRowStarted(add)) {
+                continue;
+            }
+
+            const addLabel = 'Additional qualification #' + (j + 1);
+
+            if (!trimVal(add.exam)) {
+                alert(addLabel + ': Please enter the examination passed.');
+                scrollToAdditionalRow(j);
+                return false;
+            }
+
+            const addYear = parseYearOfPassing(add.year);
+            if (addYear === null) {
+                alert(addLabel + ': Please enter a valid year of passing.');
+                scrollToAdditionalRow(j);
+                return false;
+            }
+            if (addYear < 1950 || addYear > currentYear) {
+                alert(addLabel + ': Year of passing must be between 1950 and ' + currentYear + '.');
+                scrollToAdditionalRow(j);
+                return false;
+            }
+
+            if (!trimVal(add.board)) {
+                alert(addLabel + ': Please enter the board.');
+                scrollToAdditionalRow(j);
+                return false;
+            }
+
+            if (!trimVal(add.subject)) {
+                alert(addLabel + ': Please enter the subject.');
+                scrollToAdditionalRow(j);
+                return false;
+            }
+
+            if (!isValidMarks(add.percentage)) {
+                alert(addLabel + ': Please enter marks between 0 and 100.');
+                scrollToAdditionalRow(j);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     function init() {
+        if (initDone) return;
+        initDone = true;
+
         initUploadHandlers();
         initDefaultEduItems();
 
@@ -162,11 +369,40 @@
 
         const nextBtn = document.getElementById('nextToTab3');
         if (nextBtn) {
-            nextBtn.addEventListener('click', function () {
+            nextBtn.addEventListener('click', onNextToTab3);
+        }
+    }
+
+    function onNextToTab3() {
+        if (tab2Saving) return;
+        if (!validateStep2()) return;
+
+        tab2Saving = true;
+        const nextBtn = document.getElementById('nextToTab3');
+        const saveFn = AF.api && typeof AF.api.saveTab2WithCertificates === 'function'
+            ? AF.api.saveTab2WithCertificates()
+            : Promise.resolve();
+
+        if (nextBtn) {
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'Saving...';
+        }
+
+        saveFn
+            .then(function () {
                 AF.data.saveDraft();
                 AF.nav.switchTab(3);
+            })
+            .catch(function (err) {
+                alert(err && err.message ? err.message : 'Failed to save qualifications. Please try again.');
+            })
+            .finally(function () {
+                tab2Saving = false;
+                if (nextBtn) {
+                    nextBtn.disabled = false;
+                    nextBtn.textContent = 'Save and Continue';
+                }
             });
-        }
     }
 
     AF.tab2 = {
@@ -174,6 +410,7 @@
         renderEdu: renderEdu,
         renderAdditional: renderAdditional,
         syncEdu: syncEdu,
-        syncAdditional: syncAdditional
+        syncAdditional: syncAdditional,
+        validateStep2: validateStep2
     };
 })(window.ApplicationForm);

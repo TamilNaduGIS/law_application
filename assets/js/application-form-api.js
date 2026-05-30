@@ -383,6 +383,192 @@
         });
     }
 
+    function getApplicationId() {
+        const applicantId = getApplicantId();
+        const storedAppId = global.sessionStorage.getItem('applicationId');
+        if (storedAppId) {
+            const parsed = parseInt(storedAppId, 10);
+            if (!isNaN(parsed) && parsed > 0) {
+                return parsed;
+            }
+        }
+        const parsedApplicant = parseInt(applicantId, 10);
+        return !isNaN(parsedApplicant) && parsedApplicant > 0 ? parsedApplicant : 0;
+    }
+
+    function parseYearOfPassing(val) {
+        if (val === undefined || val === null || val === '') {
+            return null;
+        }
+        const s = String(val).trim();
+        const iso = s.match(/^(\d{4})-\d{2}-\d{2}/);
+        if (iso) {
+            return parseInt(iso[1], 10);
+        }
+        const yearOnly = s.match(/^(\d{4})$/);
+        if (yearOnly) {
+            return parseInt(yearOnly[1], 10);
+        }
+        const d = new Date(s);
+        if (!isNaN(d.getTime())) {
+            return d.getFullYear();
+        }
+        return null;
+    }
+
+    function parseMarksPercentage(val) {
+        const n = parseFloat(String(val || '').replace(/[^\d.]/g, ''));
+        if (isNaN(n)) {
+            return null;
+        }
+        return Math.round(n * 100) / 100;
+    }
+
+    function mapEduItemToPayload(item) {
+        const year = parseYearOfPassing(item.year);
+        const marks = parseMarksPercentage(item.percentage);
+        const row = {
+            education_id: parseInt(item.educationId, 10) || 0,
+            qualification_name: String(item.exam || '').trim(),
+            university_name: String(item.board || '').trim(),
+            specialization: String(item.special || '').trim(),
+            certificate_path: String(item.certificatePath || '').trim(),
+            is_deleted: !!item.isDeleted
+        };
+        if (year !== null) {
+            row.year_of_passing = year;
+        }
+        if (marks !== null) {
+            row.marks_percentage = marks;
+        }
+        return row;
+    }
+
+    /**
+     * POST vacancy/document/upload — matches backend VacancyController::uploadDocument.
+     * @param {number} applicationId
+     * @param {string} documentType e.g. EDUCATION_CERTIFICATE
+     * @param {File|object} fileOrPreview
+     */
+    function uploadEducationCertificate(applicationId, documentType, fileOrPreview) {
+        return uploadDocument(applicationId, documentType, fileOrPreview);
+    }
+
+    function buildEducationSavePayload(eduItems) {
+        const applicantId = getApplicantId();
+        const applicationId = getApplicationId();
+        const createdBy = parseInt(applicantId, 10) || applicationId;
+
+        const education = (eduItems || [])
+            .filter(function (item) {
+                return item && !item.isDeleted;
+            })
+            .map(mapEduItemToPayload);
+
+        return {
+            application_id: applicationId,
+            created_by: createdBy,
+            education: education
+        };
+    }
+
+    let tab2EducationSavePromise = null;
+
+    function postEducationSave(payload) {
+        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+            return Promise.reject(new Error('API client is not loaded.'));
+        }
+        console.log('[Tab2] Education save payload:', payload);
+        return ensureSessionTokens().then(function () {
+            return global.LawPortal.apiRequest(
+                'vacancy/education/save',
+                'POST',
+                payload
+            );
+        }).then(function (res) {
+            const body = unwrapApiResult(res);
+            if (!body.ok) {
+                throw new Error(body.error || 'Unable to save educational qualifications.');
+            }
+            if (body.application_id) {
+                global.sessionStorage.setItem('applicationId', String(body.application_id));
+            }
+            return body;
+        });
+    }
+
+    function saveEducation(eduItems) {
+        return postEducationSave(buildEducationSavePayload(eduItems));
+    }
+
+    function getTab2CertificateSources() {
+        const previews = AF.state.filePreviews || {};
+        const sources = [];
+
+        document.querySelectorAll('#eduListContainer .list-item').forEach(function (row, idx) {
+            const input = row.querySelector('.certificateUpload');
+            const file = (input && input.files && input.files[0]) ? input.files[0] : null;
+            const preview = previews['edu-' + idx] || null;
+            sources.push({
+                index: idx,
+                file: file,
+                preview: preview
+            });
+        });
+
+        return sources;
+    }
+
+    function uploadCertificatesThenSave(items, applicationId, sources) {
+        let chain = Promise.resolve();
+
+        sources.forEach(function (src) {
+            const fileOrPreview = src.file || src.preview;
+            const row = items[src.index];
+            if (!fileOrPreview || (row && row.certificatePath)) {
+                return;
+            }
+            const docType = 'EDUCATION_CERTIFICATE';
+            chain = chain.then(function () {
+                return uploadEducationCertificate(applicationId, docType, fileOrPreview)
+                    .then(function (body) {
+                        if (body.file_path && items[src.index]) {
+                            items[src.index].certificatePath = body.file_path;
+                        }
+                    });
+            });
+        });
+
+        return chain.then(function () {
+            return postEducationSave(buildEducationSavePayload(items));
+        });
+    }
+
+    function saveTab2WithCertificates() {
+        if (tab2EducationSavePromise) {
+            return tab2EducationSavePromise;
+        }
+
+        if (AF.tab2 && typeof AF.tab2.syncEdu === 'function') {
+            AF.tab2.syncEdu();
+        }
+
+        const applicationId = getApplicationId();
+        if (!applicationId) {
+            return Promise.reject(new Error('Application ID is missing. Complete Tab 1 first.'));
+        }
+
+        const items = (AF.state.eduItems || []).slice();
+        const sources = getTab2CertificateSources();
+
+        tab2EducationSavePromise = uploadCertificatesThenSave(items, applicationId, sources)
+            .finally(function () {
+                tab2EducationSavePromise = null;
+            });
+
+        return tab2EducationSavePromise;
+    }
+
     AF.api = {
         pickField: pickField,
         mapRowToPersonal: mapRowToPersonal,
@@ -392,6 +578,11 @@
         buildPersonalSavePayload: buildPersonalSavePayload,
         savePersonalInfo: savePersonalInfo,
         uploadDocument: uploadDocument,
-        saveTab1WithDocuments: saveTab1WithDocuments
+        saveTab1WithDocuments: saveTab1WithDocuments,
+        getApplicationId: getApplicationId,
+        buildEducationSavePayload: buildEducationSavePayload,
+        saveEducation: saveEducation,
+        uploadEducationCertificate: uploadEducationCertificate,
+        saveTab2WithCertificates: saveTab2WithCertificates
     };
 })(window.ApplicationForm, window);
