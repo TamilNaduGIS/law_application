@@ -10,6 +10,7 @@ function applyInputValidation(inputId, rules = []) {
     //  8	            Allow digits, characters, and only allow - and _ as special characters (no other special chars)
     //  9	            Allow only digits but first number should not be 0 (removes leading zeros)
     // 10	            For name input: prevent numbers, starting character must be a letter, allow only . and space
+    // 12	            PAN: uppercase A-Z0-9 only, max 10 chars
         const inputField = $('#' + inputId);
         inputField.off('input').on('input', function () {
             let value = this.value;
@@ -43,13 +44,16 @@ function applyInputValidation(inputId, rules = []) {
                 }
             }
             if (rules.includes(11)) {
-                // Convert lowercase to uppercase automatically
                 value = value.toUpperCase();
-                // Remove anything except A-Z, 0-9, and /
                 value = value.replace(/[^A-Z0-9\/]/g, '');
-                // Prevent starting with slash or number
                 if (value.length > 0 && /^[\/0-9]/.test(value)) {
                     value = '';
+                }
+            }
+            if (rules.includes(12)) {
+                value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                if (value.length > 10) {
+                    value = value.substring(0, 10);
                 }
             }
             if (rules.includes(2)) {
@@ -90,10 +94,5 @@ function applyInputValidation(inputId, rules = []) {
             
                 }
             });
-        }
-
-
-        if (rules.includes(11)) {
-            value = value.replace(/[^a-zA-Z0-9\/]/g, '');
         }
     }

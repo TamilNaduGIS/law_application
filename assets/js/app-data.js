@@ -97,7 +97,6 @@
             const user = {
                 id: nextUserId(db.users),
                 enrolmentNo: payload.enrolmentNo.trim(),
-                password: payload.password,
                 advocateName: payload.advocateName.trim(),
                 fatherName: payload.fatherName || '',
                 gender: payload.gender || 'Male',

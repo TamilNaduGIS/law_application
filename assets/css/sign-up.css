@@ -1172,7 +1172,7 @@ RESPONSIVE
   padding: 0px;
   margin:0.5rem 0;
   box-shadow: 0 10px 30px rgba(31, 50, 145, 0.08);
-  border-top: 5px solid #1f3291;
+  border: none;
   transition: 0.3s;
 }
 
@@ -1288,6 +1288,8 @@ table tr:hover {
   background: #1f3291;
   color: white;
   padding: 1.25rem 1.5rem;
+  margin-top: 2px;
+  border-radius: 16px !important;
 }
 
 .card-header h1 {
@@ -1372,11 +1374,31 @@ table tr:hover {
 .error-msg {
   background: #fee2e2;
   color: #b91c1c;
-  padding: 0.65rem;
+  padding: 0.75rem 1rem;
   border-radius: 8px;
   margin-bottom: 1rem;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  border: 1px solid #fecaca;
   display: none;
+}
+
+.error-msg.is-visible {
+  display: block !important;
+}
+
+.error-msg-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.error-msg-list li {
+  margin-bottom: 0.25rem;
+}
+
+.field-invalid {
+  border-color: #b91c1c !important;
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
 }
 
 .footer-link {
@@ -1492,16 +1514,23 @@ input:focus {
 
 .error-msg,
 .success-msg {
-  padding: 0.65rem 0.85rem;
+  padding: 0.75rem 1rem;
   border-radius: 8px;
-  font-size: 0.85rem;
+  font-size: 0.9rem;
   margin-bottom: 1rem;
+  line-height: 1.5;
   display: none;
+}
+
+.error-msg.is-visible,
+.success-msg.is-visible {
+  display: block !important;
 }
 
 .error-msg {
   background: #fee2e2;
   color: #b91c1c;
+  border: 1px solid #fecaca;
 }
 
 .success-msg {

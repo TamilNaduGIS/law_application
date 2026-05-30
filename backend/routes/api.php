@@ -2,15 +2,16 @@
 
 use Slim\App;
 use App\Controllers\UserController;
+use App\Controllers\OtpController;
 
 return function (App $app) {
 
     $userController = new UserController();
+    $otpController = new OtpController();
 
-    // GET
-    $app->get('/users', [$userController, 'getUsers']);
-
-    // POST
+    $app->post('/register', [$userController, 'createUser']);
     $app->post('/user', [$userController, 'createUser']);
-    
+
+    $app->post('/otp/send', [$otpController, 'sendOtp']);
+    $app->post('/otp/verify', [$otpController, 'verifyOtp']);
 };
