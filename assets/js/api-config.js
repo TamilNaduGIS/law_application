@@ -1,5 +1,5 @@
 /**
- * Backend API base URL (Slim app under /backend).
+ * API_Base public API URL (secure PHP API under /API_Base/public/api).
  */
 (function (global) {
     function resolveApiBase() {
@@ -9,14 +9,16 @@
         const idx = lower.indexOf(marker);
 
         if (idx !== -1) {
-            return global.location.origin + path.substring(0, idx + marker.length) + '/backend';
+            return global.location.origin + path.substring(0, idx + marker.length) + '/API_Base/public/api';
         }
 
-        return new URL('backend', global.location.href).href.replace(/\/$/, '');
+        return new URL('API_Base/public/api', global.location.href).href.replace(/\/$/, '');
     }
 
     global.LawPortal = global.LawPortal || {};
     global.LawPortal.apiBase = resolveApiBase();
+    global.LawPortal.secureApiBase = global.LawPortal.apiBase.replace(/\/api\/?$/, '/');
+
     global.LawPortal.apiUrl = function (path) {
         const base = global.LawPortal.apiBase.replace(/\/$/, '');
         const segment = String(path || '').replace(/^\//, '');

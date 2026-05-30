@@ -250,8 +250,11 @@
             }
         }
 
-        const captcha = fieldVal('#captcha');
-        if (!captcha) {
+        const captchaAnswer = fieldVal('#captcha');
+        const captchaToken = fieldVal('#captchaToken');
+        if (!captchaToken) {
+            errors.captcha = 'Captcha expired. Click the image to refresh.';
+        } else if (!captchaAnswer) {
             errors.captcha = 'Captcha is required.';
         }
 
@@ -289,7 +292,8 @@
             community: community,
             caste: caste,
             otherCaste: fieldVal('#otherCaste'),
-            captcha: captcha
+            captcha_token: fieldVal('#captchaToken'),
+            captcha_answer: fieldVal('#captcha')
         };
     }
 
@@ -299,13 +303,7 @@
 
         $btn.prop('disabled', true).html('<span class="main-text">Registering…</span>');
 
-        return $.ajax({
-            url: global.LawPortal.apiUrl('register'),
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(payload),
-            dataType: 'json'
-        })
+        return global.LawPortal.apiAjax('register', 'POST', payload)
             .done(function (res) {
                 if (res && res.ok) {
                     global.location.href = 'login.html?registered=1';
@@ -460,29 +458,17 @@
     }
 
     function requestOtp(mobile) {
-        return $.ajax({
-            url: global.LawPortal.apiUrl('otp/send'),
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                mobile: mobile,
-                purpose: OTP_PURPOSE
-            }),
-            dataType: 'json'
+        return global.LawPortal.apiAjax('otp/send', 'POST', {
+            mobile: mobile,
+            purpose: OTP_PURPOSE
         });
     }
 
     function verifyOtpApi(mobile, otp) {
-        return $.ajax({
-            url: global.LawPortal.apiUrl('otp/verify'),
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                mobile: mobile,
-                otp: otp,
-                purpose: OTP_PURPOSE
-            }),
-            dataType: 'json'
+        return global.LawPortal.apiAjax('otp/verify', 'POST', {
+            mobile: mobile,
+            otp: otp,
+            purpose: OTP_PURPOSE
         });
     }
 
@@ -755,6 +741,10 @@
         initEnrolmentValidation();
         initPanValidation();
         initOtpFlow();
+
+        if (global.LawPortal && typeof global.LawPortal.bindCaptchaUi === 'function') {
+            global.LawPortal.bindCaptchaUi('#captchaImage', '#captchaToken');
+        }
 
         $('#signupForm').on('submit', function (e) {
             e.preventDefault();

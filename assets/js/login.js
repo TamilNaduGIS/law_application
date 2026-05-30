@@ -100,39 +100,21 @@
     }
 
     function requestLoginOtp(enrollmentNo, mobile) {
-        return $.ajax({
-            url: global.LawPortal.apiUrl('login'),
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                enrollment_no: enrollmentNo,
-                mobile_no: mobile
-            }),
-            dataType: 'json'
+        return global.LawPortal.apiAjax('login', 'POST', {
+            enrollment_no: enrollmentNo,
+            mobile: mobile
         });
     }
 
     function resendLoginOtp(mobile) {
-        return $.ajax({
-            url: global.LawPortal.apiUrl('otp/send'),
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify({
-                mobile: mobile,
-                purpose: 'login'
-            }),
-            dataType: 'json'
+        return global.LawPortal.apiAjax('otp/send', 'POST', {
+            mobile: mobile,
+            purpose: 'login'
         });
     }
 
     function verifyLoginOtp(payload) {
-        return $.ajax({
-            url: global.LawPortal.apiUrl('login/verify'),
-            type: 'POST',
-            contentType: 'application/json',
-            data: JSON.stringify(payload),
-            dataType: 'json'
-        });
+        return global.LawPortal.apiAjax('login/verify', 'POST', payload);
     }
 
     function openOtpModal() {
@@ -147,6 +129,10 @@
     }
 
     function saveSession(session) {
+        if (global.LawPortal && typeof global.LawPortal.saveAuthSession === 'function') {
+            global.LawPortal.saveAuthSession(session);
+            return;
+        }
         sessionStorage.setItem('isLoggedIn', 'true');
         sessionStorage.setItem('applicantId', session.applicant_id || '');
         sessionStorage.setItem('enrolmentNo', session.enrollment_no || '');
