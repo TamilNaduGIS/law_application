@@ -4,6 +4,9 @@
 (function ($, global) {
     'use strict';
 
+    localStorage.clear();
+    sessionStorage.clear();
+
     const MOBILE_REGEX = /^[6-9]\d{9}$/;
     const ENROLMENT_REGEX = /^[A-Z]{2}\/[0-9]{1,5}\/[0-9]{2,4}$/;
     const OTP_TIMER_SECONDS = 300;
