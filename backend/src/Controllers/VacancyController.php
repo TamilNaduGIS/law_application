@@ -55,6 +55,41 @@ class VacancyController extends Controller
     return $this->encryptResponse($row ?: []);
   }
 
+  /**
+   * POST /api/vacancy/education/get
+   * Reads public.fn_application_get_education_details(applicant_id).
+   * Also attempts public.fn_application_get_additional_qualification_details when available.
+   */
+  public function getEducationDetails(Request $request): Response
+  {
+    $this->setUserId($request);
+    $data = is_array($this->requestData) ? $this->requestData : [];
+
+    $applicantId = (int) (
+      $data['applicant_id']
+      ?? $data['applicantId']
+      ?? $this->sessionUserId
+      ?? 0
+    );
+
+    if ($applicantId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
+    }
+
+    $qualifications = ApplicationModal::getTab2Qualifications($applicantId);
+    $education = $qualifications['education'];
+    $additional = $qualifications['additional_qualification'];
+    $applicationId = ApplicationModal::resolveApplicationId($applicantId, $data);
+
+    return $this->encryptResponse([
+      'ok' => true,
+      'applicant_id' => $applicantId,
+      'application_id' => $applicationId > 0 ? $applicationId : null,
+      'education' => $education,
+      'additional_qualification' => $additional,
+    ]);
+  }
+
   public function savePersonalInfo(Request $request): Response
   {
     $this->setUserId($request);
@@ -242,6 +277,118 @@ class VacancyController extends Controller
     ];
   }
 
+  /**
+   * POST /api/vacancy/education/delete
+   * Body: { "applicant_id": 2, "education_id": 5 } or { "education_ids": [5, 6] }
+   */
+  public function deleteEducation(Request $request): Response
+  {
+    $this->setUserId($request);
+    $data = is_array($this->requestData) ? $this->requestData : [];
+
+    $applicantId = (int) (
+      $data['applicant_id']
+      ?? $data['applicantId']
+      ?? $this->sessionUserId
+      ?? 0
+    );
+
+    if ($applicantId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
+    }
+
+    $educationIds = $this->collectRecordIds(
+      $data,
+      ['education_id', 'educationId'],
+      ['education_ids', 'educationIds']
+    );
+
+    if ($educationIds === []) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Education ID is required.']);
+    }
+
+    $result = ApplicationModal::deleteEducationRecords($applicantId, $educationIds);
+    $result['applicant_id'] = $applicantId;
+
+    return $this->encryptResponse($result);
+  }
+
+  /**
+   * POST /api/vacancy/additional/delete
+   * Body: { "applicant_id": 2, "additional_qualification_id": 3 }
+   */
+  public function deleteAdditionalQualification(Request $request): Response
+  {
+    $this->setUserId($request);
+    $data = is_array($this->requestData) ? $this->requestData : [];
+
+    $applicantId = (int) (
+      $data['applicant_id']
+      ?? $data['applicantId']
+      ?? $this->sessionUserId
+      ?? 0
+    );
+
+    if ($applicantId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
+    }
+
+    $additionalIds = $this->collectRecordIds(
+      $data,
+      [
+        'add_qualification_id',
+        'addQualificationId',
+        'additional_qualification_id',
+        'additionalQualificationId',
+        'additional_id',
+      ],
+      [
+        'add_qualification_ids',
+        'addQualificationIds',
+        'additional_qualification_ids',
+        'additionalQualificationIds',
+        'additional_ids',
+      ]
+    );
+
+    if ($additionalIds === []) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Additional qualification ID is required.']);
+    }
+
+    $result = ApplicationModal::deleteAdditionalQualificationRecords($applicantId, $additionalIds);
+    $result['applicant_id'] = $applicantId;
+
+    return $this->encryptResponse($result);
+  }
+
+  /**
+   * @param array<string, mixed> $data
+   * @param array<int, string> $singleKeys
+   * @param array<int, string> $listKeys
+   * @return array<int, int>
+   */
+  private function collectRecordIds(array $data, array $singleKeys, array $listKeys): array
+  {
+    $ids = [];
+
+    foreach ($singleKeys as $key) {
+      if (!empty($data[$key])) {
+        $ids[] = (int) $data[$key];
+      }
+    }
+
+    foreach ($listKeys as $key) {
+      if (!isset($data[$key]) || !is_array($data[$key])) {
+        continue;
+      }
+      foreach ($data[$key] as $value) {
+        $ids[] = (int) $value;
+      }
+    }
+
+    return array_values(array_unique(array_filter($ids, static fn (int $id): bool => $id > 0)));
+  }
+
   public function saveEducation(Request $request): Response
   {
     $this->setUserId($request);
@@ -388,17 +535,36 @@ class VacancyController extends Controller
         continue;
       }
 
+      $addId = (int) (
+        $row['add_qualification_id']
+        ?? $row['addQualificationId']
+        ?? $row['additional_qualification_id']
+        ?? $row['additionalQualificationId']
+        ?? 0
+      );
+
       $item = [
-        'additional_qualification_id' => (int) (
-          $row['additional_qualification_id']
-          ?? $row['additionalQualificationId']
-          ?? 0
-        ),
+        'add_qualification_id' => $addId,
+        'additional_qualification_id' => $addId,
         'qualification_name' => trim((string) ($row['qualification_name'] ?? $row['qualificationName'] ?? '')),
         'year_of_passing' => (int) ($row['year_of_passing'] ?? $row['yearOfPassing'] ?? 0),
-        'university_name' => trim((string) ($row['university_name'] ?? $row['universityName'] ?? '')),
-        'institution' => trim((string) ($row['institution'] ?? $row['institution_name'] ?? $row['institutionName'] ?? '')),
-        'specialization' => trim((string) ($row['specialization'] ?? '')),
+        'board_university' => trim((string) (
+          $row['board_university']
+          ?? $row['university_name']
+          ?? $row['universityName']
+          ?? ''
+        )),
+        'institution_name' => trim((string) (
+          $row['institution_name']
+          ?? $row['institution']
+          ?? $row['institutionName']
+          ?? ''
+        )),
+        'subject_name' => trim((string) (
+          $row['subject_name']
+          ?? $row['specialization']
+          ?? ''
+        )),
         'marks_percentage' => (float) ($row['marks_percentage'] ?? $row['marksPercentage'] ?? 0),
         'certificate_path' => trim((string) ($row['certificate_path'] ?? $row['certificatePath'] ?? '')),
       ];

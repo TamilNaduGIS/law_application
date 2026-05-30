@@ -80,6 +80,61 @@ window.ApplicationForm = (function () {
         });
     }
 
+    function showToast(message, variant) {
+        const text = message != null ? String(message).trim() : '';
+        if (!text) return;
+
+        const kind = variant === 'error' ? 'danger' : 'success';
+        let container = document.getElementById('appToastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'appToastContainer';
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '11000';
+            container.setAttribute('aria-live', 'polite');
+            container.setAttribute('aria-atomic', 'true');
+            document.body.appendChild(container);
+        }
+
+        const toastEl = document.createElement('div');
+        toastEl.className = 'toast align-items-center border-0 text-bg-' + kind;
+        toastEl.setAttribute('role', 'alert');
+        toastEl.setAttribute('aria-live', 'assertive');
+        toastEl.setAttribute('aria-atomic', 'true');
+
+        const flex = document.createElement('div');
+        flex.className = 'd-flex';
+
+        const body = document.createElement('div');
+        body.className = 'toast-body';
+        body.textContent = text;
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'btn-close btn-close-white me-2 m-auto';
+        closeBtn.setAttribute('data-bs-dismiss', 'toast');
+        closeBtn.setAttribute('aria-label', 'Close');
+
+        flex.appendChild(body);
+        flex.appendChild(closeBtn);
+        toastEl.appendChild(flex);
+        container.appendChild(toastEl);
+
+        if (window.bootstrap && typeof window.bootstrap.Toast === 'function') {
+            const toast = new window.bootstrap.Toast(toastEl, { delay: 3500 });
+            toastEl.addEventListener('hidden.bs.toast', function () {
+                toastEl.remove();
+            });
+            toast.show();
+            return;
+        }
+
+        toastEl.classList.add('show');
+        setTimeout(function () {
+            toastEl.remove();
+        }, 3500);
+    }
+
     function truncateFileName(name, maxLen) {
         maxLen = maxLen || FILE_NAME_MAX_LEN;
         if (!name) return '';
@@ -372,7 +427,21 @@ window.ApplicationForm = (function () {
         items.forEach(function (item, idx) {
             const div = document.createElement('div');
             div.className = 'list-item';
-            if (item.certificateFileName) div.setAttribute('data-cert-name', item.certificateFileName);
+            if (item.certificateFileName) {
+                div.setAttribute('data-cert-name', item.certificateFileName);
+            } else if (item.certificatePath) {
+                const pathName = String(item.certificatePath).split(/[/\\]/).pop();
+                if (pathName) div.setAttribute('data-cert-name', pathName);
+            }
+            if (item.certificatePath) {
+                div.setAttribute('data-cert-path', item.certificatePath);
+            }
+            if (item.educationId) {
+                div.setAttribute('data-education-id', String(item.educationId));
+            }
+            if (item.additionalId) {
+                div.setAttribute('data-additional-id', String(item.additionalId));
+            }
             div.innerHTML = renderItemFn(item, idx, type);
             container.appendChild(div);
         });
@@ -385,13 +454,6 @@ window.ApplicationForm = (function () {
         const btn = e.target.closest('.remove-item') || e.target;
         const idx = parseInt(btn.getAttribute('data-idx'), 10);
         const type = btn.getAttribute('data-type');
-        if (type === 'edu' && AF.tab2) {
-            if (typeof AF.tab2.snapshotEduFilesFromDom === 'function') AF.tab2.snapshotEduFilesFromDom();
-            AF.tab2.syncEdu();
-        } else if (type === 'add' && AF.tab2) {
-            if (typeof AF.tab2.snapshotAdditionalFilesFromDom === 'function') AF.tab2.snapshotAdditionalFilesFromDom();
-            AF.tab2.syncAdditional();
-        }
         const lists = {
             edu: state.eduItems,
             add: state.additionalItems,
@@ -400,9 +462,76 @@ window.ApplicationForm = (function () {
             judgmentAAG: state.judgmentAAGItems,
             judgmentAGP: state.judgmentAGPItems
         };
-        if (lists[type]) lists[type].splice(idx, 1);
-        reindexFilePreviewsAfterRemove(type, idx);
-        renderAll();
+
+        if (type === 'edu' && AF.tab2) {
+            if (typeof AF.tab2.snapshotEduFilesFromDom === 'function') AF.tab2.snapshotEduFilesFromDom();
+            AF.tab2.syncEdu();
+        } else if (type === 'add' && AF.tab2) {
+            if (typeof AF.tab2.snapshotAdditionalFilesFromDom === 'function') AF.tab2.snapshotAdditionalFilesFromDom();
+            AF.tab2.syncAdditional();
+        }
+
+        const removedItem = lists[type] && !isNaN(idx) ? lists[type][idx] : null;
+
+        function finishRemove() {
+            if (lists[type]) lists[type].splice(idx, 1);
+            reindexFilePreviewsAfterRemove(type, idx);
+            renderAll();
+        }
+
+        function refreshTab2AfterServerDelete() {
+            const successMessage = type === 'add'
+                ? 'Additional qualification deleted successfully.'
+                : 'Educational qualification deleted successfully.';
+
+            if ((type === 'edu' || type === 'add')
+                && AF.api
+                && typeof AF.api.refreshTab2QualificationsFromApi === 'function') {
+                return AF.api.refreshTab2QualificationsFromApi()
+                    .then(function () {
+                        showToast(successMessage, 'success');
+                    })
+                    .catch(function (err) {
+                        console.warn('Tab2 refresh after delete:', err && err.message ? err.message : err);
+                        finishRemove();
+                    });
+            }
+            finishRemove();
+            showToast(successMessage, 'success');
+            return Promise.resolve();
+        }
+
+        if (type === 'edu' && removedItem) {
+            const rowEl = btn.closest('.list-item');
+            const educationId = parseInt(removedItem.educationId, 10)
+                || parseInt(rowEl && rowEl.getAttribute('data-education-id'), 10)
+                || 0;
+            if (educationId > 0 && AF.api && typeof AF.api.deleteEducationRecord === 'function') {
+                AF.api.deleteEducationRecord(educationId)
+                    .then(refreshTab2AfterServerDelete)
+                    .catch(function (err) {
+                        alert(err && err.message ? err.message : 'Failed to delete educational qualification.');
+                    });
+                return;
+            }
+        }
+
+        if (type === 'add' && removedItem) {
+            const rowEl = btn.closest('.list-item');
+            const additionalId = parseInt(removedItem.additionalId, 10)
+                || parseInt(rowEl && rowEl.getAttribute('data-additional-id'), 10)
+                || 0;
+            if (additionalId > 0 && AF.api && typeof AF.api.deleteAdditionalQualificationRecord === 'function') {
+                AF.api.deleteAdditionalQualificationRecord(additionalId)
+                    .then(refreshTab2AfterServerDelete)
+                    .catch(function (err) {
+                        alert(err && err.message ? err.message : 'Failed to delete additional qualification.');
+                    });
+                return;
+            }
+        }
+
+        finishRemove();
     }
 
     function reindexFilePreviewsAfterRemove(type, removedIdx) {
@@ -457,6 +586,11 @@ window.ApplicationForm = (function () {
             const id = parseInt(btn.getAttribute('data-tab'), 10);
             btn.classList.toggle('active', id === tabId);
         });
+        if (tabId === 2 && AF.api && typeof AF.api.onQualificationsTabActivated === 'function') {
+            AF.api.onQualificationsTabActivated().catch(function (err) {
+                console.warn('Qualifications tab load:', err && err.message ? err.message : err);
+            });
+        }
         if (tabId === 4 && AF.tab4) AF.tab4.generatePreview();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -608,6 +742,7 @@ window.ApplicationForm = (function () {
         tabs: tabs,
         utils: {
             escapeHtml: escapeHtml,
+            showToast: showToast,
             formatDateForInput: formatDateForInput,
             truncateFileName: truncateFileName,
             pv: function (val) { return escapeHtml(val || '—'); },

@@ -101,13 +101,31 @@ $router->add('POST', '/api/vacancy/document/upload', [VacancyController::class, 
     new CSRFMiddleware(),
 ]);
 
+$router->add('POST', '/api/vacancy/education/get', [VacancyController::class, 'getEducationDetails'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
 $router->add('POST', '/api/vacancy/education/save', [VacancyController::class, 'saveEducation'], [
     new RateLimitMiddleware(20, 60),
     new AuthMiddleware(),
     new CSRFMiddleware(),
 ]);
 
+$router->add('POST', '/api/vacancy/education/delete', [VacancyController::class, 'deleteEducation'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
 $router->add('POST', '/api/vacancy/additional/save', [VacancyController::class, 'saveAdditionalQualification'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
+$router->add('POST', '/api/vacancy/additional/delete', [VacancyController::class, 'deleteAdditionalQualification'], [
     new RateLimitMiddleware(20, 60),
     new AuthMiddleware(),
     new CSRFMiddleware(),

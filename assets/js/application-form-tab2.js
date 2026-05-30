@@ -260,6 +260,9 @@
     }
 
     function initDefaultEduItems() {
+        if (AF.state.eduItems && AF.state.eduItems.length) {
+            return;
+        }
         if (!AF.state.eduItems.length) {
             AF.state.eduItems.push({
                 exam: '10th', year: '', board: '', institution: '', special: '', percentage: ''
