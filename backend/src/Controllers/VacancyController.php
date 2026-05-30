@@ -242,38 +242,6 @@ class VacancyController extends Controller
     ];
   }
 
-//   CALL public.sp_application_save_education
-// (
-// '{
-//     "application_id":1,
-//     "created_by":1,
-//     "education":
-//     [
-//         {
-//             "education_id":0,
-//             "qualification_name":"B.L",
-//             "year_of_passing":2015,
-//             "university_name":"Madras University",
-//             "specialization":"Law",
-//             "marks_percentage":78.50,
-//             "certificate_path":"uploads/bl_certificate.pdf",
-//             "is_deleted":false
-//         },
-//         {
-//             "education_id":0,
-//             "qualification_name":"LLM",
-//             "year_of_passing":2018,
-//             "university_name":"Tamil Nadu Dr Ambedkar Law University",
-//             "specialization":"Constitutional Law",
-//             "marks_percentage":82.00,
-//             "certificate_path":"uploads/llm_certificate.pdf",
-//             "is_deleted":false
-//         }
-//     ]
-// }'::jsonb,
-// NULL
-// );
-
   public function saveEducation(Request $request): Response
   {
     $this->setUserId($request);
@@ -290,24 +258,15 @@ class VacancyController extends Controller
       return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
     }
 
-    $applicationId = ApplicationModal::resolveApplicationId($applicantId, $data);
-    if ($applicationId <= 0) {
-      return $this->encryptResponse(['ok' => false, 'error' => 'Invalid Application Id. Save Tab 1 first.']);
-    }
     $createdBy = (int) ($data['created_by'] ?? $data['createdBy'] ?? $applicantId);
 
     $payload = [
-      'application_id' => $applicationId,
+      'applicant_id' => $applicantId,
       'created_by' => $createdBy > 0 ? $createdBy : $applicantId,
-      'education' => array_values((array) ($data['education'] ?? [])),
+      'education' => $this->normalizeEducationRows((array) ($data['education'] ?? [])),
     ];
 
-    if (!empty($data['applicant_id']) || !empty($data['applicantId'])) {
-      $payload['applicant_id'] = $applicantId;
-    }
-
     $result = ApplicationModal::saveEducation($payload);
-    $result['application_id'] = $applicationId;
     $result['applicant_id'] = $applicantId;
 
     return $this->encryptResponse($result);
@@ -329,10 +288,6 @@ class VacancyController extends Controller
       return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
     }
 
-    $applicationId = ApplicationModal::resolveApplicationId($applicantId, $data);
-    if ($applicationId <= 0) {
-      return $this->encryptResponse(['ok' => false, 'error' => 'Invalid Application Id. Save Tab 1 first.']);
-    }
     $createdBy = (int) ($data['created_by'] ?? $data['createdBy'] ?? $applicantId);
 
     $additionalRows = array_values((array) (
@@ -343,19 +298,86 @@ class VacancyController extends Controller
     ));
 
     $payload = [
-      'application_id' => $applicationId,
+      'applicant_id' => $applicantId,
       'created_by' => $createdBy > 0 ? $createdBy : $applicantId,
-      'additional_qualification' => $additionalRows,
+      'additional_qualification' => $this->normalizeAdditionalQualificationRows($additionalRows),
     ];
 
-    if (!empty($data['applicant_id']) || !empty($data['applicantId'])) {
-      $payload['applicant_id'] = $applicantId;
-    }
-
     $result = ApplicationModal::saveAdditionalQualification($payload);
-    $result['application_id'] = $applicationId;
     $result['applicant_id'] = $applicantId;
 
     return $this->encryptResponse($result);
+  }
+
+  /**
+   * @param array<int, mixed> $rows
+   * @return array<int, array<string, mixed>>
+   */
+  private function normalizeEducationRows(array $rows): array
+  {
+    $normalized = [];
+
+    foreach ($rows as $row) {
+      if (!is_array($row)) {
+        continue;
+      }
+
+      $item = [
+        'education_id' => (int) ($row['education_id'] ?? $row['educationId'] ?? 0),
+        'qualification_name' => trim((string) ($row['qualification_name'] ?? $row['qualificationName'] ?? '')),
+        'year_of_passing' => (int) ($row['year_of_passing'] ?? $row['yearOfPassing'] ?? 0),
+        'university_name' => trim((string) ($row['university_name'] ?? $row['universityName'] ?? '')),
+        'institution' => trim((string) ($row['institution'] ?? $row['institution_name'] ?? $row['institutionName'] ?? '')),
+        'specialization' => trim((string) ($row['specialization'] ?? '')),
+        'marks_percentage' => (float) ($row['marks_percentage'] ?? $row['marksPercentage'] ?? 0),
+        'certificate_path' => trim((string) ($row['certificate_path'] ?? $row['certificatePath'] ?? '')),
+      ];
+
+      if (array_key_exists('is_deleted', $row) || array_key_exists('isDeleted', $row)) {
+        $item['is_deleted'] = filter_var($row['is_deleted'] ?? $row['isDeleted'] ?? false, FILTER_VALIDATE_BOOLEAN);
+      }
+
+      $normalized[] = $item;
+    }
+
+    return $normalized;
+  }
+
+  /**
+   * @param array<int, mixed> $rows
+   * @return array<int, array<string, mixed>>
+   */
+  private function normalizeAdditionalQualificationRows(array $rows): array
+  {
+    $normalized = [];
+
+    foreach ($rows as $row) {
+      if (!is_array($row)) {
+        continue;
+      }
+
+      $item = [
+        'additional_qualification_id' => (int) (
+          $row['additional_qualification_id']
+          ?? $row['additionalQualificationId']
+          ?? 0
+        ),
+        'qualification_name' => trim((string) ($row['qualification_name'] ?? $row['qualificationName'] ?? '')),
+        'year_of_passing' => (int) ($row['year_of_passing'] ?? $row['yearOfPassing'] ?? 0),
+        'university_name' => trim((string) ($row['university_name'] ?? $row['universityName'] ?? '')),
+        'institution' => trim((string) ($row['institution'] ?? $row['institution_name'] ?? $row['institutionName'] ?? '')),
+        'specialization' => trim((string) ($row['specialization'] ?? '')),
+        'marks_percentage' => (float) ($row['marks_percentage'] ?? $row['marksPercentage'] ?? 0),
+        'certificate_path' => trim((string) ($row['certificate_path'] ?? $row['certificatePath'] ?? '')),
+      ];
+
+      if (array_key_exists('is_deleted', $row) || array_key_exists('isDeleted', $row)) {
+        $item['is_deleted'] = filter_var($row['is_deleted'] ?? $row['isDeleted'] ?? false, FILTER_VALIDATE_BOOLEAN);
+      }
+
+      $normalized[] = $item;
+    }
+
+    return $normalized;
   }
 }

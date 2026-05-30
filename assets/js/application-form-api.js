@@ -451,18 +451,16 @@
     function mapEduItemToPayload(item) {
         const year = parseYearOfPassing(item.year);
         const marks = parseMarksPercentage(item.percentage);
-        const row = {
+        return {
             education_id: parseInt(item.educationId, 10) || 0,
             qualification_name: trimStr(item.exam),
             year_of_passing: year !== null ? year : 0,
             university_name: trimStr(item.board),
-            institution_name: trimStr(item.institution),
+            institution: trimStr(item.institution),
             specialization: trimStr(item.special),
             marks_percentage: marks !== null ? marks : 0,
-            certificate_path: trimStr(item.certificatePath),
-            is_deleted: !!item.isDeleted
+            certificate_path: trimStr(item.certificatePath)
         };
-        return row;
     }
 
     /**
@@ -471,8 +469,8 @@
      * @param {string} documentType e.g. EDUCATION_CERTIFICATE
      * @param {File|object} fileOrPreview
      */
-    function uploadEducationCertificate(applicationId, documentType, fileOrPreview) {
-        return uploadDocument(applicationId, documentType, fileOrPreview);
+    function uploadEducationCertificate(documentType, fileOrPreview) {
+        return uploadDocument(null, documentType, fileOrPreview);
     }
 
     function trimStr(val) {
@@ -498,11 +496,10 @@
             qualification_name: trimStr(item.exam),
             year_of_passing: year !== null ? year : 0,
             university_name: trimStr(item.board),
-            institution_name: trimStr(item.institution),
+            institution: trimStr(item.institution),
             specialization: trimStr(item.subject),
             marks_percentage: marks !== null ? marks : 0,
-            certificate_path: trimStr(item.certificatePath),
-            is_deleted: !!item.isDeleted
+            certificate_path: trimStr(item.certificatePath)
         };
     }
 
@@ -684,7 +681,7 @@
         return sources;
     }
 
-    function uploadCertificateSources(applicationId, items, sources, documentType) {
+    function uploadCertificateSources(items, sources, documentType) {
         let chain = Promise.resolve();
 
         sources.forEach(function (src) {
@@ -694,7 +691,7 @@
                 return;
             }
             chain = chain.then(function () {
-                return uploadEducationCertificate(applicationId, documentType, fileOrPreview)
+                return uploadEducationCertificate(documentType, fileOrPreview)
                     .then(function (body) {
                         if (body.file_path && items[src.index]) {
                             items[src.index].certificatePath = body.file_path;
@@ -715,10 +712,8 @@
 
         console.log('[Tab2] Additional qualification rows:', addItems.length);
         const addSources = getTab2CertificateSources('additionalListContainer', 'add-');
-        const uploadAppId = getApplicationId() || applicantId;
 
         return uploadCertificateSources(
-            uploadAppId,
             addItems,
             addSources,
             'ADDITIONAL_QUALIFICATION_CERTIFICATE'
@@ -730,10 +725,8 @@
 
     function uploadCertificatesThenSave(applicantId) {
         const eduSources = getTab2CertificateSources('eduListContainer', 'edu-');
-        const uploadAppId = getApplicationId() || applicantId;
 
         return uploadCertificateSources(
-            uploadAppId,
             AF.state.eduItems || [],
             eduSources,
             'EDUCATION_CERTIFICATE'
