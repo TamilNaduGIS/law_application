@@ -330,18 +330,14 @@
 
         return promise.then(function (fileData) {
             return ensureSessionTokens().then(function () {
-                const uploadPayload = {
+                return global.LawPortal.apiRequest('vacancy/document/upload', 'POST', {
                     applicant_id: applicantId,
+                    application_id: appId || parseInt(applicantId, 10),
                     document_type: documentType,
                     file_name: fileData.file_name,
                     file_content: fileData.file_content,
                     uploaded_by: applicantId
-                };
-                const resolvedAppId = parseInt(appId, 10);
-                if (!isNaN(resolvedAppId) && resolvedAppId > 0) {
-                    uploadPayload.application_id = resolvedAppId;
-                }
-                return global.LawPortal.apiRequest('vacancy/document/upload', 'POST', uploadPayload);
+                });
             });
         }).then(function (res) {
             const body = unwrapApiResult(res);
@@ -469,8 +465,8 @@
      * @param {string} documentType e.g. EDUCATION_CERTIFICATE
      * @param {File|object} fileOrPreview
      */
-    function uploadEducationCertificate(documentType, fileOrPreview) {
-        return uploadDocument(null, documentType, fileOrPreview);
+    function uploadEducationCertificate(applicationId, documentType, fileOrPreview) {
+        return uploadDocument(applicationId, documentType, fileOrPreview);
     }
 
     function trimStr(val) {
@@ -681,7 +677,7 @@
         return sources;
     }
 
-    function uploadCertificateSources(items, sources, documentType) {
+    function uploadCertificateSources(applicationId, items, sources, documentType) {
         let chain = Promise.resolve();
 
         sources.forEach(function (src) {
@@ -691,7 +687,7 @@
                 return;
             }
             chain = chain.then(function () {
-                return uploadEducationCertificate(documentType, fileOrPreview)
+                return uploadEducationCertificate(applicationId, documentType, fileOrPreview)
                     .then(function (body) {
                         if (body.file_path && items[src.index]) {
                             items[src.index].certificatePath = body.file_path;
@@ -712,8 +708,10 @@
 
         console.log('[Tab2] Additional qualification rows:', addItems.length);
         const addSources = getTab2CertificateSources('additionalListContainer', 'add-');
+        const uploadAppId = getApplicationId() || applicantId;
 
         return uploadCertificateSources(
+            uploadAppId,
             addItems,
             addSources,
             'ADDITIONAL_QUALIFICATION_CERTIFICATE'
@@ -725,8 +723,10 @@
 
     function uploadCertificatesThenSave(applicantId) {
         const eduSources = getTab2CertificateSources('eduListContainer', 'edu-');
+        const uploadAppId = getApplicationId() || applicantId;
 
         return uploadCertificateSources(
+            uploadAppId,
             AF.state.eduItems || [],
             eduSources,
             'EDUCATION_CERTIFICATE'
