@@ -25,18 +25,6 @@
     }
 
     function clearPortalSession() {
-<<<<<<< HEAD
-        global.localStorage.removeItem('access_token');
-        global.localStorage.removeItem('refresh_token');
-        [
-            'isLoggedIn', 'encryption_key', 'csrf_token', 'applicantId',
-            'enrolmentNo', 'mobile', 'advocateName', 'selectedPost', 'selectedJobId', 'courtBench',
-            'selectedVacancies'
-        ].forEach(function (key) {
-            global.sessionStorage.removeItem(key);
-        });
-=======
->>>>>>> cfbf9d7b740ff35be5896c6119956d8a3d4ef993
         if (global.AppData && typeof global.AppData.logout === 'function') {
             global.AppData.logout();
         } else {
