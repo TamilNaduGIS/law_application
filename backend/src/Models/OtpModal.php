@@ -4,7 +4,7 @@ namespace App\Models;
 
 
 
-use App\config\Database;
+use App\Config\Database;
 use PDO;
 use PDOException;
 

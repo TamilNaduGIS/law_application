@@ -1,6 +1,6 @@
 window.PortalNav = window.PortalNav || {
-    mount: function () { },
-    render: function () { }
+    mount: function () {},
+    render: function () {}
 };
 
 /**
@@ -59,17 +59,6 @@ window.ApplicationForm = (function () {
 
     const FILE_NAME_MAX_LEN = 20;
 
-    function formatDateForInput(val) {
-        if (val === undefined || val === null || val === '') {
-            return '';
-        }
-        const s = String(val).trim();
-        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-            return s;
-        }
-        return '';
-    }
-
     function escapeHtml(str) {
         if (!str) return '';
         return String(str).replace(/[&<>]/g, function (m) {
@@ -78,61 +67,6 @@ window.ApplicationForm = (function () {
             if (m === '>') return '&gt;';
             return m;
         });
-    }
-
-    function showToast(message, variant) {
-        const text = message != null ? String(message).trim() : '';
-        if (!text) return;
-
-        const kind = variant === 'error' ? 'danger' : 'success';
-        let container = document.getElementById('appToastContainer');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'appToastContainer';
-            container.className = 'toast-container position-fixed top-0 end-0 p-3';
-            container.style.zIndex = '11000';
-            container.setAttribute('aria-live', 'polite');
-            container.setAttribute('aria-atomic', 'true');
-            document.body.appendChild(container);
-        }
-
-        const toastEl = document.createElement('div');
-        toastEl.className = 'toast align-items-center border-0 text-bg-' + kind;
-        toastEl.setAttribute('role', 'alert');
-        toastEl.setAttribute('aria-live', 'assertive');
-        toastEl.setAttribute('aria-atomic', 'true');
-
-        const flex = document.createElement('div');
-        flex.className = 'd-flex';
-
-        const body = document.createElement('div');
-        body.className = 'toast-body';
-        body.textContent = text;
-
-        const closeBtn = document.createElement('button');
-        closeBtn.type = 'button';
-        closeBtn.className = 'btn-close btn-close-white me-2 m-auto';
-        closeBtn.setAttribute('data-bs-dismiss', 'toast');
-        closeBtn.setAttribute('aria-label', 'Close');
-
-        flex.appendChild(body);
-        flex.appendChild(closeBtn);
-        toastEl.appendChild(flex);
-        container.appendChild(toastEl);
-
-        if (window.bootstrap && typeof window.bootstrap.Toast === 'function') {
-            const toast = new window.bootstrap.Toast(toastEl, { delay: 3500 });
-            toastEl.addEventListener('hidden.bs.toast', function () {
-                toastEl.remove();
-            });
-            toast.show();
-            return;
-        }
-
-        toastEl.classList.add('show');
-        setTimeout(function () {
-            toastEl.remove();
-        }, 3500);
     }
 
     function truncateFileName(name, maxLen) {
@@ -216,7 +150,7 @@ window.ApplicationForm = (function () {
         const drafting = document.getElementById('draftingUpload');
         if (drafting && drafting.files && drafting.files.length) storeFilesPreview('drafting', drafting.files);
         document.querySelectorAll('#eduListContainer .list-item').forEach(function (item, idx) {
-            const fi = item.querySelector('.certificateUpload');
+            const fi = item.querySelector('.edu-cert-file');
             if (fi && fi.files && fi.files[0]) storeFilePreview('edu-' + idx, fi.files[0]);
         });
         document.querySelectorAll('#additionalListContainer .list-item').forEach(function (item, idx) {
@@ -239,17 +173,18 @@ window.ApplicationForm = (function () {
         });
     }
 
-    function buildFileUploadHtml(inputId, defaultLabel, savedFileName, extraClass, accept, multiple) {
+    function buildFileUploadHtml(inputId, defaultLabel, savedFileName, extraClass, accept, multiple, isExisting) {
         const display = savedFileName ? truncateFileName(savedFileName) : defaultLabel;
         const hasFile = savedFileName ? ' has-file' : '';
         const multi = multiple ? ' multiple' : '';
         const acceptAttr = accept ? ' accept="' + accept + '"' : '';
         const cls = extraClass ? ' ' + extraClass : '';
+        const iconClass = isExisting ? 'bi bi-pencil-square' : 'fas fa-file-upload';
         return (
             '<div class="custom-file-upload' + hasFile + '" data-default="' + escapeHtml(defaultLabel) + '">' +
             '<input type="file" id="' + inputId + '" class="file-input-hidden' + cls + '"' + acceptAttr + multi + '>' +
             '<button type="button" class="btn btn-outline-primary btn-upload-file btn-upload-file-sm w-100">' +
-            '<i class="fas fa-file-upload me-1"></i><span class="upload-btn-text" title="' + escapeHtml(savedFileName || '') + '">' + escapeHtml(display) + '</span>' +
+            '<i class="' + iconClass + ' me-1"></i><span class="upload-btn-text" title="' + escapeHtml(savedFileName || '') + '">' + escapeHtml(display) + '</span>' +
             '</button></div>'
         );
     }
@@ -277,6 +212,10 @@ window.ApplicationForm = (function () {
                     textEl.textContent = getFileLabelText(input, defaultLabel);
                     textEl.title = Array.from(input.files).map(function (f) { return f.name; }).join(', ');
                     wrap.classList.add('has-file');
+                    const iconEl = btn.querySelector('i');
+                    if (iconEl) {
+                        iconEl.className = 'bi bi-pencil-square me-1';
+                    }
                     if (previewKey === 'drafting') storeFilesPreview('drafting', input.files);
                     else if (previewKey && input.files.length > 1) storeFilesPreview(previewKey, input.files);
                     else if (previewKey) storeFilePreview(previewKey, input.files[0]);
@@ -366,58 +305,11 @@ window.ApplicationForm = (function () {
 
         const sel = document.getElementById('courtBenchSelect');
         if (sel && formMode !== 'previewOnly') {
-            sel.onchange = function () {
+            sel.addEventListener('change', function () {
                 sessionStorage.setItem('courtBench', sel.value);
                 saveDraft();
-            };
-        }
-    }
-
-    const LIST_CONTAINER_IDS = {
-        edu: 'eduListContainer',
-        add: 'additionalListContainer',
-        bar: 'barExpContainer',
-        practice: 'courtPracticeContainer',
-        judgmentAAG: 'judgmentAAGContainer',
-        judgmentAGP: 'judgmentAGPContainer'
-    };
-
-    function getListSyncHandler(type) {
-        const syncMap = {
-            edu: function () { if (AF.tab2) AF.tab2.syncEdu(); },
-            add: function () { if (AF.tab2) AF.tab2.syncAdditional(); },
-            bar: function () { if (AF.tab3) AF.tab3.syncBar(); },
-            practice: function () { if (AF.tab3) AF.tab3.syncPractice(); },
-            judgmentAAG: function () { if (AF.tab3) AF.tab3.syncJudgmentAAG(); },
-            judgmentAGP: function () { if (AF.tab3) AF.tab3.syncJudgmentAGP(); }
-        };
-        return syncMap[type] || null;
-    }
-
-    /** One delegated listener per list container — safe across renderList re-renders. */
-    function initListDelegations() {
-        Object.keys(LIST_CONTAINER_IDS).forEach(function (type) {
-            const containerId = LIST_CONTAINER_IDS[type];
-            const container = document.getElementById(containerId);
-            if (!container || container.getAttribute('data-delegation-bound') === '1') {
-                return;
-            }
-            container.setAttribute('data-delegation-bound', '1');
-
-            const syncFn = getListSyncHandler(type);
-            if (syncFn) {
-                container.addEventListener('change', function (e) {
-                    if (!e.target || !e.target.matches('input, select, textarea')) return;
-                    syncFn();
-                });
-            }
-
-            container.addEventListener('click', function (e) {
-                const btn = e.target.closest('.remove-item[data-type="' + type + '"]');
-                if (!btn || !container.contains(btn)) return;
-                handleRemove({ target: btn });
             });
-        });
+        }
     }
 
     function renderList(containerId, items, renderItemFn, type) {
@@ -427,27 +319,43 @@ window.ApplicationForm = (function () {
         items.forEach(function (item, idx) {
             const div = document.createElement('div');
             div.className = 'list-item';
-            if (item.certificateFileName) {
-                div.setAttribute('data-cert-name', item.certificateFileName);
-            } else if (item.certificatePath) {
-                const pathName = String(item.certificatePath).split(/[/\\]/).pop();
-                if (pathName) div.setAttribute('data-cert-name', pathName);
-            }
-            if (item.certificatePath) {
-                div.setAttribute('data-cert-path', item.certificatePath);
-            }
-            if (item.educationId) {
-                div.setAttribute('data-education-id', String(item.educationId));
-            }
-            if (item.additionalId) {
-                div.setAttribute('data-additional-id', String(item.additionalId));
-            }
+            if (item.certificateFileName) div.setAttribute('data-cert-name', item.certificateFileName);
             div.innerHTML = renderItemFn(item, idx, type);
             container.appendChild(div);
         });
-        if (container.querySelector('.custom-file-upload')) {
-            initFileUploadButtons(container);
-        }
+        attachRemoveEvents(type);
+        attachSyncEvents(type);
+        initFileUploadButtons(container);
+    }
+
+    function attachRemoveEvents(type) {
+        document.querySelectorAll('.remove-item[data-type="' + type + '"]').forEach(function (btn) {
+            btn.onclick = handleRemove;
+        });
+    }
+
+    function attachSyncEvents(type) {
+        const map = {
+            edu: '#eduListContainer input',
+            add: '#additionalListContainer input',
+            bar: '#barExpContainer input',
+            practice: '#courtPracticeContainer input',
+            judgmentAAG: '#judgmentAAGContainer input',
+            judgmentAGP: '#judgmentAGPContainer input'
+        };
+        const sel = map[type];
+        if (!sel) return;
+        const syncMap = {
+            edu: function () { AF.tab2.syncEdu(); },
+            add: function () { AF.tab2.syncAdditional(); },
+            bar: function () { AF.tab3.syncBar(); },
+            practice: function () { AF.tab3.syncPractice(); },
+            judgmentAAG: function () { AF.tab3.syncJudgmentAAG(); },
+            judgmentAGP: function () { AF.tab3.syncJudgmentAGP(); }
+        };
+        document.querySelectorAll(sel).forEach(function (inp) {
+            inp.onchange = syncMap[type];
+        });
     }
 
     function handleRemove(e) {
@@ -462,108 +370,8 @@ window.ApplicationForm = (function () {
             judgmentAAG: state.judgmentAAGItems,
             judgmentAGP: state.judgmentAGPItems
         };
-
-        if (type === 'edu' && AF.tab2) {
-            if (typeof AF.tab2.snapshotEduFilesFromDom === 'function') AF.tab2.snapshotEduFilesFromDom();
-            AF.tab2.syncEdu();
-        } else if (type === 'add' && AF.tab2) {
-            if (typeof AF.tab2.snapshotAdditionalFilesFromDom === 'function') AF.tab2.snapshotAdditionalFilesFromDom();
-            AF.tab2.syncAdditional();
-        }
-
-        const removedItem = lists[type] && !isNaN(idx) ? lists[type][idx] : null;
-
-        function finishRemove() {
-            if (lists[type]) lists[type].splice(idx, 1);
-            reindexFilePreviewsAfterRemove(type, idx);
-            renderAll();
-        }
-
-        function refreshTab2AfterServerDelete() {
-            const successMessage = type === 'add'
-                ? 'Additional qualification deleted successfully.'
-                : 'Educational qualification deleted successfully.';
-
-            if ((type === 'edu' || type === 'add')
-                && AF.api
-                && typeof AF.api.refreshTab2QualificationsFromApi === 'function') {
-                return AF.api.refreshTab2QualificationsFromApi()
-                    .then(function () {
-                        showToast(successMessage, 'success');
-                    })
-                    .catch(function (err) {
-                        console.warn('Tab2 refresh after delete:', err && err.message ? err.message : err);
-                        finishRemove();
-                    });
-            }
-            finishRemove();
-            showToast(successMessage, 'success');
-            return Promise.resolve();
-        }
-
-        if (type === 'edu' && removedItem) {
-            const rowEl = btn.closest('.list-item');
-            const educationId = parseInt(removedItem.educationId, 10)
-                || parseInt(rowEl && rowEl.getAttribute('data-education-id'), 10)
-                || 0;
-            if (educationId > 0 && AF.api && typeof AF.api.deleteEducationRecord === 'function') {
-                AF.api.deleteEducationRecord(educationId)
-                    .then(refreshTab2AfterServerDelete)
-                    .catch(function (err) {
-                        alert(err && err.message ? err.message : 'Failed to delete educational qualification.');
-                    });
-                return;
-            }
-        }
-
-        if (type === 'add' && removedItem) {
-            const rowEl = btn.closest('.list-item');
-            const additionalId = parseInt(removedItem.additionalId, 10)
-                || parseInt(rowEl && rowEl.getAttribute('data-additional-id'), 10)
-                || 0;
-            if (additionalId > 0 && AF.api && typeof AF.api.deleteAdditionalQualificationRecord === 'function') {
-                AF.api.deleteAdditionalQualificationRecord(additionalId)
-                    .then(refreshTab2AfterServerDelete)
-                    .catch(function (err) {
-                        alert(err && err.message ? err.message : 'Failed to delete additional qualification.');
-                    });
-                return;
-            }
-        }
-
-        finishRemove();
-    }
-
-    function reindexFilePreviewsAfterRemove(type, removedIdx) {
-        const prefixMap = {
-            edu: 'edu-',
-            add: 'add-',
-            bar: 'bar-',
-            practice: 'practice-'
-        };
-        const prefix = prefixMap[type];
-        if (!prefix || !state.filePreviews) return;
-
-        const keys = Object.keys(state.filePreviews).filter(function (k) {
-            return k.indexOf(prefix) === 0;
-        }).sort(function (a, b) {
-            return parseInt(a.slice(prefix.length), 10) - parseInt(b.slice(prefix.length), 10);
-        });
-
-        const next = {};
-        keys.forEach(function (key) {
-            const i = parseInt(key.slice(prefix.length), 10);
-            if (i < removedIdx) {
-                next[key] = state.filePreviews[key];
-            } else if (i > removedIdx) {
-                next[prefix + (i - 1)] = state.filePreviews[key];
-            }
-        });
-
-        keys.forEach(function (key) { delete state.filePreviews[key]; });
-        Object.keys(next).forEach(function (key) {
-            state.filePreviews[key] = next[key];
-        });
+        if (lists[type]) lists[type].splice(idx, 1);
+        renderAll();
     }
 
     function renderAll() {
@@ -586,11 +394,6 @@ window.ApplicationForm = (function () {
             const id = parseInt(btn.getAttribute('data-tab'), 10);
             btn.classList.toggle('active', id === tabId);
         });
-        if (tabId === 2 && AF.api && typeof AF.api.onQualificationsTabActivated === 'function') {
-            AF.api.onQualificationsTabActivated().catch(function (err) {
-                console.warn('Qualifications tab load:', err && err.message ? err.message : err);
-            });
-        }
         if (tabId === 4 && AF.tab4) AF.tab4.generatePreview();
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -678,7 +481,16 @@ window.ApplicationForm = (function () {
                 state.filePreviews[k] = app.filePreviews[k];
             });
         }
-        if (state.filePreviews.photo && state.filePreviews.photo.name) AF.tab1.setPhotoFileLabel(state.filePreviews.photo.name);
+        if (state.filePreviews.photo && state.filePreviews.photo.name && !state.filePreviews.photo.isExisting) {
+            AF.tab1.setPhotoFileLabel(state.filePreviews.photo.name);
+        } else if (window.sessionStorage.getItem('photoPath') && AF.tab1.showExistingPhoto) {
+            AF.tab1.showExistingPhoto(
+                window.sessionStorage.getItem('photoPath'),
+                window.sessionStorage.getItem('photoName')
+            );
+        } else if (state.filePreviews.photo && state.filePreviews.photo.name) {
+            AF.tab1.setPhotoFileLabel(state.filePreviews.photo.name);
+        }
         if (AF.tab1.mountEnrolmentCertUpload) AF.tab1.mountEnrolmentCertUpload();
         renderAll();
         mountJobBanner();
@@ -742,8 +554,6 @@ window.ApplicationForm = (function () {
         tabs: tabs,
         utils: {
             escapeHtml: escapeHtml,
-            showToast: showToast,
-            formatDateForInput: formatDateForInput,
             truncateFileName: truncateFileName,
             pv: function (val) { return escapeHtml(val || '—'); },
             previewFieldRow: function (label, value) {
@@ -765,21 +575,21 @@ window.ApplicationForm = (function () {
                     if (!p.length) return '<span class="text-muted small">No file uploaded</span>';
                     return '<div class="preview-doc-list">' + p.map(function (f) { return AF.files.renderDocPreview(f); }).join('') + '</div>';
                 }
-                if (!p.dataUrl) return '<span class="text-muted small">' + AF.utils.pv(p.name) + '</span>';
+                const src = p.dataUrl || p.url || '';
+                if (!src) return '<span class="text-muted small">' + AF.utils.pv(p.name) + '</span>';
                 if (p.isImage) {
-                    return '<div class="preview-doc preview-doc-image"><img src="' + p.dataUrl + '" alt="' + AF.utils.pv(p.name) + '"><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
+                    return '<div class="preview-doc preview-doc-image"><img src="' + src + '" alt="' + AF.utils.pv(p.name) + '"><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
                 }
                 if (p.isPdf) {
-                    return '<div class="preview-doc preview-doc-pdf"><iframe src="' + p.dataUrl + '" title="' + AF.utils.pv(p.name) + '"></iframe><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
+                    return '<div class="preview-doc preview-doc-pdf"><iframe src="' + src + '" title="' + AF.utils.pv(p.name) + '"></iframe><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
                 }
-                return '<div class="preview-doc preview-doc-file"><a href="' + p.dataUrl + '" download="' + AF.utils.pv(p.name) + '"><i class="fas fa-file-alt me-1"></i>' + AF.utils.pv(p.name) + '</a></div>';
+                return '<div class="preview-doc preview-doc-file"><a href="' + src + '" download="' + AF.utils.pv(p.name) + '" target="_blank" rel="noopener"><i class="fas fa-file-alt me-1"></i>' + AF.utils.pv(p.name) + '</a></div>';
             }
         },
         lists: {
             renderList: renderList,
             renderAll: renderAll,
-            handleRemove: handleRemove,
-            initListDelegations: initListDelegations
+            handleRemove: handleRemove
         },
         nav: {
             switchTab: switchTab,
@@ -798,8 +608,6 @@ window.ApplicationForm = (function () {
         tab3: null,
         tab4: null
     };
-
-    initListDelegations();
 
     return AF;
 })();

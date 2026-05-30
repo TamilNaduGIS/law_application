@@ -571,6 +571,16 @@ font-size: 13.5px;
     box-shadow: 0 6px 15px rgba(13,110,253,.22);
 }
 
+.compact-upload-wrapper.has-file .upload-action-btn{
+    background: linear-gradient(135deg,#198754,#20c997);
+    box-shadow: 0 6px 15px rgba(25,135,84,.22);
+}
+
+.compact-upload-wrapper.has-file .compact-upload-card{
+    border-color: rgba(25,135,84,.35);
+    background: linear-gradient(145deg,#ffffff,#f6fff9);
+}
+
 .compact-upload-card:hover .upload-action-btn{
     transform: scale(1.04);
 }

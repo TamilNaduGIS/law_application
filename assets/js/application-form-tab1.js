@@ -24,6 +24,80 @@
 
 
 
+    function fileNameFromPath(path) {
+
+        if (!path) return '';
+
+        const base = String(path).replace(/\\/g, '/').split('/').pop() || '';
+
+        const match = base.match(/^(?:PHOTO|ENROLMENT_CERTIFICATE)_\d+_(.+)$/i);
+
+        return match ? match[1] : base;
+
+    }
+
+
+
+    function resolveUploadUrl(path) {
+
+        if (!path) return '';
+
+        const p = String(path).replace(/\\/g, '/');
+
+        if (/^https?:\/\//i.test(p)) return p;
+
+        let base = '';
+
+        if (window.LawPortal && window.LawPortal.secureApiBase) {
+
+            base = String(window.LawPortal.secureApiBase).replace(/\/?$/, '/');
+
+        } else if (window.LawPortal && window.LawPortal.apiBase) {
+
+            base = String(window.LawPortal.apiBase).replace(/\/api\/?$/, '/').replace(/\/?$/, '/');
+
+        } else {
+
+            const marker = '/law_application';
+
+            const pathname = window.location.pathname.replace(/\\/g, '/');
+
+            const idx = pathname.toLowerCase().indexOf(marker);
+
+            if (idx !== -1) {
+
+                base = window.location.origin + pathname.substring(0, idx + marker.length) + '/backend/public/';
+
+            } else {
+
+                base = new URL('backend/public/', window.location.href).href.replace(/\/?$/, '/');
+
+            }
+
+        }
+
+        return base + p.replace(/^\//, '');
+
+    }
+
+
+
+    function hasExistingPhoto() {
+
+        return !!(window.sessionStorage.getItem('photoPath') || '').trim();
+
+    }
+
+
+
+    function hasExistingEnrolmentCert() {
+
+        return !!(window.sessionStorage.getItem('enrolmentCertPath') || '').trim();
+
+    }
+
+
+
     function getPhotoWrapper() {
 
         const photoInput = document.getElementById('photoUpload');
@@ -42,7 +116,7 @@
 
         const preview = AF.state.filePreviews.photo;
 
-        return !!(preview && preview.name);
+        return !!(preview && preview.name) || hasExistingPhoto();
 
     }
 
@@ -56,7 +130,7 @@
 
         const preview = AF.state.filePreviews.enrolmentCert;
 
-        return !!(preview && preview.name);
+        return !!(preview && preview.name) || hasExistingEnrolmentCert();
 
     }
 
@@ -70,7 +144,13 @@
 
         const preview = AF.state.filePreviews.photo;
 
-        return preview && preview.name ? preview.name : '';
+        if (preview && preview.name) return preview.name;
+
+        const storedName = window.sessionStorage.getItem('photoName') || '';
+
+        if (storedName) return storedName;
+
+        return fileNameFromPath(window.sessionStorage.getItem('photoPath') || '');
 
     }
 
@@ -84,7 +164,13 @@
 
         const preview = AF.state.filePreviews.enrolmentCert;
 
-        return preview && preview.name ? preview.name : '';
+        if (preview && preview.name) return preview.name;
+
+        const storedName = window.sessionStorage.getItem('enrolmentCertName') || '';
+
+        if (storedName) return storedName;
+
+        return fileNameFromPath(window.sessionStorage.getItem('enrolmentCertPath') || '');
 
     }
 
@@ -120,6 +206,12 @@
 
             community: document.getElementById('community').value,
 
+            subCaste: document.getElementById('subCaste') ? document.getElementById('subCaste').value.trim() : '',
+
+            yearsOfPracticeHcm: document.getElementById('yearsOfPracticeHcm')
+                ? document.getElementById('yearsOfPracticeHcm').value.trim()
+                : '',
+
             mobile: document.getElementById('mobile').value.trim(),
 
             phone: document.getElementById('phone').value.trim(),
@@ -146,7 +238,11 @@
 
             photoFileName: getPhotoFileName(),
 
-            enrolmentCertFileName: getEnrolmentCertFileName()
+            photoPath: window.sessionStorage.getItem('photoPath') || '',
+
+            enrolmentCertFileName: getEnrolmentCertFileName(),
+
+            enrolmentCertPath: window.sessionStorage.getItem('enrolmentCertPath') || ''
 
         };
 
@@ -178,7 +274,30 @@
 
         setVal('religion', data.religion);
 
-        if (data.community) document.getElementById('community').value = data.community;
+        const subCasteValue = data.subCaste || data.caste || '';
+        if (data.community) {
+            document.getElementById('community').value = data.community;
+            if (AF.api && typeof AF.api.populateSubCasteSelect === 'function') {
+                AF.api.populateSubCasteSelect(data.community, subCasteValue);
+            }
+        } else if (subCasteValue && document.getElementById('subCaste')) {
+            document.getElementById('subCaste').value = subCasteValue;
+        }
+
+        setVal('yearsOfPracticeHcm', data.yearsOfPracticeHcm);
+
+        if (data.enrolmentCertPath) {
+            window.sessionStorage.setItem('enrolmentCertPath', data.enrolmentCertPath);
+        }
+        if (data.enrolmentCertFileName) {
+            window.sessionStorage.setItem('enrolmentCertName', data.enrolmentCertFileName);
+        }
+        if (data.photoPath) {
+            window.sessionStorage.setItem('photoPath', data.photoPath);
+        }
+        if (data.photoFileName) {
+            window.sessionStorage.setItem('photoName', data.photoFileName);
+        }
 
         setVal('mobile', data.mobile);
 
@@ -208,9 +327,76 @@
 
         setVal('permanentAddress', data.permanentAddress);
 
-        if (data.photoFileName) setPhotoFileLabel(data.photoFileName);
+        if (data.photoPath) {
+            showExistingPhoto(data.photoPath, data.photoFileName);
+        } else if (data.photoFileName) {
+            setPhotoFileLabel(data.photoFileName);
+        }
 
-        if (data.enrolmentCertFileName) mountEnrolmentCertUpload(data.enrolmentCertFileName);
+        const certName = data.enrolmentCertFileName
+            || (data.enrolmentCertPath ? fileNameFromPath(data.enrolmentCertPath) : '');
+
+        if (certName || data.enrolmentCertPath) {
+            mountEnrolmentCertUpload(certName);
+        }
+
+    }
+
+
+
+    function showExistingPhoto(photoPath, fileName) {
+
+        const path = photoPath || window.sessionStorage.getItem('photoPath') || '';
+
+        if (!path) return;
+
+        window.sessionStorage.setItem('photoPath', path);
+
+        const wrap = getPhotoWrapper();
+
+        if (!wrap) return;
+
+        const name = fileName || window.sessionStorage.getItem('photoName') || fileNameFromPath(path);
+
+        const url = resolveUploadUrl(path);
+
+        const subtitle = wrap.querySelector('.upload-subtitle');
+
+        const iconWrapper = wrap.querySelector('.upload-icon-wrapper');
+
+        const actionBtn = wrap.querySelector('.upload-action-btn');
+
+        if (subtitle) {
+
+            subtitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + AF.utils.escapeHtml(name);
+
+        }
+
+        if (iconWrapper) {
+
+            iconWrapper.innerHTML = '<img src="' + AF.utils.escapeHtml(url) + '" class="preview-upload-image" alt="Photo">';
+
+        }
+
+        if (actionBtn) {
+
+            actionBtn.innerHTML = '<i class="bi bi-pencil-square me-1"></i> Update';
+
+        }
+
+        wrap.classList.add('has-file');
+
+        AF.state.filePreviews.photo = {
+
+            name: name,
+
+            url: url,
+
+            isImage: true,
+
+            isExisting: true
+
+        };
 
     }
 
@@ -232,6 +418,14 @@
 
         wrap.classList.add('has-file');
 
+        const actionBtn = wrap.querySelector('.upload-action-btn');
+
+        if (actionBtn) {
+
+            actionBtn.innerHTML = '<i class="bi bi-pencil-square me-1"></i> Update';
+
+        }
+
     }
 
 
@@ -244,8 +438,14 @@
 
         const preview = AF.state.filePreviews.enrolmentCert;
 
+        const existingPath = window.sessionStorage.getItem('enrolmentCertPath') || '';
+
         const savedName = fileNameFromPersonal
-            || (preview && preview.name ? preview.name : '');
+            || window.sessionStorage.getItem('enrolmentCertName')
+            || (preview && preview.name ? preview.name : '')
+            || fileNameFromPath(existingPath);
+
+        const isExisting = !!existingPath && !(preview && preview.name);
 
         mount.innerHTML = AF.files.buildFileUploadHtml(
 
@@ -259,11 +459,33 @@
 
             ENROL_CERT_ACCEPT,
 
-            false
+            false,
+
+            isExisting
 
         );
 
         AF.files.initFileUploadButtons(mount);
+
+        if (isExisting && existingPath) {
+
+            const certUrl = resolveUploadUrl(existingPath);
+
+            AF.state.filePreviews.enrolmentCert = {
+
+                name: savedName,
+
+                url: certUrl,
+
+                isExisting: true,
+
+                isPdf: /\.pdf$/i.test(savedName),
+
+                isImage: /\.(jpe?g|png|gif|webp)$/i.test(savedName)
+
+            };
+
+        }
 
     }
 
@@ -333,15 +555,11 @@
 
     function prefillTab1FromSession() {
 
-        const profile = AppData.getPersonalProfile();
+        const profile = AppData.getPersonalProfile() || {};
 
-        fillPersonal(profile);
+        const draftPersonal = (AF.config.existingApp && AF.config.existingApp.personal) || {};
 
-        if (AF.config.existingApp && AF.config.existingApp.personal) {
-
-            fillPersonal(AF.config.existingApp.personal);
-
-        }
+        fillPersonal(Object.assign({}, profile, draftPersonal));
 
     }
 
@@ -390,6 +608,14 @@
             if (iconWrapper) {
 
                 iconWrapper.innerHTML = '<img src="' + imageURL + '" class="preview-upload-image" alt="Preview">';
+
+            }
+
+            const actionBtn = wrap.querySelector('.upload-action-btn');
+
+            if (actionBtn) {
+
+                actionBtn.innerHTML = '<i class="bi bi-pencil-square me-1"></i> Update';
 
             }
 
@@ -505,6 +731,19 @@
 
 
 
+    function initSubCasteDropdown() {
+        const communityEl = document.getElementById('community');
+        if (!communityEl) {
+            return;
+        }
+
+        communityEl.addEventListener('change', function () {
+            if (AF.api && typeof AF.api.populateSubCasteSelect === 'function') {
+                AF.api.populateSubCasteSelect(communityEl.value, '');
+            }
+        });
+    }
+
     function init() {
 
         mountEnrolmentCertUpload();
@@ -514,6 +753,8 @@
         initSeniorEnrolmentField();
 
         initLawOfficerToggle();
+
+        initSubCasteDropdown();
 
 
 
@@ -538,6 +779,8 @@
         fillPersonal: fillPersonal,
 
         setPhotoFileLabel: setPhotoFileLabel,
+
+        showExistingPhoto: showExistingPhoto,
 
         mountEnrolmentCertUpload: mountEnrolmentCertUpload,
 

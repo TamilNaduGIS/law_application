@@ -36,7 +36,7 @@ class ApplicationModal
             error_log('resolveApplicationId: ' . $e->getMessage());
         }
 
-        return 0;
+        return $applicantId;
     }
 
     /**
@@ -45,7 +45,12 @@ class ApplicationModal
      */
     public static function savePersonalInfo(array $payload): array
     {
-        return self::callJsonProcedure('sp_application_save_personal_info', $payload);
+        $sql="CALL public.sp_application_save_personal_info(:payload,null)";
+        $stmt = Database::WriteConnection()->prepare($sql);
+        $stmt->bindValue(':payload', json_encode($payload), PDO::PARAM_STR);
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+
     }
 
     /**
@@ -151,39 +156,8 @@ class ApplicationModal
         return null;
     }
 
-    /**
-     * @param array<string, mixed> $payload
-     * @return array{ok: bool, message?: string, error?: string}
-     */
-    public static function saveEducation(array $payload): array
+    public static function saveEducation(int $applicationId, array $education): array
     {
-        return self::callJsonProcedure('sp_application_save_education', $payload);
-    }
-
-    /**
-     * @param array<string, mixed> $payload
-     * @return array{ok: bool, message?: string, error?: string}
-     */
-    public static function saveAdditionalQualification(array $payload): array
-    {
-        return self::callJsonProcedure('sp_application_save_additional_qualification', $payload);
-    }
-    public static function saveExperience(array $payload): array
-    {
-        return self::callJsonProcedure('sp_application_save_experience', $payload);
-    }
-    public static function getExperienceDataById(int $applicationId): ?array
-    {
-        try {
-            $stmt = Database::ReadDatabaseConnection()->prepare(
-                'SELECT * FROM fn_application_get_experience_details(:application_id)'
-            );
-            $stmt->bindParam(':application_id', $applicationId, PDO::PARAM_INT);
-            $stmt->execute();
-
-            return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: null;
-        } catch (PDOException $e) {
-            return null;
-        }
+        return self::callJsonProcedure('sp_application_save_education', $education);
     }
 }

@@ -232,7 +232,7 @@ class UserController extends Controller
             'mobile_no' => trim((string) $body['mobile']),
             'phone_no' => trim((string) ($body['phone'] ?? '')),
             'email_id' => trim((string) $body['email']),
-           
+            'caste' => trim((string) $body['caste']),
             'gender' => (string) $body['gender'],
             'marital_status' => self::MARITAL_MAP[$maritalCode],
             'dob' => trim((string) $body['dob']),

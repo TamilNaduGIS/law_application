@@ -1,0 +1,1125 @@
+﻿diff --git a/application-form.html b/application-form.html
+index b54ea82..0e9244b 100644
+--- a/application-form.html
++++ b/application-form.html
+@@ -285,7 +285,7 @@
+                 </div>
+                 <div class="col-md-6 field-row">
+                   <div class="field-row mb-2"><label class="form-label">Present Court of practice</label><input
+-                      type="text" class="form-control"></div>
++                      type="text" class="form-control" id="yearsOfPracticeHcm" inputmode="decimal"></div>
+                 </div>
+                 <div class="col-md-6 field-row"><label class="form-label">Father's Name</label><input type="text"
+                     class="form-control" id="fatherName"></div>
+@@ -327,10 +327,8 @@
+                   </select>
+                 </div>
+                 <div class="col-md-6 field-row">
+-                  <label class="form-label">Sub Caste</label>
++                  <label class="form-label">Caste</label>
+                   <select class="form-select" id="subCaste">
+-                    <option>sub caste</option>
+-                    <option>sub caste</option>
+                   </select>
+                 </div>
+                 <div class="col-md-6 field-row"><label class="form-label">Mobile Number *</label><input type="tel"
+@@ -1897,12 +1895,9 @@ Handled Constitutional Matters before High Court.
+   <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
+   <script src="assets/js/main.js"></script>
+ 
+-<<<<<<< HEAD
+-=======
+   <script src="assets/js/api-config.js"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+   <script src="assets/js/secure-api.js"></script>
+->>>>>>> cfbf9d7b740ff35be5896c6119956d8a3d4ef993
+   <script src="assets/js/law-portal-api.js"></script>
+   <script src="assets/js/app-data.js"></script>
+   <script src="assets/js/job-selection.js"></script>
+diff --git a/assets/css/application-form.css b/assets/css/application-form.css
+index 5197642..9397f5f 100644
+--- a/assets/css/application-form.css
++++ b/assets/css/application-form.css
+@@ -571,6 +571,16 @@ font-size: 13.5px;
+     box-shadow: 0 6px 15px rgba(13,110,253,.22);
+ }
+ 
++.compact-upload-wrapper.has-file .upload-action-btn{
++    background: linear-gradient(135deg,#198754,#20c997);
++    box-shadow: 0 6px 15px rgba(25,135,84,.22);
++}
++
++.compact-upload-wrapper.has-file .compact-upload-card{
++    border-color: rgba(25,135,84,.35);
++    background: linear-gradient(145deg,#ffffff,#f6fff9);
++}
++
+ .compact-upload-card:hover .upload-action-btn{
+     transform: scale(1.04);
+ }
+diff --git a/assets/js/application-form-api.js b/assets/js/application-form-api.js
+index b0b4881..eba600c 100644
+--- a/assets/js/application-form-api.js
++++ b/assets/js/application-form-api.js
+@@ -92,8 +92,18 @@
+         return {
+             advocateName: pickField(row, ['applicant_name', 'advocate_name', 'advocateName']),
+             enrolmentNo: pickField(row, ['bar_council_enrollement_number', 'enrollment_no', 'bar_council_number', 'enrolment_no']),
+-            seniorEnrolmentNo: pickField(row, ['senior_advocate_enrollment_no', 'senior_enrolment_no']),
+-            enrolmentDate: formatDate(pickField(row, ['enrollment_date', 'enrolment_date'])),
++            seniorEnrolmentNo: pickField(row, [
++                'bar_council_enrollement_number_senior',
++                'senior_advocate_enrollment_no',
++                'senior_enrolment_no'
++            ]),
++            enrolmentDate: formatDate(pickField(row, ['date_of_enrollment', 'enrollment_date', 'enrolment_date'])),
++            subCaste: pickField(row, ['sub_caste', 'subCaste', 'caste']),
++            yearsOfPracticeHcm: pickField(row, ['years_of_practice_hcm', 'years_of_practice', 'expyears']),
++            enrolmentCertFileName: pickField(row, ['certificate_name', 'enrolment_cert_file_name']),
++            enrolmentCertPath: pickField(row, ['certificate_path', 'enrolment_cert_path']),
++            photoPath: pickField(row, ['photo_path', 'photoPath']),
++            photoFileName: pickField(row, ['photo_name', 'photo_file_name']),
+             fatherName: pickField(row, ['father_name', 'fatherName']),
+             gender: mapGender(pickField(row, ['gender'])),
+             maritalStatus: mapMarital(pickField(row, ['marital_status', 'maritalStatus'])),
+@@ -119,6 +129,9 @@
+         if (!personal) return null;
+ 
+         const yearsHc = pickField(row, ['years_of_practice_hcm', 'years_of_practice', 'expyears']);
++        if (yearsHc !== '' && yearsHc !== null) {
++            personal.yearsOfPracticeHcm = String(yearsHc);
++        }
+         const payload = { personal: personal };
+         if (yearsHc !== '' && yearsHc !== null) {
+             payload.specificBarYears = String(yearsHc);
+@@ -126,6 +139,13 @@
+         return payload;
+     }
+ 
++    let tokensPromise = null;
++    let applicantDetailsPromise = null;
++    let applicantDetailsCache = null;
++    let applicantDetailsCacheId = '';
++    const casteDetailsCache = {};
++    const casteDetailsInflight = {};
++
+     function ensureSessionTokens() {
+         if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+             return Promise.resolve();
+@@ -134,14 +154,20 @@
+             && global.sessionStorage.getItem('csrf_token')) {
+             return Promise.resolve();
+         }
+-        return global.LawPortal.apiRequest('getTOKENS', 'GET').then(function (res) {
++        if (tokensPromise) {
++            return tokensPromise;
++        }
++        tokensPromise = global.LawPortal.apiRequest('getTOKENS', 'GET').then(function (res) {
+             if (res && res.encryption_key) {
+                 global.sessionStorage.setItem('encryption_key', res.encryption_key);
+             }
+             if (res && res.csrf_token) {
+                 global.sessionStorage.setItem('csrf_token', res.csrf_token);
+             }
+-        }).catch(function () { /* optional */ });
++        }).catch(function () { /* optional */ }).finally(function () {
++            tokensPromise = null;
++        });
++        return tokensPromise;
+     }
+ 
+     function loadApplicantDetails(applicantId) {
+@@ -159,7 +185,14 @@
+             resolvedId = String(global.sessionStorage.getItem('applicantId') || '').trim();
+         }
+ 
+-        return ensureSessionTokens().then(function () {
++        if (applicantDetailsCache && applicantDetailsCacheId === resolvedId) {
++            return Promise.resolve(applicantDetailsCache);
++        }
++        if (applicantDetailsPromise) {
++            return applicantDetailsPromise;
++        }
++
++        applicantDetailsPromise = ensureSessionTokens().then(function () {
+             return global.LawPortal.apiRequest('vacancy/details', 'POST', {
+                 applicant_id: resolvedId,
+                 applicantId: resolvedId
+@@ -170,11 +203,19 @@
+             }
+             const row = extractApplicantRow(res);
+             if (!row || !Object.keys(row).length) {
++                applicantDetailsCache = null;
++                applicantDetailsCacheId = resolvedId;
+                 return null;
+             }
+             syncSessionFromRow(row);
++            applicantDetailsCache = row;
++            applicantDetailsCacheId = resolvedId;
+             return row;
++        }).finally(function () {
++            applicantDetailsPromise = null;
+         });
++
++        return applicantDetailsPromise;
+     }
+ 
+     function syncSessionFromRow(row) {
+@@ -183,10 +224,19 @@
+         const mobile = pickField(row, ['mobile_no', 'mobile']);
+         const applicantId = pickField(row, ['applicant_id', 'applicantId']);
+ 
++        const photoPath = pickField(row, ['photo_path', 'photoPath']);
++        const certPath = pickField(row, ['certificate_path', 'enrolment_cert_path']);
++        const certName = pickField(row, ['certificate_name', 'enrolment_cert_file_name']);
++        const photoName = pickField(row, ['photo_name', 'photo_file_name']);
++
+         if (name) global.sessionStorage.setItem('advocateName', name);
+         if (enrolment) global.sessionStorage.setItem('enrolmentNo', enrolment);
+         if (mobile) global.sessionStorage.setItem('mobile', mobile);
+         if (applicantId) global.sessionStorage.setItem('applicantId', String(applicantId));
++        if (photoPath) global.sessionStorage.setItem('photoPath', photoPath);
++        if (photoName) global.sessionStorage.setItem('photoName', photoName);
++        if (certPath) global.sessionStorage.setItem('enrolmentCertPath', certPath);
++        if (certName) global.sessionStorage.setItem('enrolmentCertName', certName);
+ 
+         const strong = document.querySelector('.topbar-right .user-info strong');
+         if (strong && name) strong.textContent = name;
+@@ -221,6 +271,132 @@
+         return el && el.value != null ? String(el.value).trim() : '';
+     }
+ 
++    function formatDateForProcedure(isoDate) {
++        const s = String(isoDate || '').trim();
++        if (!s) {
++            return '';
++        }
++        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
++            const parts = s.split('-');
++            return parts[2] + '-' + parts[1] + '-' + parts[0];
++        }
++        return s;
++    }
++
++    function extractCasteList(res) {
++        if (!res) {
++            return [];
++        }
++        let body = res;
++        if (global.SecureAPI && typeof global.SecureAPI.unwrapResponse === 'function') {
++            body = global.SecureAPI.unwrapResponse(res) || res;
++        } else if (res.data !== undefined) {
++            body = res.data;
++        }
++        if (Array.isArray(body)) {
++            return body.map(function (row) {
++                if (typeof row === 'string') {
++                    return row;
++                }
++                return row.caste || row.caste_name || row.sub_caste || '';
++            }).filter(Boolean);
++        }
++        if (body && Array.isArray(body.castes)) {
++            return body.castes.filter(Boolean);
++        }
++        if (body && Array.isArray(body.data)) {
++            return extractCasteList({ data: body.data });
++        }
++        return [];
++    }
++
++    function loadCasteDetails(community) {
++        const code = String(community || '').trim();
++        if (!code) {
++            return Promise.resolve([]);
++        }
++        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
++            return Promise.resolve([]);
++        }
++        if (casteDetailsCache[code]) {
++            return Promise.resolve(casteDetailsCache[code].slice());
++        }
++        if (casteDetailsInflight[code]) {
++            return casteDetailsInflight[code];
++        }
++
++        casteDetailsInflight[code] = ensureSessionTokens().then(function () {
++            return global.LawPortal.apiRequest('caste/details', 'POST', { community: code });
++        }).then(function (res) {
++            if (res && res.ok === false) {
++                throw new Error(res.error || 'Unable to load caste details.');
++            }
++            const castes = extractCasteList(res);
++            casteDetailsCache[code] = castes;
++            return castes.slice();
++        }).finally(function () {
++            delete casteDetailsInflight[code];
++        });
++
++        return casteDetailsInflight[code];
++    }
++
++    let populateSubCasteToken = 0;
++
++    function populateSubCasteSelect(community, selectedValue) {
++        const select = document.getElementById('subCaste');
++        if (!select) {
++            return Promise.resolve();
++        }
++
++        const code = String(community || '').trim();
++        if (!code) {
++            select.innerHTML = '<option value="">Select Sub Caste</option>';
++            return Promise.resolve();
++        }
++
++        const previous = selectedValue != null ? String(selectedValue).trim() : select.value;
++        const requestToken = ++populateSubCasteToken;
++
++        // select.innerHTML = '<option value="">Select Sub Caste</option>';
++        select.disabled = true;
++
++        return loadCasteDetails(code).then(function (castes) {
++            if (requestToken !== populateSubCasteToken) {
++                return;
++            }
++            castes.forEach(function (name) {
++                const opt = document.createElement('option');
++                opt.value = name;
++                opt.textContent = name;
++                select.appendChild(opt);
++            });
++            if (previous) {
++                const hasOption = Array.prototype.some.call(select.options, function (opt) {
++                    return opt.value === previous;
++                });
++                if (!hasOption && previous) {
++                    const extra = document.createElement('option');
++                    extra.value = previous;
++                    extra.textContent = previous;
++                    select.appendChild(extra);
++                }
++                select.value = previous;
++            }
++        }).catch(function (err) {
++            console.warn('Caste details:', err && err.message ? err.message : err);
++            if (previous) {
++                const opt = document.createElement('option');
++                opt.value = previous;
++                opt.textContent = previous;
++                select.appendChild(opt);
++                select.value = previous;
++            }
++        }).finally(function () {
++            select.disabled = false;
++        });
++    }
++
+     function buildPersonalSavePayload(personal) {
+         const applicantId = getApplicantId();
+         const storedAppId = global.sessionStorage.getItem('applicationId');
+@@ -232,12 +408,26 @@
+             applicant_name: personal.advocateName,
+             father_name: personal.fatherName,
+             bar_council_enrollement_number: personal.enrolmentNo,
++            bar_council_enrollement_number_senior: (personal.seniorEnrolmentNo || formVal('seniorEnrolmentNo')).toUpperCase(),
++            date_of_enrollment: formatDateForProcedure(personal.enrolmentDate || formVal('enrolmentDate')),
++            certificate_name: global.sessionStorage.getItem('enrolmentCertName')
++                || personal.enrolmentCertFileName
++                || '',
++            certificate_path: global.sessionStorage.getItem('enrolmentCertPath')
++                || personal.enrolmentCertPath
++                || '',
++            sub_caste: personal.subCaste || formVal('subCaste'),
++            years_of_practice_hcm: personal.yearsOfPracticeHcm !== undefined && personal.yearsOfPracticeHcm !== ''
++                ? personal.yearsOfPracticeHcm
++                : formVal('yearsOfPracticeHcm'),
+             gender: personal.gender,
+             dob: personal.dob,
+             nationality: personal.nationality,
+             religion: personal.religion,
+             community: personal.community,
+-            photo_path: global.sessionStorage.getItem('photoPath') || '',
++            photo_path: global.sessionStorage.getItem('photoPath')
++                || personal.photoPath
++                || '',
+             mobile_no: personal.mobile,
+             phone_number: personal.phone,
+             email_id: personal.email,
+@@ -280,6 +470,8 @@
+             if (body.application_id) {
+                 global.sessionStorage.setItem('applicationId', String(body.application_id));
+             }
++            applicantDetailsCache = null;
++            applicantDetailsCacheId = '';
+             return body;
+         });
+     }
+@@ -342,23 +534,46 @@
+             }
+             if (documentType === 'PHOTO' && body.file_path) {
+                 global.sessionStorage.setItem('photoPath', body.file_path);
++                if (body.file_name) {
++                    global.sessionStorage.setItem('photoName', body.file_name);
++                }
++            }
++            if (documentType === 'ENROLMENT_CERTIFICATE') {
++                if (body.file_path) {
++                    global.sessionStorage.setItem('enrolmentCertPath', body.file_path);
++                }
++                if (body.file_name) {
++                    global.sessionStorage.setItem('enrolmentCertName', body.file_name);
++                }
+             }
+             return body;
+         });
+     }
+ 
++    function isNewUploadSource(src) {
++        if (!src) return false;
++        if (typeof File !== 'undefined' && src instanceof File) return true;
++        return !!(src.dataUrl);
++    }
++
+     function getTab1UploadSources() {
+         const photoInput = document.getElementById('photoUpload');
+         const certInput = document.getElementById('enrolmentCertUpload');
+         const previews = AF.state.filePreviews || {};
+ 
+-        const photo = (photoInput && photoInput.files && photoInput.files[0])
++        let photo = (photoInput && photoInput.files && photoInput.files[0])
+             ? photoInput.files[0]
+-            : (previews.photo || null);
++            : null;
++        if (!photo && isNewUploadSource(previews.photo)) {
++            photo = previews.photo;
++        }
+ 
+-        const enrolmentCert = (certInput && certInput.files && certInput.files[0])
++        let enrolmentCert = (certInput && certInput.files && certInput.files[0])
+             ? certInput.files[0]
+-            : (previews.enrolmentCert || null);
++            : null;
++        if (!enrolmentCert && isNewUploadSource(previews.enrolmentCert)) {
++            enrolmentCert = previews.enrolmentCert;
++        }
+ 
+         return { photo: photo, enrolmentCert: enrolmentCert };
+     }
+@@ -379,6 +594,9 @@
+         const uploadStep = uploads.length ? Promise.all(uploads) : Promise.resolve();
+ 
+         return uploadStep.then(function () {
++            personal.photoPath = global.sessionStorage.getItem('photoPath') || personal.photoPath || '';
++            personal.enrolmentCertPath = global.sessionStorage.getItem('enrolmentCertPath') || personal.enrolmentCertPath || '';
++            personal.enrolmentCertFileName = global.sessionStorage.getItem('enrolmentCertName') || personal.enrolmentCertFileName || '';
+             return savePersonalInfo(personal);
+         });
+     }
+@@ -390,6 +608,8 @@
+         loadApplicantDetails: loadApplicantDetails,
+         ensureSessionTokens: ensureSessionTokens,
+         buildPersonalSavePayload: buildPersonalSavePayload,
++        loadCasteDetails: loadCasteDetails,
++        populateSubCasteSelect: populateSubCasteSelect,
+         savePersonalInfo: savePersonalInfo,
+         uploadDocument: uploadDocument,
+         saveTab1WithDocuments: saveTab1WithDocuments
+diff --git a/assets/js/application-form-core.js b/assets/js/application-form-core.js
+index 820898d..c644aaa 100644
+--- a/assets/js/application-form-core.js
++++ b/assets/js/application-form-core.js
+@@ -173,17 +173,18 @@ window.ApplicationForm = (function () {
+         });
+     }
+ 
+-    function buildFileUploadHtml(inputId, defaultLabel, savedFileName, extraClass, accept, multiple) {
++    function buildFileUploadHtml(inputId, defaultLabel, savedFileName, extraClass, accept, multiple, isExisting) {
+         const display = savedFileName ? truncateFileName(savedFileName) : defaultLabel;
+         const hasFile = savedFileName ? ' has-file' : '';
+         const multi = multiple ? ' multiple' : '';
+         const acceptAttr = accept ? ' accept="' + accept + '"' : '';
+         const cls = extraClass ? ' ' + extraClass : '';
++        const iconClass = isExisting ? 'bi bi-pencil-square' : 'fas fa-file-upload';
+         return (
+             '<div class="custom-file-upload' + hasFile + '" data-default="' + escapeHtml(defaultLabel) + '">' +
+             '<input type="file" id="' + inputId + '" class="file-input-hidden' + cls + '"' + acceptAttr + multi + '>' +
+             '<button type="button" class="btn btn-outline-primary btn-upload-file btn-upload-file-sm w-100">' +
+-            '<i class="fas fa-file-upload me-1"></i><span class="upload-btn-text" title="' + escapeHtml(savedFileName || '') + '">' + escapeHtml(display) + '</span>' +
++            '<i class="' + iconClass + ' me-1"></i><span class="upload-btn-text" title="' + escapeHtml(savedFileName || '') + '">' + escapeHtml(display) + '</span>' +
+             '</button></div>'
+         );
+     }
+@@ -211,6 +212,10 @@ window.ApplicationForm = (function () {
+                     textEl.textContent = getFileLabelText(input, defaultLabel);
+                     textEl.title = Array.from(input.files).map(function (f) { return f.name; }).join(', ');
+                     wrap.classList.add('has-file');
++                    const iconEl = btn.querySelector('i');
++                    if (iconEl) {
++                        iconEl.className = 'bi bi-pencil-square me-1';
++                    }
+                     if (previewKey === 'drafting') storeFilesPreview('drafting', input.files);
+                     else if (previewKey && input.files.length > 1) storeFilesPreview(previewKey, input.files);
+                     else if (previewKey) storeFilePreview(previewKey, input.files[0]);
+@@ -476,7 +481,16 @@ window.ApplicationForm = (function () {
+                 state.filePreviews[k] = app.filePreviews[k];
+             });
+         }
+-        if (state.filePreviews.photo && state.filePreviews.photo.name) AF.tab1.setPhotoFileLabel(state.filePreviews.photo.name);
++        if (state.filePreviews.photo && state.filePreviews.photo.name && !state.filePreviews.photo.isExisting) {
++            AF.tab1.setPhotoFileLabel(state.filePreviews.photo.name);
++        } else if (window.sessionStorage.getItem('photoPath') && AF.tab1.showExistingPhoto) {
++            AF.tab1.showExistingPhoto(
++                window.sessionStorage.getItem('photoPath'),
++                window.sessionStorage.getItem('photoName')
++            );
++        } else if (state.filePreviews.photo && state.filePreviews.photo.name) {
++            AF.tab1.setPhotoFileLabel(state.filePreviews.photo.name);
++        }
+         if (AF.tab1.mountEnrolmentCertUpload) AF.tab1.mountEnrolmentCertUpload();
+         renderAll();
+         mountJobBanner();
+@@ -561,14 +575,15 @@ window.ApplicationForm = (function () {
+                     if (!p.length) return '<span class="text-muted small">No file uploaded</span>';
+                     return '<div class="preview-doc-list">' + p.map(function (f) { return AF.files.renderDocPreview(f); }).join('') + '</div>';
+                 }
+-                if (!p.dataUrl) return '<span class="text-muted small">' + AF.utils.pv(p.name) + '</span>';
++                const src = p.dataUrl || p.url || '';
++                if (!src) return '<span class="text-muted small">' + AF.utils.pv(p.name) + '</span>';
+                 if (p.isImage) {
+-                    return '<div class="preview-doc preview-doc-image"><img src="' + p.dataUrl + '" alt="' + AF.utils.pv(p.name) + '"><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
++                    return '<div class="preview-doc preview-doc-image"><img src="' + src + '" alt="' + AF.utils.pv(p.name) + '"><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
+                 }
+                 if (p.isPdf) {
+-                    return '<div class="preview-doc preview-doc-pdf"><iframe src="' + p.dataUrl + '" title="' + AF.utils.pv(p.name) + '"></iframe><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
++                    return '<div class="preview-doc preview-doc-pdf"><iframe src="' + src + '" title="' + AF.utils.pv(p.name) + '"></iframe><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
+                 }
+-                return '<div class="preview-doc preview-doc-file"><a href="' + p.dataUrl + '" download="' + AF.utils.pv(p.name) + '"><i class="fas fa-file-alt me-1"></i>' + AF.utils.pv(p.name) + '</a></div>';
++                return '<div class="preview-doc preview-doc-file"><a href="' + src + '" download="' + AF.utils.pv(p.name) + '" target="_blank" rel="noopener"><i class="fas fa-file-alt me-1"></i>' + AF.utils.pv(p.name) + '</a></div>';
+             }
+         },
+         lists: {
+diff --git a/assets/js/application-form-tab1.js b/assets/js/application-form-tab1.js
+index c118111..d9e972a 100644
+--- a/assets/js/application-form-tab1.js
++++ b/assets/js/application-form-tab1.js
+@@ -24,6 +24,80 @@
+ 
+ 
+ 
++    function fileNameFromPath(path) {
++
++        if (!path) return '';
++
++        const base = String(path).replace(/\\/g, '/').split('/').pop() || '';
++
++        const match = base.match(/^(?:PHOTO|ENROLMENT_CERTIFICATE)_\d+_(.+)$/i);
++
++        return match ? match[1] : base;
++
++    }
++
++
++
++    function resolveUploadUrl(path) {
++
++        if (!path) return '';
++
++        const p = String(path).replace(/\\/g, '/');
++
++        if (/^https?:\/\//i.test(p)) return p;
++
++        let base = '';
++
++        if (window.LawPortal && window.LawPortal.secureApiBase) {
++
++            base = String(window.LawPortal.secureApiBase).replace(/\/?$/, '/');
++
++        } else if (window.LawPortal && window.LawPortal.apiBase) {
++
++            base = String(window.LawPortal.apiBase).replace(/\/api\/?$/, '/').replace(/\/?$/, '/');
++
++        } else {
++
++            const marker = '/law_application';
++
++            const pathname = window.location.pathname.replace(/\\/g, '/');
++
++            const idx = pathname.toLowerCase().indexOf(marker);
++
++            if (idx !== -1) {
++
++                base = window.location.origin + pathname.substring(0, idx + marker.length) + '/backend/public/';
++
++            } else {
++
++                base = new URL('backend/public/', window.location.href).href.replace(/\/?$/, '/');
++
++            }
++
++        }
++
++        return base + p.replace(/^\//, '');
++
++    }
++
++
++
++    function hasExistingPhoto() {
++
++        return !!(window.sessionStorage.getItem('photoPath') || '').trim();
++
++    }
++
++
++
++    function hasExistingEnrolmentCert() {
++
++        return !!(window.sessionStorage.getItem('enrolmentCertPath') || '').trim();
++
++    }
++
++
++
+     function getPhotoWrapper() {
+ 
+         const photoInput = document.getElementById('photoUpload');
+@@ -42,7 +116,7 @@
+ 
+         const preview = AF.state.filePreviews.photo;
+ 
+-        return !!(preview && preview.name);
++        return !!(preview && preview.name) || hasExistingPhoto();
+ 
+     }
+ 
+@@ -56,7 +130,7 @@
+ 
+         const preview = AF.state.filePreviews.enrolmentCert;
+ 
+-        return !!(preview && preview.name);
++        return !!(preview && preview.name) || hasExistingEnrolmentCert();
+ 
+     }
+ 
+@@ -70,7 +144,13 @@
+ 
+         const preview = AF.state.filePreviews.photo;
+ 
+-        return preview && preview.name ? preview.name : '';
++        if (preview && preview.name) return preview.name;
++
++        const storedName = window.sessionStorage.getItem('photoName') || '';
++
++        if (storedName) return storedName;
++
++        return fileNameFromPath(window.sessionStorage.getItem('photoPath') || '');
+ 
+     }
+ 
+@@ -84,7 +164,13 @@
+ 
+         const preview = AF.state.filePreviews.enrolmentCert;
+ 
+-        return preview && preview.name ? preview.name : '';
++        if (preview && preview.name) return preview.name;
++
++        const storedName = window.sessionStorage.getItem('enrolmentCertName') || '';
++
++        if (storedName) return storedName;
++
++        return fileNameFromPath(window.sessionStorage.getItem('enrolmentCertPath') || '');
+ 
+     }
+ 
+@@ -120,6 +206,12 @@
+ 
+             community: document.getElementById('community').value,
+ 
++            subCaste: document.getElementById('subCaste') ? document.getElementById('subCaste').value.trim() : '',
++
++            yearsOfPracticeHcm: document.getElementById('yearsOfPracticeHcm')
++                ? document.getElementById('yearsOfPracticeHcm').value.trim()
++                : '',
++
+             mobile: document.getElementById('mobile').value.trim(),
+ 
+             phone: document.getElementById('phone').value.trim(),
+@@ -146,7 +238,11 @@
+ 
+             photoFileName: getPhotoFileName(),
+ 
+-            enrolmentCertFileName: getEnrolmentCertFileName()
++            photoPath: window.sessionStorage.getItem('photoPath') || '',
++
++            enrolmentCertFileName: getEnrolmentCertFileName(),
++
++            enrolmentCertPath: window.sessionStorage.getItem('enrolmentCertPath') || ''
+ 
+         };
+ 
+@@ -178,7 +274,30 @@
+ 
+         setVal('religion', data.religion);
+ 
+-        if (data.community) document.getElementById('community').value = data.community;
++        const subCasteValue = data.subCaste || data.caste || '';
++        if (data.community) {
++            document.getElementById('community').value = data.community;
++            if (AF.api && typeof AF.api.populateSubCasteSelect === 'function') {
++                AF.api.populateSubCasteSelect(data.community, subCasteValue);
++            }
++        } else if (subCasteValue && document.getElementById('subCaste')) {
++            document.getElementById('subCaste').value = subCasteValue;
++        }
++
++        setVal('yearsOfPracticeHcm', data.yearsOfPracticeHcm);
++
++        if (data.enrolmentCertPath) {
++            window.sessionStorage.setItem('enrolmentCertPath', data.enrolmentCertPath);
++        }
++        if (data.enrolmentCertFileName) {
++            window.sessionStorage.setItem('enrolmentCertName', data.enrolmentCertFileName);
++        }
++        if (data.photoPath) {
++            window.sessionStorage.setItem('photoPath', data.photoPath);
++        }
++        if (data.photoFileName) {
++            window.sessionStorage.setItem('photoName', data.photoFileName);
++        }
+ 
+         setVal('mobile', data.mobile);
+ 
+@@ -208,9 +327,76 @@
+ 
+         setVal('permanentAddress', data.permanentAddress);
+ 
+-        if (data.photoFileName) setPhotoFileLabel(data.photoFileName);
++        if (data.photoPath) {
++            showExistingPhoto(data.photoPath, data.photoFileName);
++        } else if (data.photoFileName) {
++            setPhotoFileLabel(data.photoFileName);
++        }
+ 
+-        if (data.enrolmentCertFileName) mountEnrolmentCertUpload(data.enrolmentCertFileName);
++        const certName = data.enrolmentCertFileName
++            || (data.enrolmentCertPath ? fileNameFromPath(data.enrolmentCertPath) : '');
++
++        if (certName || data.enrolmentCertPath) {
++            mountEnrolmentCertUpload(certName);
++        }
++
++    }
++
++
++
++    function showExistingPhoto(photoPath, fileName) {
++
++        const path = photoPath || window.sessionStorage.getItem('photoPath') || '';
++
++        if (!path) return;
++
++        window.sessionStorage.setItem('photoPath', path);
++
++        const wrap = getPhotoWrapper();
++
++        if (!wrap) return;
++
++        const name = fileName || window.sessionStorage.getItem('photoName') || fileNameFromPath(path);
++
++        const url = resolveUploadUrl(path);
++
++        const subtitle = wrap.querySelector('.upload-subtitle');
++
++        const iconWrapper = wrap.querySelector('.upload-icon-wrapper');
++
++        const actionBtn = wrap.querySelector('.upload-action-btn');
++
++        if (subtitle) {
++
++            subtitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + AF.utils.escapeHtml(name);
++
++        }
++
++        if (iconWrapper) {
++
++            iconWrapper.innerHTML = '<img src="' + AF.utils.escapeHtml(url) + '" class="preview-upload-image" alt="Photo">';
++
++        }
++
++        if (actionBtn) {
++
++            actionBtn.innerHTML = '<i class="bi bi-pencil-square me-1"></i> Update';
++
++        }
++
++        wrap.classList.add('has-file');
++
++        AF.state.filePreviews.photo = {
++
++            name: name,
++
++            url: url,
++
++            isImage: true,
++
++            isExisting: true
++
++        };
+ 
+     }
+ 
+@@ -232,6 +418,14 @@
+ 
+         wrap.classList.add('has-file');
+ 
++        const actionBtn = wrap.querySelector('.upload-action-btn');
++
++        if (actionBtn) {
++
++            actionBtn.innerHTML = '<i class="bi bi-pencil-square me-1"></i> Update';
++
++        }
++
+     }
+ 
+ 
+@@ -244,8 +438,14 @@
+ 
+         const preview = AF.state.filePreviews.enrolmentCert;
+ 
++        const existingPath = window.sessionStorage.getItem('enrolmentCertPath') || '';
++
+         const savedName = fileNameFromPersonal
+-            || (preview && preview.name ? preview.name : '');
++            || window.sessionStorage.getItem('enrolmentCertName')
++            || (preview && preview.name ? preview.name : '')
++            || fileNameFromPath(existingPath);
++
++        const isExisting = !!existingPath && !(preview && preview.name);
+ 
+         mount.innerHTML = AF.files.buildFileUploadHtml(
+ 
+@@ -259,12 +459,34 @@
+ 
+             ENROL_CERT_ACCEPT,
+ 
+-            false
++            false,
++
++            isExisting
+ 
+         );
+ 
+         AF.files.initFileUploadButtons(mount);
+ 
++        if (isExisting && existingPath) {
++
++            const certUrl = resolveUploadUrl(existingPath);
++
++            AF.state.filePreviews.enrolmentCert = {
++
++                name: savedName,
++
++                url: certUrl,
++
++                isExisting: true,
++
++                isPdf: /\.pdf$/i.test(savedName),
++
++                isImage: /\.(jpe?g|png|gif|webp)$/i.test(savedName)
++
++            };
++
++        }
++
+     }
+ 
+ 
+@@ -333,15 +555,11 @@
+ 
+     function prefillTab1FromSession() {
+ 
+-        const profile = AppData.getPersonalProfile();
+-
+-        fillPersonal(profile);
++        const profile = AppData.getPersonalProfile() || {};
+ 
+-        if (AF.config.existingApp && AF.config.existingApp.personal) {
++        const draftPersonal = (AF.config.existingApp && AF.config.existingApp.personal) || {};
+ 
+-            fillPersonal(AF.config.existingApp.personal);
+-
+-        }
++        fillPersonal(Object.assign({}, profile, draftPersonal));
+ 
+     }
+ 
+@@ -393,6 +611,14 @@
+ 
+             }
+ 
++            const actionBtn = wrap.querySelector('.upload-action-btn');
++
++            if (actionBtn) {
++
++                actionBtn.innerHTML = '<i class="bi bi-pencil-square me-1"></i> Update';
++
++            }
++
+             wrap.classList.add('has-file');
+ 
+         });
+@@ -505,6 +731,19 @@
+ 
+ 
+ 
++    function initSubCasteDropdown() {
++        const communityEl = document.getElementById('community');
++        if (!communityEl) {
++            return;
++        }
++
++        communityEl.addEventListener('change', function () {
++            if (AF.api && typeof AF.api.populateSubCasteSelect === 'function') {
++                AF.api.populateSubCasteSelect(communityEl.value, '');
++            }
++        });
++    }
++
+     function init() {
+ 
+         mountEnrolmentCertUpload();
+@@ -515,6 +754,8 @@
+ 
+         initLawOfficerToggle();
+ 
++        initSubCasteDropdown();
++
+ 
+ 
+         const nextBtn = document.getElementById('nextToTab2');
+@@ -539,6 +780,8 @@
+ 
+         setPhotoFileLabel: setPhotoFileLabel,
+ 
++        showExistingPhoto: showExistingPhoto,
++
+         mountEnrolmentCertUpload: mountEnrolmentCertUpload,
+ 
+         validateStep1: validateStep1,
+diff --git a/assets/js/application-form-tab4.js b/assets/js/application-form-tab4.js
+index 68eb6b3..594dadd 100644
+--- a/assets/js/application-form-tab4.js
++++ b/assets/js/application-form-tab4.js
+@@ -53,6 +53,8 @@
+             utils.previewFieldRow('Nationality', p.nationality) +
+             utils.previewFieldRow('Religion', p.religion) +
+             utils.previewFieldRow('Community', p.community) +
++            utils.previewFieldRow('Sub Caste', p.subCaste) +
++            utils.previewFieldRow('Present Court of practice', p.yearsOfPracticeHcm) +
+             utils.previewFieldRow('Mobile', p.mobile) +
+             utils.previewFieldRow('Phone', p.phone) +
+             utils.previewFieldRow('Email', p.email) +
+diff --git a/backend/public/index.php b/backend/public/index.php
+index 4c0af02..9852031 100644
+--- a/backend/public/index.php
++++ b/backend/public/index.php
+@@ -89,6 +89,12 @@ $router->add('POST', '/api/vacancy/details', [VacancyController::class, 'getVaca
+     new CSRFMiddleware(),
+ ]);
+ 
++$router->add('POST', '/api/caste/details', [VacancyController::class, 'getCasteDetails'], [
++    new RateLimitMiddleware(30, 60),
++    new AuthMiddleware(),
++    new CSRFMiddleware(),
++]);
++
+ $router->add('POST', '/api/vacancy/personal/save', [VacancyController::class, 'savePersonalInfo'], [
+     new RateLimitMiddleware(20, 60),
+     new AuthMiddleware(),
+diff --git a/backend/src/Controllers/UserController.php b/backend/src/Controllers/UserController.php
+index d932e37..28b186c 100644
+--- a/backend/src/Controllers/UserController.php
++++ b/backend/src/Controllers/UserController.php
+@@ -232,7 +232,7 @@ class UserController extends Controller
+             'mobile_no' => trim((string) $body['mobile']),
+             'phone_no' => trim((string) ($body['phone'] ?? '')),
+             'email_id' => trim((string) $body['email']),
+-           
++            'caste' => trim((string) $body['caste']),
+             'gender' => (string) $body['gender'],
+             'marital_status' => self::MARITAL_MAP[$maritalCode],
+             'dob' => trim((string) $body['dob']),
+diff --git a/backend/src/Controllers/VacancyController.php b/backend/src/Controllers/VacancyController.php
+index 641b532..580401c 100644
+--- a/backend/src/Controllers/VacancyController.php
++++ b/backend/src/Controllers/VacancyController.php
+@@ -46,13 +46,48 @@ class VacancyController extends Controller
+       ]);
+     }
+ 
+-    $query = 'SELECT * FROM public.applicant_registration WHERE applicant_id = :applicantId';
++    $query = 'SELECT * FROM public.fn_application_get_personal_info(:applicantId)';
+     $stmt = Database::ReadDatabaseConnection()->prepare($query);
+     $stmt->bindParam(':applicantId', $applicantId, PDO::PARAM_STR);
+     $stmt->execute();
+     $row = $stmt->fetch(PDO::FETCH_ASSOC);
++    // print_r(json_decode($row['fn_application_get_personal_info'], true));
++    return $this->encryptResponse(json_decode($row['fn_application_get_personal_info'], true) ?: []);
++  }
++
++  public function getCasteDetails(Request $request): Response
++  {
++    $this->setUserId($request);
++    $data = is_array($this->requestData) ? $this->requestData : [];
++    $community = trim((string) ($data['community'] ?? ''));
+ 
+-    return $this->encryptResponse($row ?: []);
++    if ($community === '') {
++      return $this->encryptResponse(['ok' => false, 'error' => 'Community is required.']);
++    }
++
++    try {
++      $stmt = Database::ReadDatabaseConnection()->prepare(
++        'SELECT * FROM public.fn_get_caste_details(:community)'
++      );
++      $stmt->bindValue(':community', $community, PDO::PARAM_STR);
++      $stmt->execute();
++      $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
++
++      $castes = [];
++      foreach ($rows as $row) {
++        $name = $row['caste'] ?? $row['caste_name'] ?? $row['sub_caste'] ?? null;
++        if ($name !== null && trim((string) $name) !== '') {
++          $castes[] = trim((string) $name);
++        }
++      }
++
++      $castes = array_values(array_unique($castes));
++
++      return $this->encryptResponse(['ok' => true, 'castes' => $castes]);
++    } catch (\PDOException $e) {
++      error_log('getCasteDetails: ' . $e->getMessage());
++      return $this->encryptResponse(['ok' => false, 'error' => 'Unable to load caste details.']);
++    }
+   }
+ 
+   public function savePersonalInfo(Request $request): Response
+@@ -74,6 +109,9 @@ class VacancyController extends Controller
+     $applicationId = ApplicationModal::resolveApplicationId($applicantId, $data);
+ 
+     $payload = $this->buildPersonalInfoPayload($data, $applicantId, $applicationId);
++ 
++ 
++    
+     $result = ApplicationModal::savePersonalInfo($payload);
+     $result['application_id'] = $applicationId;
+     $result['applicant_id'] = $applicantId;
+@@ -148,16 +186,61 @@ class VacancyController extends Controller
+ 
+     $createdBy = (int) ($data['created_by'] ?? $data['createdBy'] ?? $applicantId);
+ 
++    $enrolmentDateRaw = trim((string) (
++      $data['date_of_enrollment']
++      ?? $data['enrolment_date']
++      ?? $data['enrolmentDate']
++      ?? ''
++    ));
++
++    $certificateName = trim((string) (
++      $data['certificate_name']
++      ?? $data['certificateName']
++      ?? $data['enrolment_cert_file_name']
++      ?? $data['enrolmentCertFileName']
++      ?? ''
++    ));
++
++    $certificatePath = trim((string) (
++      $data['certificate_path']
++      ?? $data['certificatePath']
++      ?? $data['enrolment_cert_path']
++      ?? $data['enrolmentCertPath']
++      ?? ''
++    ));
++
++    $subCaste = trim((string) ($data['sub_caste'] ?? $data['subCaste'] ?? ''));
++
++    $seniorEnrolment = strtoupper(trim((string) (
++      $data['bar_council_enrollement_number_senior']
++      ?? $data['senior_enrolment_no']
++      ?? $data['seniorEnrolmentNo']
++      ?? ''
++    )));
++
++    $yearsOfPracticeHcm = $data['years_of_practice_hcm']
++      ?? $data['yearsOfPracticeHcm']
++      ?? $data['expyears']
++      ?? null;
++
+     return [
+-      'application_id' => $applicationId,
++      'applicant_id' => $applicationId,
+       'applicant_name' => trim((string) ($data['applicant_name'] ?? $data['advocateName'] ?? '')),
+       'bar_council_enrollement_number' => $enrolment,
++      'bar_council_enrollement_number_senior' => $seniorEnrolment,
+       'father_name' => trim((string) ($data['father_name'] ?? $data['fatherName'] ?? '')),
+       'gender' => self::GENDER_MAP[$genderRaw] ?? $genderRaw,
+       'dob' => $this->formatDobForProcedure($dobRaw),
++      'date_of_enrollment' => $this->formatDobForProcedure($enrolmentDateRaw),
+       'nationality' => trim((string) ($data['nationality'] ?? 'Indian')) ?: 'Indian',
+       'religion' => trim((string) ($data['religion'] ?? '')),
+       'community' => trim((string) ($data['community'] ?? '')),
++      'sub_caste' => $subCaste,
++      'certificate_name' => $certificateName,
++      'certificate_path' => $certificatePath,
++      'years_of_practice_hcm' => $yearsOfPracticeHcm !== null && $yearsOfPracticeHcm !== ''
++        ? (float) $yearsOfPracticeHcm
++        : null,
+       'photo_path' => $photoPath,
+       'mobile_no' => trim((string) ($data['mobile_no'] ?? $data['mobile'] ?? '')),
+       'phone_number' => trim((string) ($data['phone_number'] ?? $data['phone_no'] ?? $data['phone'] ?? '')),
+diff --git a/backend/src/Models/ApplicationModal.php b/backend/src/Models/ApplicationModal.php
+index 6450dd7..0e2cb22 100644
+--- a/backend/src/Models/ApplicationModal.php
++++ b/backend/src/Models/ApplicationModal.php
+@@ -45,7 +45,12 @@ class ApplicationModal
+      */
+     public static function savePersonalInfo(array $payload): array
+     {
+-        return self::callJsonProcedure('sp_application_save_personal_info', $payload);
++        $sql="CALL public.sp_application_save_personal_info(:payload,null)";
++        $stmt = Database::WriteConnection()->prepare($sql);
++        $stmt->bindValue(':payload', json_encode($payload), PDO::PARAM_STR);
++        $stmt->execute();
++        return $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
++
+     }
+ 
+     /**
+diff --git a/backend/src/Models/OtpModal.php b/backend/src/Models/OtpModal.php
+index e308b74..cfa6c73 100644
+--- a/backend/src/Models/OtpModal.php
++++ b/backend/src/Models/OtpModal.php
+@@ -4,7 +4,7 @@ namespace App\Models;
+ 
+ 
+ 
+-use App\config\Database;
++use App\Config\Database;
+ use PDO;
+ use PDOException;
+ 
+diff --git a/backend/src/Models/UserRegisterModal.php b/backend/src/Models/UserRegisterModal.php
+index 182f751..ad6ca40 100644
+--- a/backend/src/Models/UserRegisterModal.php
++++ b/backend/src/Models/UserRegisterModal.php
+@@ -2,7 +2,7 @@
+ 
+ namespace App\Models;
+ 
+-use App\config\Database;
++use App\Config\Database;
+ use PDO;
+ use PDOException;
+ 
