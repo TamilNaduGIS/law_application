@@ -1709,53 +1709,34 @@
     <i class="bi bi-arrow-up-short"></i>
     </span>
     </button>
-    <script src="js/app-data.js"></script>
+    <script src="assets/js/app-data.js"></script>
     <script>
       const loginModal = document.getElementById('loginModal');
-      
+
       document.getElementById('openLoginModal').addEventListener('click', function () {
           if (AppData.isLoggedIn()) {
               window.location.href = 'apply-post.html';
               return;
           }
-          loginModal.style.display = 'flex';
+          window.location.href = 'login.html';
       });
-      
+
       document.getElementById('closeModal').addEventListener('click', function () {
           loginModal.style.display = 'none';
       });
-      
+
       window.addEventListener('click', function (e) {
           if (e.target === loginModal) {
               loginModal.style.display = 'none';
           }
       });
-      
+
       document.getElementById('createAccountLink').addEventListener('click', function () {
           loginModal.style.display = 'none';
       });
-      
+
       document.getElementById('submitLogin').addEventListener('click', function () {
-          const enrolment = document.getElementById('enrolmentNumber').value.trim();
-          const password = document.getElementById('password').value;
-          const errorEl = document.getElementById('loginError');
-      
-          if (!enrolment || !password) {
-              errorEl.textContent = 'Please enter enrolment number and password.';
-              errorEl.style.display = 'block';
-              return;
-          }
-      
-          const result = AppData.login(enrolment, password);
-          if (!result.ok) {
-              errorEl.textContent = result.error;
-              errorEl.style.display = 'block';
-              return;
-          }
-      
-          errorEl.style.display = 'none';
-          loginModal.style.display = 'none';
-          window.location.href = 'apply-post.html';
+          window.location.href = 'login.html';
       });
     </script>
     <script>

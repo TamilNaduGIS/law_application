@@ -269,17 +269,19 @@
                       *</label><input type="text" class="form-control" id="enrolmentNo" required readonly></div>
                   <div class="col-md-6 field-row">
                     <div class="field-row mb-2"><label class="form-label">Bar Council Enrolment No.
-                        (Senior)</label><input type="text" class="form-control" id="seniorEnrolmentNo" required
-                        readonly></div>
+                        (Senior)</label><input type="text" class="form-control" id="seniorEnrolmentNo"
+                        placeholder="AB/1234/YYSR (optional)"></div>
                   </div>
                 </div>
                 <div class="col-md-6 field-row">
                   <div class="field-row mb-2"><label class="form-label">Date of Enrolment</label><input type="date"
-                      class="form-control"></div>
+                      class="form-control" id="enrolmentDate" readonly></div>
                 </div>
                 <div class="col-md-6 field-row">
-                  <div class="field-row mb-2"><label class="form-label">Self-attested copy of Enrolment Certificate
-                      issued by the Bar Council Upload</label><input type="file" class="form-control"></div>
+                  <div class="field-row mb-2">
+                    <label class="form-label">Self-attested copy of Enrolment Certificate issued by the Bar Council *</label>
+                    <div id="enrolmentCertUploadMount"></div>
+                  </div>
                 </div>
                 <div class="col-md-6 field-row">
                   <div class="field-row mb-2"><label class="form-label">Present Court of practice</label><input
@@ -388,7 +390,7 @@
                           <div class="col-md-6">
                             <div class="mb-3">
                               <label class="form-label">District</label>
-                              <select class="form-select" id="office_district" readonly="readonly">
+                              <select class="form-select" id="permanent_district">
                                 <option value="">Select District</option>
                                 <option>Chennai</option>
                                 <option>Coimbatore</option>
@@ -401,8 +403,7 @@
                           <div class="col-md-6">
                             <div class="mb-3">
                               <label class="form-label">Pincode</label>
-                              <input type="text" class="form-control" id="office_pincode" placeholder="Enter Pincode"
-                                readonly="readonly">
+                              <input type="text" class="form-control" id="permanent_pincode" placeholder="Enter Pincode">
                             </div>
                           </div>
                         </div>
@@ -1896,11 +1897,18 @@ Handled Constitutional Matters before High Court.
   <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
   <script src="assets/js/main.js"></script>
 
+<<<<<<< HEAD
+=======
+  <script src="assets/js/api-config.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script src="assets/js/secure-api.js"></script>
+>>>>>>> cfbf9d7b740ff35be5896c6119956d8a3d4ef993
   <script src="assets/js/law-portal-api.js"></script>
   <script src="assets/js/app-data.js"></script>
   <script src="assets/js/job-selection.js"></script>
   <script src="assets/js/portal-nav.js"></script>
   <script src="assets/js/application-form-core.js"></script>
+  <script src="assets/js/application-form-api.js"></script>
   <script src="assets/js/application-form-tab1.js"></script>
   <script src="assets/js/application-form-tab2.js"></script>
   <script src="assets/js/application-form-tab3.js"></script>

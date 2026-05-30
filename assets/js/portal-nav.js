@@ -5,7 +5,10 @@
     function renderPortalNav(options) {
         const opts = options || {};
         const active = opts.activePage || '';
-        const userId = opts.userId || (global.AppData && AppData.getSession() ? AppData.getSession().userId : '');
+        const session = global.AppData && typeof AppData.getSession === 'function'
+            ? AppData.getSession()
+            : null;
+        const userId = opts.userId || (session ? session.userId : '');
         const jobId = opts.jobId || sessionStorage.getItem('selectedJobId') || '';
 
         let appHref = 'application-form.html?from=menu';
@@ -36,8 +39,10 @@
         if (logoutBtn) {
             logoutBtn.addEventListener('click', function (e) {
                 e.preventDefault();
-                if (global.AppData) AppData.logout();
-                global.location.href = 'index.html';
+                if (global.AppData && typeof AppData.logout === 'function') {
+                    AppData.logout();
+                }
+                global.location.href = 'login.html';
             });
         }
     }

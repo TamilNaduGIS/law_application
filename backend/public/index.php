@@ -83,6 +83,23 @@ $router->add('POST', '/api/vacancies', [VacancyController::class, 'getVacancies'
     new CSRFMiddleware(),
 ]);
 
+$router->add('POST', '/api/vacancy/details', [VacancyController::class, 'getVacancyDetails'], [
+    new RateLimitMiddleware(10, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
+$router->add('POST', '/api/vacancy/personal/save', [VacancyController::class, 'savePersonalInfo'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
+$router->add('POST', '/api/vacancy/document/upload', [VacancyController::class, 'uploadDocument'], [
+    new RateLimitMiddleware(30, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
 // Dispatch the request
 
 $request = new Request();

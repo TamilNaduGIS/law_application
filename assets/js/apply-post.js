@@ -25,6 +25,7 @@
     }
 
     function clearPortalSession() {
+<<<<<<< HEAD
         global.localStorage.removeItem('access_token');
         global.localStorage.removeItem('refresh_token');
         [
@@ -34,8 +35,14 @@
         ].forEach(function (key) {
             global.sessionStorage.removeItem(key);
         });
+=======
+>>>>>>> cfbf9d7b740ff35be5896c6119956d8a3d4ef993
         if (global.AppData && typeof global.AppData.logout === 'function') {
             global.AppData.logout();
+        } else {
+            global.localStorage.removeItem('access_token');
+            global.localStorage.removeItem('refresh_token');
+            global.sessionStorage.clear();
         }
     }
 
