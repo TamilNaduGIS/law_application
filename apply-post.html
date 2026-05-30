@@ -154,7 +154,7 @@
   <!-- JS -->
   <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
   <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
-  <script src="assets/js/main.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 </head>
 
 <body>
@@ -188,12 +188,12 @@
 
         <div class="user-info">
           <span class="welcome-text">Welcome</span>
-          <strong>UserName</strong>
+          <strong id="userDisplayName">Applicant</strong>
         </div>
 
       </div>
 
-      <a class="logout-btn text-white deco-none" href="index.html">
+      <a class="logout-btn text-white deco-none" href="index.html" id="logoutLink">
 
         <i class="bi bi-box-arrow-right"></i>
 
@@ -227,12 +227,12 @@
           <div class="vacancy-summary">
 
             <div class="summary-card">
-              <h3>140</h3>
+              <h3 id="vacancyTotalCount">—</h3>
               <span>Total Vacancies</span>
             </div>
 
             <div class="summary-card">
-              <h3>8</h3>
+              <h3 id="vacancyCategoryCount">—</h3>
               <span>Categories</span>
             </div>
 
@@ -282,103 +282,10 @@
 
             </thead>
 
-            <tbody>
-
-              <!-- <tr>
-
-                <td>01</td>
-
-                <td>
-                    <div class="position-block">
-
-                        <h6>Additional Advocate General</h6>
-
-                        <span class="post-level">
-                            Senior Law Officer
-                        </span>
-
-                    </div>
-                </td>
-
-                <td>
-                    <span class="count-badge primary">
-                        5
-                    </span>
-                </td>
-
-                <td>
-                    <span class="count-badge secondary">
-                        3
-                    </span>
-                </td>
-
-                <td>
-                    <span class="total-badge">
-                        8
-                    </span>
-                </td>
-
-                <td>
-                    <label class="premium-checkbox">
-                        <input type="checkbox">
-                        <span></span>
-                    </label>
-                </td>
-
-            </tr> -->
-
-              <tr>
-
-                <td>01</td>
-
-                <td>
-                  <h6>Additional Advocate General</h6>
-                  <small>Senior Law Officer</small>
-                </td>
-
-                <td>
-
-                  <div class="bench-card">
-
-                    <label class="premium-checkbox">
-                      <input type="checkbox" name="madras_1">
-                      <span></span>
-                    </label>
-
-                    <div class="count-badge primary">
-                      5
-                    </div>
-
-                  </div>
-
-                </td>
-
-                <td>
-
-                  <div class="bench-card">
-
-                    <label class="premium-checkbox">
-                      <input type="checkbox" name="madurai_1">
-                      <span></span>
-                    </label>
-
-                    <div class="count-badge secondary">
-                      3
-                    </div>
-
-                  </div>
-
-                </td>
-
-                <td>
-                  <span class="total-badge">
-                    8
-                  </span>
-                </td>
-
+            <tbody id="vacancyTableBody">
+              <tr id="vacancyLoadingRow">
+                <td colspan="5" class="text-center text-muted py-4">Loading vacancies…</td>
               </tr>
-
-
             </tbody>
 
           </table>
@@ -532,18 +439,15 @@
   </button>
 
 
-  <script>
-    $(document).ready(function () {
-
-      $('#btnApplyPost').on('click', function () {
-
-        window.location.href = 'application-form.html';
-
-      });
-
-    });
-  </script>
-
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <script src="assets/js/portal-alert.js"></script>
+  <script src="assets/js/api-config.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <script src="assets/js/secure-api.js"></script>
+  <script src="assets/js/law-portal-api.js"></script>
+  <script src="assets/js/app-data.js"></script>
+  <script src="assets/js/job-selection.js"></script>
+  <script src="assets/js/apply-post.js"></script>
 
   <script>
     $(function () {

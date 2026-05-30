@@ -17,11 +17,18 @@ window.AppData = window.AppData || {
  */
 window.ApplicationForm = (function () {
     const params = new URLSearchParams(window.location.search);
-    const jobId = params.get('jobId') || sessionStorage.getItem('selectedJobId');
+    const jobId = params.get('jobId') || sessionStorage.getItem('selectedJobId') || '';
     const userId = 'TEMP001';
     const existingApp = null;
     const formMode = 'full';
     const postName = sessionStorage.getItem('selectedPost') || '—';
+
+    function getStoredVacancies() {
+        if (window.JobSelection) {
+            return JobSelection.readStoredVacancies();
+        }
+        return [];
+    }
 
     const state = {
         eduItems: [],
@@ -234,21 +241,62 @@ window.ApplicationForm = (function () {
     function mountJobBanner() {
         const jobBanner = document.getElementById('jobContextBanner');
         if (!jobBanner) return;
-        if (!jobId) {
+
+        let selections = getStoredVacancies();
+        if (!selections.length && jobId) {
+            selections = jobId.split(',').map(function (part) {
+                const id = part.trim();
+                if (!id) return null;
+                return window.JobSelection
+                    ? JobSelection.normalizeSelection({ jobId: id })
+                    : { jobId: id, postName: postName, courtBench: sessionStorage.getItem('courtBench') || 'High Court' };
+            }).filter(Boolean);
+        }
+
+        if (!selections.length && !jobId) {
             jobBanner.innerHTML = 'No job selected. Choose a post on <a href="apply-post.html">Job Posts</a> and click Apply.';
             return;
         }
-        const savedBench = (existingApp && existingApp.courtBench) || sessionStorage.getItem('courtBench') || 'High Court';
-        const benchOpts = ['High Court', 'Madurai Bench'];
-        let optsHtml = '';
-        benchOpts.forEach(function (opt) {
-            optsHtml += '<option value="' + escapeHtml(opt) + '"' + (savedBench === opt ? ' selected' : '') + '>' + escapeHtml(opt) + '</option>';
+
+        const jobIdsLabel = window.JobSelection
+            ? JobSelection.joinJobIds(selections)
+            : jobId;
+        const postLines = window.JobSelection
+            ? JobSelection.formatBannerLines(selections)
+            : [postName + ' : ' + jobIdsLabel];
+
+        let postsHtml = '';
+        postLines.forEach(function (line) {
+            postsHtml += '<div class="job-banner-post-line">' + escapeHtml(line) + '</div>';
         });
+
+        let courtHtml = '';
+        if (selections.length === 1) {
+            const savedBench = selections[0].courtBench
+                || (existingApp && existingApp.courtBench)
+                || sessionStorage.getItem('courtBench')
+                || 'High Court';
+            const benchOpts = ['High Court', 'Madurai Bench'];
+            let optsHtml = '';
+            benchOpts.forEach(function (opt) {
+                optsHtml += '<option value="' + escapeHtml(opt) + '"' + (savedBench === opt ? ' selected' : '') + '>' + escapeHtml(opt) + '</option>';
+            });
+            courtHtml =
+                '<div class="job-banner-court"><label for="courtBenchSelect" class="job-banner-court-label">Court</label>' +
+                '<select id="courtBenchSelect" class="form-select form-select-sm court-bench-select"' + (formMode === 'previewOnly' ? ' disabled' : '') + '>' + optsHtml + '</select></div>';
+        } else {
+            courtHtml = '<div class="job-banner-court-list">' + selections.map(function (s) {
+                return '<span class="job-banner-court-item"><strong>' + escapeHtml(s.jobId) + '</strong> — ' + escapeHtml(s.courtBench || '') + '</span>';
+            }).join(' · ') + '</div>';
+        }
+
         jobBanner.innerHTML =
             '<div class="job-banner-inner">' +
-            '<div class="job-banner-meta">Post: <strong>' + escapeHtml(postName) + '</strong> · Job ID: <strong>' + jobId + '</strong> · User: <strong>' + escapeHtml(userId) + '</strong></div>' +
-            '<div class="job-banner-court"><label for="courtBenchSelect" class="job-banner-court-label">Court</label>' +
-            '<select id="courtBenchSelect" class="form-select form-select-sm court-bench-select"' + (formMode === 'previewOnly' ? ' disabled' : '') + '>' + optsHtml + '</select></div></div>';
+            '<div class="job-banner-posts">' + postsHtml + '</div>' +
+            '<div class="job-banner-meta-sub">Job ID: <strong>' + escapeHtml(jobIdsLabel) + '</strong> · User: <strong>' + escapeHtml(userId) + '</strong></div>' +
+            courtHtml +
+            '</div>';
+
         const sel = document.getElementById('courtBenchSelect');
         if (sel && formMode !== 'previewOnly') {
             sel.addEventListener('change', function () {
@@ -472,7 +520,14 @@ window.ApplicationForm = (function () {
     }
 
     const AF = {
-        config: { userId: userId, jobId: jobId, formMode: formMode, postName: postName, existingApp: existingApp },
+        config: {
+            userId: userId,
+            jobId: jobId,
+            formMode: formMode,
+            postName: postName,
+            existingApp: existingApp,
+            selectedVacancies: getStoredVacancies()
+        },
         state: state,
         tabs: tabs,
         utils: {

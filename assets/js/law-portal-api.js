@@ -5,7 +5,15 @@
     'use strict';
 
     function normalizeResponse(result) {
-        if (!result || typeof result !== 'object') {
+        if (result === null || result === undefined) {
+            return { ok: false, error: 'Invalid response from server.' };
+        }
+
+        if (Array.isArray(result)) {
+            return { ok: true, data: result };
+        }
+
+        if (typeof result !== 'object') {
             return { ok: false, error: 'Invalid response from server.' };
         }
 
