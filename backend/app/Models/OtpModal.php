@@ -55,7 +55,7 @@ class OtpModal
             return ['ok' => false, 'error' => 'Unable to generate OTP. Please try again.'];
         }
 
-        $smsSent = $this->sendSms($mobile, $otp);
+        $smsSent = $this->sendSms($mobile, $otp, $purpose);
         if (!$smsSent) {
             return ['ok' => false, 'error' => 'Failed to send OTP SMS. Please try again.'];
         }
@@ -173,9 +173,10 @@ class OtpModal
         );
     }
 
-    private function sendSms(string $mobile, string $otp): bool
+    private function sendSms(string $mobile, string $otp, string $purpose = 'register'): bool
     {
-        $response = $this->sms('otp', $mobile, [$otp]);
+        $template = $purpose === 'login' ? 'reset' : 'otp';
+        $response = $this->sms($template, $mobile, [$otp]);
         return $response !== false && $response !== '';
     }
 

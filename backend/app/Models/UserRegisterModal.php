@@ -99,4 +99,60 @@ class UserRegisterModal
 
         return null;
     }
+
+    /**
+     * @return array{ok: bool, message?: string, error?: string, applicant_id?: int|null, data?: array<string, mixed>}
+     */
+    public function loginApplicant(string $mobile, string $enrollmentNo): array
+    {
+        $payload = json_encode([
+            'mobile_no' => $mobile,
+            'enrollment_no' => strtoupper($enrollmentNo),
+        ], JSON_UNESCAPED_UNICODE);
+
+        if ($payload === false) {
+            return ['ok' => false, 'error' => 'Invalid login data.'];
+        }
+
+        try {
+            $result = $this->callLoginProcedure($payload);
+
+            if (!is_array($result)) {
+                return ['ok' => false, 'error' => 'Unexpected response from login service.'];
+            }
+
+            $status = filter_var($result['status'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+            if ($status) {
+                return [
+                    'ok' => true,
+                    'message' => $result['message'] ?? 'Login validated successfully',
+                    'applicant_id' => isset($result['applicant_id']) ? (int) $result['applicant_id'] : null,
+                    'data' => $result,
+                ];
+            }
+
+            return [
+                'ok' => false,
+                'error' => $result['message'] ?? 'Invalid enrolment number or mobile number.',
+            ];
+        } catch (PDOException $e) {
+            return ['ok' => false, 'error' => 'Login failed. Please try again later.'];
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function callLoginProcedure(string $json): ?array
+    {
+        $escaped = str_replace("'", "''", $json);
+        $stmt = $this->writer->query(
+            "CALL public.sp_applicant_login('{$escaped}'::jsonb, NULL)"
+        );
+
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        return $this->parseProcedureOutput($rows);
+    }
 }

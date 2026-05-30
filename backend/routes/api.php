@@ -12,6 +12,9 @@ return function (App $app) {
     $app->post('/register', [$userController, 'createUser']);
     $app->post('/user', [$userController, 'createUser']);
 
+    $app->post('/login', [$userController, 'login']);
+    $app->post('/login/verify', [$userController, 'verifyLogin']);
+
     $app->post('/otp/send', [$otpController, 'sendOtp']);
     $app->post('/otp/verify', [$otpController, 'verifyOtp']);
 };

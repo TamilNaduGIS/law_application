@@ -281,6 +281,105 @@ class UserController
         return [];
     }
 
+    public function login(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        if (!is_array($body)) {
+            $body = [];
+        }
+
+        $mobile = trim((string) ($body['mobile'] ?? $body['mobile_no'] ?? ''));
+        $enrollment = strtoupper(trim((string) (
+            $body['enrollment_no'] ?? $body['enrolmentNo'] ?? $body['enrollmentNo'] ?? ''
+        )));
+
+        $errors = [];
+
+        if ($enrollment === '') {
+            $errors['enrolmentNumber'] = 'Bar Council enrolment number is required.';
+        } elseif (!preg_match('/^[A-Z]{2}\/[0-9]{1,5}\/[0-9]{2,4}$/', $enrollment)) {
+            $errors['enrolmentNumber'] = 'Invalid format. Use AB/1234/YY';
+        }
+
+        if ($mobile === '') {
+            $errors['mobileNumber'] = 'Mobile number is required.';
+        } elseif (!preg_match('/^[6-9]\d{9}$/', $mobile)) {
+            $errors['mobileNumber'] = 'Enter a valid 10-digit mobile number.';
+        }
+
+        if ($errors !== []) {
+            return $this->json($response, ['ok' => false, 'errors' => $errors], 422);
+        }
+
+        $loginResult = $this->registerModel->loginApplicant($mobile, $enrollment);
+
+        if (!$loginResult['ok']) {
+            return $this->json($response, [
+                'ok' => false,
+                'error' => $loginResult['error'] ?? 'Invalid enrolment number or mobile number.',
+            ], 400);
+        }
+
+        $otpResult = $this->otpModel->sendOtp($mobile, 'login');
+
+        if (!$otpResult['ok']) {
+            return $this->json($response, [
+                'ok' => false,
+                'error' => $otpResult['error'] ?? 'Failed to send OTP.',
+            ], 400);
+        }
+
+        return $this->json($response, [
+            'ok' => true,
+            'message' => 'OTP sent successfully',
+            'applicant_id' => $loginResult['applicant_id'] ?? null,
+            'enrollment_no' => $enrollment,
+            'mobile' => $mobile,
+        ]);
+    }
+
+    public function verifyLogin(Request $request, Response $response): Response
+    {
+        $body = $request->getParsedBody();
+        if (!is_array($body)) {
+            $body = [];
+        }
+
+        $mobile = trim((string) ($body['mobile'] ?? $body['mobile_no'] ?? ''));
+        $otp = trim((string) ($body['otp'] ?? ''));
+        $enrollment = strtoupper(trim((string) (
+            $body['enrollment_no'] ?? $body['enrolmentNo'] ?? $body['enrollmentNo'] ?? ''
+        )));
+        $applicantId = (int) ($body['applicant_id'] ?? $body['applicantId'] ?? 0);
+
+        if (!preg_match('/^[6-9]\d{9}$/', $mobile)) {
+            return $this->json($response, ['ok' => false, 'error' => 'Enter a valid mobile number.'], 422);
+        }
+
+        if (!preg_match('/^\d{6}$/', $otp)) {
+            return $this->json($response, ['ok' => false, 'error' => 'Enter a valid 6-digit OTP.'], 422);
+        }
+
+        $otpResult = $this->otpModel->verifyOtp($mobile, $otp, 'login');
+
+        if (!$otpResult['ok']) {
+            return $this->json($response, [
+                'ok' => false,
+                'error' => $otpResult['error'] ?? 'OTP verification failed.',
+            ], 400);
+        }
+
+        return $this->json($response, [
+            'ok' => true,
+            'message' => 'Login successful',
+            'session' => [
+                'applicant_id' => $applicantId ?: null,
+                'enrollment_no' => $enrollment,
+                'mobile' => $mobile,
+            ],
+        ]);
+    }
+
     private function json(Response $response, array $data, int $status = 200): Response
     {
         $response->getBody()->write(json_encode($data, JSON_UNESCAPED_UNICODE));

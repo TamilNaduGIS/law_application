@@ -10,6 +10,7 @@
     <!-- Bootstrap + Icons -->
     <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
     <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     <style>
         .mandatory {
             color: red;
@@ -128,11 +129,11 @@
       <div class="login-body">
         <div id="successMsg" class="success-msg"></div>
         <div id="errorMsg" class="error-msg"></div>
-        <form id="loginForm">
+        <form id="loginForm" novalidate>
             <label for="enrolmentNumber">Bar Council Enrolment No. <span class="mandatory">*</span></label>
-            <input type="text" id="enrolmentNumber" placeholder="Enter Bar Council Number" required autocomplete="username">
+            <input type="text" id="enrolmentNumber" placeholder="e.g. MS/1234/2015" required autocomplete="username">
             <label for="mobileNumber">Mobile Number <span class="mandatory">*</span></label>
-            <input type="text" id="mobileNumber"placeholder="Enter mobile number" maxlength="10" required>
+            <input type="tel" id="mobileNumber" placeholder="Enter mobile number" maxlength="10" required>
             <button type="submit" class="btn-primary">Get OTP</button>
             <div class="text-center mt-3">
                 <span class="text-muted">New Applicant?</span>
@@ -175,9 +176,7 @@
 
                 <div class="text-center">
 
-                    <span id="timerText">
-                        Resend OTP in 60s
-                    </span>
+                    <span id="timerText">Resend OTP in 300s</span>
 
                     <br>
 
@@ -213,164 +212,10 @@
      <!-- JS -->
     <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
     <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/main.js"></script>
-    <script src="./assets/js/helper.js"></script>
-
-
-    <script>
-        $(document).ready(function(){
-            applyInputValidation('enrolmentNumber', [11]);
-            applyInputValidation('mobileNumber', [3]);
-            // otpbox1
-            
-
-        })
-
-      const otpModal =
-    new bootstrap.Modal(
-        document.getElementById('otpModal')
-    );
-
-let generatedOtp = "123456";
-let timer;
-let countdown = 60;
-applyInputValidation('otpbox1', [2]);
-applyInputValidation('otpbox2', [2]);
-applyInputValidation('otpbox3', [2]);
-applyInputValidation('otpbox4', [2]);
-applyInputValidation('otpbox5', [2]);
-applyInputValidation('otpbox6', [2]);
-document
-.getElementById('loginForm')
-.addEventListener('submit', function(e){
-
-    e.preventDefault();
-
-    const mobile =
-        document.getElementById('mobileNumber')
-        .value.trim();
-
-    if(!/^[6-9]\d{9}$/.test(mobile))
-    {
-        showError(
-            "Enter valid mobile number"
-        );
-        return;
-    }
-
-    otpModal.show();
-
-    startOtpTimer();
-});
-
-function showError(message){
-
-    const errorEl =
-        document.getElementById('errorMsg');
-
-    errorEl.textContent = message;
-    errorEl.style.display = 'block';
-}
-
-const otpInputs =
-document.querySelectorAll('.otp-box');
-
-otpInputs.forEach((input,index)=>{
-
-    input.addEventListener('input',()=>{
-
-        if(input.value.length===1 &&
-           otpInputs[index+1]){
-
-            otpInputs[index+1].focus();
-        }
-    });
-
-    input.addEventListener('keydown',(e)=>{
-
-        if(e.key==="Backspace" &&
-           !input.value &&
-           otpInputs[index-1]){
-
-            otpInputs[index-1].focus();
-        }
-    });
-
-});
-
-function startOtpTimer(){
-
-    clearInterval(timer);
-
-    countdown = 60;
-
-    document.getElementById(
-        'resendBtn'
-    ).style.display='none';
-
-    timer =
-    setInterval(()=>{
-
-        countdown--;
-
-        document.getElementById(
-            'timerText'
-        ).innerHTML =
-        `Resend OTP in ${countdown}s`;
-
-        if(countdown<=0){
-
-            clearInterval(timer);
-
-            document.getElementById(
-                'timerText'
-            ).innerHTML='';
-
-            document.getElementById(
-                'resendBtn'
-            ).style.display='inline-block';
-        }
-
-    },1000);
-}
-
-document
-.getElementById('resendBtn')
-.addEventListener('click',()=>{
-
-    generatedOtp = "123456";
-
-    startOtpTimer();
-
-    alert(
-        "OTP resent successfully"
-    );
-});
-
-document
-.getElementById('verifyOtpBtn')
-.addEventListener('click',()=>{
-
-    let enteredOtp = '';
-
-    document
-    .querySelectorAll('.otp-box')
-    .forEach(box=>{
-
-        enteredOtp += box.value;
-    });
-
-    if(enteredOtp !== generatedOtp){
-
-        alert("Invalid OTP");
-        return;
-    }
-
-    window.location.href =
-        'dashboard.html';
-});
-    </script>
-
-
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="assets/js/portal-alert.js"></script>
+    <script src="assets/js/api-config.js"></script>
+    <script src="assets/js/helper.js"></script>
+    <script src="assets/js/login.js"></script>
   </body>
 </html>
