@@ -25,17 +25,12 @@
     }
 
     function clearPortalSession() {
-        global.localStorage.removeItem('access_token');
-        global.localStorage.removeItem('refresh_token');
-        [
-            'isLoggedIn', 'encryption_key', 'csrf_token', 'applicantId',
-            'enrolmentNo', 'mobile', 'selectedPost', 'selectedJobId', 'courtBench',
-            'selectedVacancies'
-        ].forEach(function (key) {
-            global.sessionStorage.removeItem(key);
-        });
         if (global.AppData && typeof global.AppData.logout === 'function') {
             global.AppData.logout();
+        } else {
+            global.localStorage.removeItem('access_token');
+            global.localStorage.removeItem('refresh_token');
+            global.sessionStorage.clear();
         }
     }
 

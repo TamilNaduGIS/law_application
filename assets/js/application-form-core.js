@@ -3,23 +3,21 @@ window.PortalNav = window.PortalNav || {
     render: function () {}
 };
 
-window.AppData = window.AppData || {
-    getSession: () => ({ userId: 'TEMP001' }),
-    getApplication: () => null,
-    getPersonalProfile: () => null,
-    saveApplication: () => {},
-    updateUserProfile: () => {},
-    submitApplication: () => ({ id: '—' })
-};
-
 /**
  * Shared state, utilities, navigation, and list infrastructure for the application form.
  */
 window.ApplicationForm = (function () {
     const params = new URLSearchParams(window.location.search);
     const jobId = params.get('jobId') || sessionStorage.getItem('selectedJobId') || '';
-    const userId = 'TEMP001';
-    const existingApp = null;
+    const session = window.AppData && typeof AppData.getSession === 'function'
+        ? AppData.getSession()
+        : null;
+    const userId = (session && session.userId)
+        || sessionStorage.getItem('applicantId')
+        || '';
+    const existingApp = window.AppData && typeof AppData.getApplication === 'function'
+        ? AppData.getApplication(userId, jobId)
+        : null;
     const formMode = 'full';
     const postName = sessionStorage.getItem('selectedPost') || '—';
 
@@ -129,6 +127,7 @@ window.ApplicationForm = (function () {
     function resolvePreviewKey(input) {
         if (!input || !input.id) return null;
         if (input.id === 'photoUpload') return 'photo';
+        if (input.id === 'enrolmentCertUpload') return 'enrolmentCert';
         if (input.id === 'draftingUpload') return 'drafting';
         let m = input.id.match(/^edu-cert-(\d+)$/);
         if (m) return 'edu-' + m[1];
@@ -146,6 +145,8 @@ window.ApplicationForm = (function () {
     function collectLiveFilePreviews() {
         const photo = document.getElementById('photoUpload');
         if (photo && photo.files && photo.files[0]) storeFilePreview('photo', photo.files[0]);
+        const enrolCert = document.getElementById('enrolmentCertUpload');
+        if (enrolCert && enrolCert.files && enrolCert.files[0]) storeFilePreview('enrolmentCert', enrolCert.files[0]);
         const drafting = document.getElementById('draftingUpload');
         if (drafting && drafting.files && drafting.files.length) storeFilesPreview('drafting', drafting.files);
         document.querySelectorAll('#eduListContainer .list-item').forEach(function (item, idx) {
@@ -466,12 +467,17 @@ window.ApplicationForm = (function () {
             const el = document.getElementById('itAssessee');
             if (el) el.value = app.itAssessee;
         }
+        if (app.specificBarYears) {
+            const el = document.getElementById('specificBarYears');
+            if (el) el.value = app.specificBarYears;
+        }
         if (app.filePreviews) {
             Object.keys(app.filePreviews).forEach(function (k) {
                 state.filePreviews[k] = app.filePreviews[k];
             });
         }
         if (state.filePreviews.photo && state.filePreviews.photo.name) AF.tab1.setPhotoFileLabel(state.filePreviews.photo.name);
+        if (AF.tab1.mountEnrolmentCertUpload) AF.tab1.mountEnrolmentCertUpload();
         renderAll();
         mountJobBanner();
     }
@@ -490,7 +496,9 @@ window.ApplicationForm = (function () {
             });
             if (btnNext1) btnNext1.style.display = 'none';
             tabs[1].querySelectorAll('input, select, textarea').forEach(function (el) {
-                if (el.id !== 'enrolmentNo') el.setAttribute('readonly', 'readonly');
+                if (el.id !== 'enrolmentNo' && el.id !== 'seniorEnrolmentNo') {
+                    el.setAttribute('readonly', 'readonly');
+                }
             });
             switchTab(1);
             return;

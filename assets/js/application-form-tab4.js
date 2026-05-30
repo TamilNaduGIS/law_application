@@ -44,6 +44,8 @@
         html += utils.previewTable(
             utils.previewFieldRow('Name of Advocate', p.advocateName) +
             utils.previewFieldRow('Bar Council Enrolment No.', p.enrolmentNo) +
+            utils.previewFieldRow('Bar Council Enrolment No. (Senior)', p.seniorEnrolmentNo) +
+            utils.previewFieldRow('Date of Enrolment', p.enrolmentDate) +
             utils.previewFieldRow("Father's Name", p.fatherName) +
             utils.previewFieldRow('Gender', p.gender) +
             utils.previewFieldRow('Marital Status', p.maritalStatus) +
@@ -61,7 +63,9 @@
             utils.previewFieldRow('Permanent Address', p.permanentAddress)
         );
         html += '<div class="preview-upload-block"><span class="preview-upload-label">Photo</span>' +
-            AF.files.renderDocPreview(state.filePreviews.photo) + '</div></div>';
+            AF.files.renderDocPreview(state.filePreviews.photo) + '</div>';
+        html += '<div class="preview-upload-block"><span class="preview-upload-label">Enrolment Certificate</span>' +
+            AF.files.renderDocPreview(state.filePreviews.enrolmentCert) + '</div></div>';
 
         html += '<div class="preview-card"><h4>Educational Qualification</h4>';
         if (!state.eduItems.length) {

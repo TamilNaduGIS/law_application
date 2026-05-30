@@ -1512,6 +1512,21 @@ input:focus {
   color: #15803d;
 }
 
+.error-msg.is-visible,
+.success-msg.is-visible {
+  display: block;
+}
+
+.error-msg-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.field-invalid {
+  border-color: #b91c1c !important;
+  box-shadow: 0 0 0 2px rgba(185, 28, 28, 0.15);
+}
+
 .demo-hint {
   margin-top: 1rem;
   padding: 0.75rem;

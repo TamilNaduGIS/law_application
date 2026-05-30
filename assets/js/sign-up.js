@@ -549,6 +549,12 @@
             }
         }
 
+        function resetSendOtpButton() {
+            sendOtpBtn.disabled = false;
+            sendOtpBtn.innerHTML = '<i class="bi bi-shield-check"></i> Verify';
+            sendOtpBtn.style.background = '';
+        }
+
         function handleSendOtp() {
             if (otpSending) {
                 return;
@@ -564,12 +570,14 @@
 
             clearError();
             otpSending = true;
+            let otpSent = false;
             sendOtpBtn.disabled = true;
             sendOtpBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Sending...';
 
             requestOtp(mobile)
                 .done(function (res) {
                     if (res && res.ok) {
+                        otpSent = true;
                         resetMobileVerification();
                         sendOtpBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> OTP Sent';
                         openOtpModal(mobile);
@@ -581,8 +589,6 @@
                     if (res && res.errors && res.errors.mobile) {
                         markInvalid('mobile');
                     }
-                    sendOtpBtn.disabled = false;
-                    sendOtpBtn.innerHTML = '<i class="bi bi-shield-check"></i> Verify';
                 })
                 .fail(function (xhr) {
                     let message = 'Failed to send OTP. Please try again.';
@@ -590,7 +596,9 @@
                         const res = xhr.responseJSON;
                         if (res && res.errors) {
                             showError(null, res.errors);
-                            markInvalid('mobile');
+                            if (res.errors.mobile) {
+                                markInvalid('mobile');
+                            }
                             return;
                         }
                         if (res && res.error) {
@@ -598,11 +606,12 @@
                         }
                     } catch (e) { /* ignore */ }
                     showError(message);
-                    sendOtpBtn.disabled = false;
-                    sendOtpBtn.innerHTML = '<i class="bi bi-shield-check"></i> Verify';
                 })
                 .always(function () {
                     otpSending = false;
+                    if (!otpSent) {
+                        resetSendOtpButton();
+                    }
                 });
         }
 
