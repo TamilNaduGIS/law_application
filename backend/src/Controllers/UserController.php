@@ -372,7 +372,21 @@ class UserController extends Controller
             if ($loginCheck['ok'] && !empty($loginCheck['applicant_id'])) {
                 $applicantId = (int) $loginCheck['applicant_id'];
             }
+        } else {
+            $loginCheck = UserRegisterModal::loginApplicant($mobile, $enrollment);
         }
+
+        $applicantName = '';
+        if (!empty($loginCheck['ok']) && !empty($loginCheck['data']) && is_array($loginCheck['data'])) {
+            $profile = $loginCheck['data'];
+            $applicantName = trim((string) (
+                $profile['applicant_name']
+                ?? $profile['advocate_name']
+                ?? $profile['name']
+                ?? ''
+            ));
+        }
+
         $encryptionKey = EncryptionHelper::generateUserKey();
         $csrfToken = bin2hex(random_bytes(32));
         $access = JWTHelper::generate($applicantId, ['user'], 150000, false);
@@ -395,6 +409,7 @@ class UserController extends Controller
                 'applicant_id' => $applicantId,
                 'enrollment_no' => $enrollment,
                 'mobile' => $mobile,
+                'applicant_name' => $applicantName,
                 'access_token' => $access['token'],
                 'refresh_token' => $refresh['token'],
                 'encryption_key' => $encryptionKey,

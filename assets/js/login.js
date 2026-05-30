@@ -140,6 +140,10 @@
         sessionStorage.setItem('applicantId', session.applicant_id || '');
         sessionStorage.setItem('enrolmentNo', session.enrollment_no || '');
         sessionStorage.setItem('mobile', session.mobile || '');
+        const displayName = session.applicant_name || session.advocate_name || session.advocateName || '';
+        if (displayName) {
+            sessionStorage.setItem('advocateName', displayName);
+        }
     }
 
     $(function () {

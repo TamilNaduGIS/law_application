@@ -2,6 +2,18 @@
  * Application form bootstrap — initializes all tabs and shared modules.
  */
 (function (AF) {
+    if (window.LawPortal && typeof window.LawPortal.bindHeaderUser === 'function') {
+        window.LawPortal.bindHeaderUser();
+    } else {
+        const el = document.getElementById('userDisplayName');
+        if (el) {
+            el.textContent = sessionStorage.getItem('advocateName')
+                || sessionStorage.getItem('enrolmentNo')
+                || sessionStorage.getItem('mobile')
+                || 'Applicant';
+        }
+    }
+
     PortalNav.mount('portalNavMount', {
         activePage: 'application',
         userId: AF.config.userId,

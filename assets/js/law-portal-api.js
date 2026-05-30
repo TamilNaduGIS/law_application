@@ -54,6 +54,35 @@
         global.sessionStorage.setItem('applicantId', String(session.applicant_id || ''));
         global.sessionStorage.setItem('enrolmentNo', session.enrollment_no || session.enrolmentNo || '');
         global.sessionStorage.setItem('mobile', session.mobile || '');
+
+        const displayName = session.applicant_name || session.advocate_name || session.advocateName || '';
+        if (displayName) {
+            global.sessionStorage.setItem('advocateName', displayName);
+        }
+    }
+
+    function getDisplayName() {
+        const name = global.sessionStorage.getItem('advocateName')
+            || global.sessionStorage.getItem('applicantName');
+        if (name && String(name).trim()) {
+            return String(name).trim();
+        }
+        const enrol = global.sessionStorage.getItem('enrolmentNo');
+        if (enrol && String(enrol).trim()) {
+            return String(enrol).trim();
+        }
+        const mobile = global.sessionStorage.getItem('mobile');
+        if (mobile && String(mobile).trim()) {
+            return String(mobile).trim();
+        }
+        return 'Applicant';
+    }
+
+    function bindHeaderUser(selector) {
+        const el = global.document.querySelector(selector || '#userDisplayName');
+        if (el) {
+            el.textContent = getDisplayName();
+        }
     }
 
     function apiRequest(path, method, data) {
@@ -112,6 +141,8 @@
     global.LawPortal = global.LawPortal || {};
     global.LawPortal.normalizeResponse = normalizeResponse;
     global.LawPortal.saveAuthSession = saveAuthSession;
+    global.LawPortal.getDisplayName = getDisplayName;
+    global.LawPortal.bindHeaderUser = bindHeaderUser;
     global.LawPortal.apiRequest = apiRequest;
     global.LawPortal.loadCaptcha = loadCaptcha;
     global.LawPortal.bindCaptchaUi = bindCaptchaUi;

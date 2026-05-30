@@ -86,11 +86,15 @@
     }
 
     function prefillTab1FromDb() {
-        const profile = AppData.getPersonalProfile(AF.config.userId);
+        const profile = AppData.getPersonalProfile(AF.config.userId) || {};
+        const sessionName = sessionStorage.getItem('advocateName');
+        const sessionEnrolment = sessionStorage.getItem('enrolmentNo');
+        const sessionMobile = sessionStorage.getItem('mobile');
+        if (sessionName) profile.advocateName = sessionName;
+        if (sessionEnrolment) profile.enrolmentNo = sessionEnrolment;
+        if (sessionMobile) profile.mobile = sessionMobile;
         fillPersonal(profile);
-        if (AF.config.existingApp && AF.config.existingApp.personal) {
-            fillPersonal(AF.config.existingApp.personal);
-        }
+        if (AF.config.existingApp && AF.config.existingApp.personal) fillPersonal(AF.config.existingApp.personal);
     }
 
     function initPhotoUpload() {
@@ -129,7 +133,10 @@
 
     function initEnrolmentDefault() {
         $(document).ready(function () {
-            $('#enrolmentNo').val('MS. 1234/2026');
+            const enrolment = sessionStorage.getItem('enrolmentNo');
+            if (enrolment) {
+                $('#enrolmentNo').val(enrolment);
+            }
         });
     }
 

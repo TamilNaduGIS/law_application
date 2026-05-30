@@ -29,7 +29,7 @@
         global.localStorage.removeItem('refresh_token');
         [
             'isLoggedIn', 'encryption_key', 'csrf_token', 'applicantId',
-            'enrolmentNo', 'mobile', 'selectedPost', 'selectedJobId', 'courtBench',
+            'enrolmentNo', 'mobile', 'advocateName', 'selectedPost', 'selectedJobId', 'courtBench',
             'selectedVacancies'
         ].forEach(function (key) {
             global.sessionStorage.removeItem(key);
@@ -315,9 +315,14 @@
     }
 
     function mountUserChip() {
-        const enrolment = global.sessionStorage.getItem('enrolmentNo') || '';
-        const mobile = global.sessionStorage.getItem('mobile') || '';
-        const label = enrolment || mobile || 'Applicant';
+        if (global.LawPortal && typeof global.LawPortal.bindHeaderUser === 'function') {
+            global.LawPortal.bindHeaderUser();
+            return;
+        }
+        const label = global.sessionStorage.getItem('advocateName')
+            || global.sessionStorage.getItem('enrolmentNo')
+            || global.sessionStorage.getItem('mobile')
+            || 'Applicant';
         $('#userDisplayName').text(label);
     }
 
