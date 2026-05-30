@@ -20,6 +20,8 @@ use App\Middleware\RateLimitMiddleware;
 use App\Controllers\CaptchaController;
 use App\Controllers\UserController;
 use App\Controllers\OtpController;
+use App\Controllers\VacancyController;
+use App\Middleware\CSRFMiddleware;
 
 if (session_status() === PHP_SESSION_NONE) {    session_set_cookie_params([
         'lifetime' => 86400,
@@ -73,6 +75,12 @@ $router->add('POST', '/api/otp/send', [OtpController::class, 'sendOtp'], [
 
 $router->add('POST', '/api/otp/verify', [OtpController::class, 'verifyOtp'], [
     new RateLimitMiddleware(10, 60)
+]);
+
+$router->add('POST', '/api/vacancies', [VacancyController::class, 'getVacancies'], [
+    new RateLimitMiddleware(10, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
 ]);
 
 // Dispatch the request

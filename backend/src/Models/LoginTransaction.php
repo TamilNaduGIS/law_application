@@ -92,7 +92,7 @@ class LoginTransaction
     public static function getActiveSession(string $phoneNo): ?array
     {
         try {
-            $db = Database::getConnection();
+            $db = Database::ReadDatabaseConnection();
             $sql = 'SELECT * FROM ' . self::TABLE . '
                     WHERE phoneno = :phoneno AND is_active = true
                     ORDER BY login_ts DESC LIMIT 1';
@@ -115,7 +115,7 @@ class LoginTransaction
         }
 
         try {
-            $db = Database::getConnection();
+            $db = Database::ReadDatabaseConnection();
             $sql = 'SELECT COUNT(*) FROM ' . self::TABLE . '
                     WHERE phoneno = :phoneno
                       AND encryption_key = :encryption_key

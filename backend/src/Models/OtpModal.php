@@ -59,7 +59,7 @@ class OtpModal
     public static function verifyOtp(string $mobile, string $otp, string $purpose = 'register'): array
     {
         try {
-            $stmt = Database::getConnection()->prepare(
+            $stmt = Database::ReadDatabaseConnection()->prepare(
                 'SELECT otp_code, expires_at, verified
                  FROM mobile_otp_verification
                  WHERE mobile_no = :mobile AND purpose = :purpose
@@ -107,7 +107,7 @@ class OtpModal
     public static function isOtpVerified(string $mobile, string $purpose = 'register'): array
     {
         try {
-            $stmt = Database::getConnection()->prepare(
+            $stmt = Database::ReadDatabaseConnection()->prepare(
                 'SELECT verified, expires_at
                  FROM mobile_otp_verification
                  WHERE mobile_no = :mobile AND purpose = :purpose
@@ -138,7 +138,7 @@ class OtpModal
     private static function isMobileRegistered(string $mobile): bool
     {
         try {
-            $stmt = Database::getConnection()->prepare(
+            $stmt = Database::ReadDatabaseConnection()->prepare(
                 'SELECT 1 FROM applicant_registration WHERE mobile_no = :mobile LIMIT 1'
             );
             $stmt->execute([':mobile' => $mobile]);
