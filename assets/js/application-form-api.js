@@ -556,10 +556,23 @@
                 return el && el.value != null ? String(el.value).trim() : '';
             };
             const prev = previous[idx] || {};
+            const previewKey = 'add-' + idx;
+            const preview = AF.state.filePreviews && AF.state.filePreviews[previewKey];
             const fileInput = row.querySelector('.add-cert-file');
             let certName = row.getAttribute('data-cert-name') || prev.certificateFileName || '';
-            if (fileInput && fileInput.files && fileInput.files[0]) {
-                certName = fileInput.files[0].name;
+            if (fileInput && fileInput.files && fileInput.files.length) {
+                certName = fileInput.files.length === 1
+                    ? fileInput.files[0].name
+                    : fileInput.files.length + ' file(s) selected';
+                if (AF.files && typeof AF.files.storeFilesPreview === 'function') {
+                    AF.files.storeFilesPreview(previewKey, fileInput.files);
+                }
+            } else if (!certName && preview) {
+                if (Array.isArray(preview) && preview.length) {
+                    certName = preview.length === 1 ? preview[0].name : preview.length + ' file(s) selected';
+                } else if (preview.name) {
+                    certName = preview.name;
+                }
             }
 
             const item = {
@@ -782,8 +795,10 @@
         requireApplicantId: requireApplicantId,
         buildEducationSavePayload: buildEducationSavePayload,
         buildAdditionalSavePayload: buildAdditionalSavePayload,
+        postAdditionalSave: postAdditionalSave,
         saveEducation: saveEducation,
         saveAdditionalQualification: saveAdditionalQualification,
+        saveAdditionalQualificationFromDom: saveAdditionalQualificationFromDom,
         uploadEducationCertificate: uploadEducationCertificate,
         saveTab2WithCertificates: saveTab2WithCertificates
     };

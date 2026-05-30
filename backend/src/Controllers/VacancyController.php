@@ -272,6 +272,28 @@ class VacancyController extends Controller
     return $this->encryptResponse($result);
   }
 
+  /**
+   * POST /api/vacancy/additional/save
+   * Calls public.sp_application_save_additional_qualification(p_input jsonb, p_output jsonb).
+   *
+   * Expected p_input:
+   * {
+   *   "applicant_id": 2,
+   *   "created_by": 2,
+   *   "additional_qualification": [
+   *     {
+   *       "additional_qualification_id": 0,
+   *       "qualification_name": "LLM",
+   *       "year_of_passing": 2020,
+   *       "university_name": "Madras University",
+   *       "institution": "Government Law College",
+   *       "specialization": "Constitutional Law",
+   *       "marks_percentage": 82.0,
+   *       "certificate_path": "uploads/llm_certificate.pdf"
+   *     }
+   *   ]
+   * }
+   */
   public function saveAdditionalQualification(Request $request): Response
   {
     $this->setUserId($request);
@@ -297,10 +319,20 @@ class VacancyController extends Controller
       ?? []
     ));
 
+    $normalizedRows = $this->normalizeAdditionalQualificationRows($additionalRows);
+    if ($normalizedRows === []) {
+      return $this->encryptResponse([
+        'ok' => true,
+        'skipped' => true,
+        'message' => 'No additional qualifications to save.',
+        'applicant_id' => $applicantId,
+      ]);
+    }
+
     $payload = [
       'applicant_id' => $applicantId,
       'created_by' => $createdBy > 0 ? $createdBy : $applicantId,
-      'additional_qualification' => $this->normalizeAdditionalQualificationRows($additionalRows),
+      'additional_qualification' => $normalizedRows,
     ];
 
     $result = ApplicationModal::saveAdditionalQualification($payload);
