@@ -499,7 +499,7 @@
                 </div>
                 <div class="col-md-8 field-row">
                   <label class="form-label">
-                    Whether previously worked or presently working as Law Officers in any State Government / Central
+                    Whether previously worked or presently working as Law Officers in any State / Central
                     Government / undertakings
                   </label>
                   <select class="form-select" id="previousWorked">
@@ -570,7 +570,7 @@
                   </div>
                 </div>
                 <!-- CURRENT DETAILS -->
-                <div class="proceeding-details" style="display:none;">
+                <div class="proceeding-details" id="currentProceedingDetails" style="display:none;" >
                   <div class="field-row">
                     <div class="field-label">
                       (i) Details of Criminal Cases
@@ -624,7 +624,7 @@
                   </div>
                 </div>
                 <!-- PAST DETAILS -->
-                <div class="proceeding-details" style="display:none;">
+                <div class="proceeding-details" id="pastProceedingDetails" style="display:none;" >
                   <div class="field-row">
                     <div class="field-label">
                       (i) Details of Criminal Cases
@@ -718,12 +718,12 @@
               </div>
               <!-- <div class="sub-section-title"></div> -->
               <div id="judgmentAAGContainer"></div>
-              <button type="button" class="btn btn-outline-primary btn-sm rounded-pill add-btn" id="addJudgmentAAGBtn">+
-                Add Judgment</button>
+              <!-- <button type="button" class="btn btn-outline-primary btn-sm rounded-pill add-btn" id="addJudgmentAAGBtn">+
+                Add Judgment</button> -->
               <div class="sub-section-title">Additional Government Pleader (last 5 years)</div>
               <div id="judgmentAGPContainer"></div>
-              <button type="button" class="btn btn-outline-primary btn-sm rounded-pill add-btn" id="addJudgmentAGPBtn">+
-                Add Judgment</button>
+              <!-- <button type="button" class="btn btn-outline-primary btn-sm rounded-pill add-btn" id="addJudgmentAGPBtn">+
+                Add Judgment</button> -->
               <div class="sub-section-title">Drafting Experience</div>
               <div class="row g-3">
                 <div class="col-md-6 field-row"><label class="form-label">No. of Years</label><input type="text"
@@ -752,8 +752,7 @@
             </div> -->
               <div class="d-flex justify-content-between mt-4">
                 <button type="button" class="btn btn-secondary rounded-pill px-4" id="prevToTab2">← Back</button>
-                <button type="button" class="btn btn-primary rounded-pill px-4" id="nextToTab4">Save and
-                  Continue</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4" id="experienceSave">Save → Continue</button>
               </div>
             </div>
             <div id="tab4" class="form-panel">

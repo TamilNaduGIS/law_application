@@ -1,409 +1,965 @@
 /**
- * Tab 3: Experience Details
+ * Tab 3: Experience Details - With DB Format Transformation
  */
 (function (AF) {
     const escapeHtml = AF.utils.escapeHtml;
     const buildFileUploadHtml = AF.files.buildFileUploadHtml;
-
-    function renderBarItem(item, idx) {
-        return `
-    <div class="premium-bar-card list-item">
-        <button type="button"
-                class="bar-remove-btn remove-item d-flex justify-content-center align-items-center"
-                data-idx="${idx}"
-                data-type="bar">
-            <i class="bi bi-trash3-fill"></i>
-        </button>
-        <div class="bar-card-header">
-            <div class="bar-icon-wrap">
-                <i class="bi bi-briefcase-fill"></i>
-            </div>
-            <div>
-                <div class="bar-title">Bar Practice Experience</div>
-                <div class="bar-subtitle">Advocate Practice & Council Details</div>
-            </div>
-        </div>
-        <div class="row g-2 mt-1">
-            <div class="col-md-2">
-                <label class="premium-label"><i class="bi bi-calendar2-check-fill"></i>Years</label>
-                <input type="text" class="form-control premium-input bar-years"
-                       value="${escapeHtml(item.years || '')}" placeholder="Years">
-            </div>
-            <div class="col-md-2">
-                <label class="premium-label"><i class="bi bi-calendar-event-fill"></i>From</label>
-                <input type="date" class="form-control premium-input bar-from"
-                       value="${escapeHtml(AF.utils.formatDateForInput(item.from))}" placeholder="From">
-            </div>
-            <div class="col-md-2">
-                <label class="premium-label"><i class="bi bi-calendar-range-fill"></i>To</label>
-                <input type="date" class="form-control premium-input bar-to"
-                       value="${escapeHtml(AF.utils.formatDateForInput(item.to))}" placeholder="To">
-            </div>
-            <div class="col-md-6">
-                <label class="premium-label"><i class="bi bi-bank2"></i>Name of the Bar Council</label>
-                <input type="text" class="form-control premium-input bar-council"
-                       value="${escapeHtml(item.barCouncil || '')}" placeholder="Enter Bar Council Name">
-            </div>
-        </div>
-        <div class="mt-3">
-            <div class="compact-upload-box">
-                <div class="upload-left">
-                    <div class="upload-file-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div>
-                    <div>
-                        <div class="upload-title">Upload Supporting Documents</div>
-                        <div class="upload-subtitle">PDF / DOC / DOCX</div>
-                    </div>
-                </div>
-                <div class="upload-right">
-                    ${buildFileUploadHtml('bar-doc-' + idx, 'Choose Files', item.documentFileName, 'bar-doc-file', '.pdf,.doc,.docx', true)}
-                </div>
-            </div>
-        </div>
-    </div>`;
+    
+    // Counter for unique IDs
+    let barSectionCounter = 1;
+    let practiceSectionCounter = 1;
+    
+    // Helper function to convert Yes/No to boolean
+    function toBoolean(value) {
+        if (value === undefined || value === null || value === '') return null;
+        const strValue = String(value).toLowerCase().trim();
+        if (strValue === 'yes' || strValue === 'true' || strValue === '1') return true;
+        if (strValue === 'no' || strValue === 'false' || strValue === '0') return false;
+        return null;
     }
-
-    function renderPracticeItem(item, idx) {
-        return `
-    <div class="premium-practice-card list-item">
-        <button type="button" class="practice-remove-btn remove-item" data-idx="${idx}" data-type="practice">
-            <i class="bi bi-trash3-fill"></i>
-        </button>
-        <div class="practice-card-header">
-            <div class="practice-icon-wrap"><i class="bi bi-building-fill-check"></i></div>
-            <div>
-                <div class="practice-title">Court Practice Experience</div>
-                <div class="practice-subtitle">Court Details & Professional Practice Timeline</div>
-            </div>
-        </div>
-        <div class="row g-2 mt-1">
-            <div class="col-md-4">
-                <label class="practice-label"><i class="bi bi-bank"></i>Court Name</label>
-                <input type="text" class="form-control practice-input practice-court"
-                       value="${escapeHtml(item.courtName || item.court || '')}" placeholder="Enter Court Name">
-            </div>
-            <div class="col-md-2">
-                <label class="practice-label"><i class="bi bi-calendar2-check-fill"></i>Years</label>
-                <input type="text" class="form-control practice-input practice-years"
-                       value="${escapeHtml(item.years || '')}" placeholder="Years">
-            </div>
-            <div class="col-md-2">
-                <label class="practice-label"><i class="bi bi-calendar-event-fill"></i>From</label>
-                <input type="text" class="form-control practice-input practice-from"
-                       value="${escapeHtml(item.from || '')}" placeholder="From">
-            </div>
-            <div class="col-md-2">
-                <label class="practice-label"><i class="bi bi-calendar-range-fill"></i>To</label>
-                <input type="text" class="form-control practice-input practice-to"
-                       value="${escapeHtml(item.to || '')}" placeholder="To">
-            </div>
-        </div>
-        <div class="mt-3">
-            <div class="practice-upload-box">
-                <div class="practice-upload-left">
-                    <div class="practice-upload-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div>
-                    <div>
-                        <div class="practice-upload-title">Upload Practice Documents</div>
-                        <div class="practice-upload-subtitle">Experience Certificates / Supporting Files</div>
-                    </div>
-                </div>
-                <div class="practice-upload-right">
-                    ${buildFileUploadHtml('practice-doc-' + idx, 'Choose Files', item.documentFileName, 'practice-doc-file', '.pdf,.doc,.docx', true)}
-                </div>
-            </div>
-        </div>
-    </div>`;
-    }
-
-    function renderJudgmentItem(item, idx, type) {
-        return `
-    <div class="premium-judgment-card list-item">
-        <button type="button"
-                class="judgment-remove-btn remove-item d-flex justify-content-center align-items-center"
-                data-idx="${idx}"
-                data-type="${type}">
-            <i class="bi bi-trash3-fill"></i>
-        </button>
-        <div class="judgment-header">
-            <div class="judgment-icon-wrap"><i class="bi bi-journal-richtext"></i></div>
-            <div>
-                <div class="judgment-title">Judgment / Case Information</div>
-                <div class="judgment-subtitle">Legal Case Details & Supporting Judgments</div>
-            </div>
-        </div>
-        <div class="row g-2 mt-1">
-            <div class="col-md-10">
-                <label class="judgment-label"><i class="bi bi-hash"></i>Case No Citation</label>
-                <input type="text" class="form-control judgment-input j-case"
-                       value="${escapeHtml(item.caseNo || '')}" placeholder="Enter Case Citation">
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button type="button" class="btn btn-primary w-100 addCitationBtn">
-                    <i class="bi bi-plus-circle me-1"></i>Add More
-                </button>
-            </div>
-        </div>
-        <div class="extraCitationWrapper mt-2"></div>
-        <div class="mt-3 d-none">
-            <div class="judgment-upload-box">
-                <div class="judgment-upload-left">
-                    <div class="judgment-upload-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div>
-                    <div>
-                        <div class="judgment-upload-title">Upload Judgment Documents</div>
-                        <div class="judgment-upload-subtitle">Court Orders / Judgments / Supporting Files</div>
-                    </div>
-                </div>
-                <div class="judgment-upload-right">
-                    ${buildFileUploadHtml('judgment-doc-' + idx + '-' + type, 'Choose Files', item.documentFileName, 'judgment-doc-file', '.pdf,.doc,.docx', true)}
-                </div>
-            </div>
-        </div>
-    </div>`;
-    }
-
-    function syncBar() {
-        AF.state.barItems = [];
-        document.querySelectorAll('#barExpContainer .list-item').forEach(function (item) {
-            AF.state.barItems.push({
-                years: item.querySelector('.bar-years') && item.querySelector('.bar-years').value,
-                from: item.querySelector('.bar-from') && item.querySelector('.bar-from').value,
-                to: item.querySelector('.bar-to') && item.querySelector('.bar-to').value,
-                barCouncil: item.querySelector('.bar-council') && item.querySelector('.bar-council').value
+    
+    // Transform payload to database format
+    function transformToDBFormat(formData) {
+        // Calculate total bar experience years
+        let totalBarExperienceYears = 0;
+        if (formData.bar_experiences && Array.isArray(formData.bar_experiences)) {
+            formData.bar_experiences.forEach(exp => {
+                const years = parseFloat(exp.years);
+                if (!isNaN(years)) {
+                    totalBarExperienceYears += years;
+                }
             });
-        });
-        calculateTotalBarYears();
-    }
-
-    function syncPractice() {
-        AF.state.practiceItems = [];
-        document.querySelectorAll('#courtPracticeContainer .list-item').forEach(function (item) {
-            AF.state.practiceItems.push({
-                courtName: item.querySelector('.practice-court') && item.querySelector('.practice-court').value,
-                years: item.querySelector('.practice-years') && item.querySelector('.practice-years').value,
-                from: item.querySelector('.practice-from') && item.querySelector('.practice-from').value,
-                to: item.querySelector('.practice-to') && item.querySelector('.practice-to').value
+        }
+        
+        // Calculate total practice years
+        let totalPracticeYears = 0;
+        if (formData.practice_items && Array.isArray(formData.practice_items)) {
+            formData.practice_items.forEach(practice => {
+                const years = parseFloat(practice.years);
+                if (!isNaN(years)) {
+                    totalPracticeYears += years;
+                }
             });
-        });
-    }
-
-    function syncJudgmentAAG() {
-        AF.state.judgmentAAGItems = [];
-        document.querySelectorAll('#judgmentAAGContainer .list-item').forEach(function (item) {
-            AF.state.judgmentAAGItems.push({
-                caseNo: item.querySelector('.j-case') && item.querySelector('.j-case').value,
-                caseDetails: item.querySelector('.j-details') && item.querySelector('.j-details').value,
-                judgment: item.querySelector('.j-judgment') && item.querySelector('.j-judgment').value,
-                remarks: item.querySelector('.j-remarks') && item.querySelector('.j-remarks').value
+        }
+        
+        // Get drafting years
+        const draftingYears = formData.drafting_years ? parseFloat(formData.drafting_years) : 0;
+        
+        // Transform bar practice
+        const barPractice = [];
+        if (formData.bar_experiences && Array.isArray(formData.bar_experiences)) {
+            formData.bar_experiences.forEach((exp, index) => {
+                barPractice.push({
+                    bar_practice_id: 0,
+                    years_experience: parseInt(exp.years) || 0,
+                    from_date: exp.from_date || null,
+                    to_date: exp.to_date || null,
+                    bar_council_name: exp.bar_council || "",
+                    supporting_document: null,
+                    is_deleted: false
+                });
             });
-        });
-    }
-
-    function syncJudgmentAGP() {
-        AF.state.judgmentAGPItems = [];
-        document.querySelectorAll('#judgmentAGPContainer .list-item').forEach(function (item) {
-            AF.state.judgmentAGPItems.push({
-                caseNo: item.querySelector('.j-case') && item.querySelector('.j-case').value,
-                caseDetails: item.querySelector('.j-details') && item.querySelector('.j-details').value,
-                judgment: item.querySelector('.j-judgment') && item.querySelector('.j-judgment').value,
-                remarks: item.querySelector('.j-remarks') && item.querySelector('.j-remarks').value
+        }
+        
+        // Transform court practice
+        const courtPractice = [];
+        if (formData.practice_items && Array.isArray(formData.practice_items)) {
+            formData.practice_items.forEach((practice, index) => {
+                courtPractice.push({
+                    court_practice_id: 0,
+                    court_name: practice.court_name || "",
+                    years_experience: parseInt(practice.years) || 0,
+                    from_date: practice.from_date || null,
+                    to_date: practice.to_date || null,
+                    practice_document: null,
+                    is_deleted: false
+                });
             });
-        });
-    }
-
-    function calculateTotalBarYears() {
-        let total = 0;
-        AF.state.barItems.forEach(function (b) {
-            const y = parseInt(b.years, 10);
-            if (!isNaN(y)) total += y;
-        });
-        const el = document.getElementById('totalBarYears');
-        if (el) el.value = total ? total + ' years' : '';
-    }
-
-    function renderBar() {
-        AF.lists.renderList('barExpContainer', AF.state.barItems, renderBarItem, 'bar');
-        calculateTotalBarYears();
-    }
-
-    function renderPractice() {
-        AF.lists.renderList('courtPracticeContainer', AF.state.practiceItems, renderPracticeItem, 'practice');
-    }
-
-    function renderJudgmentAAG() {
-        AF.lists.renderList('judgmentAAGContainer', AF.state.judgmentAAGItems, function (it, i) {
-            return renderJudgmentItem(it, i, 'judgmentAAG');
-        }, 'judgmentAAG');
-    }
-
-    function renderJudgmentAGP() {
-        AF.lists.renderList('judgmentAGPContainer', AF.state.judgmentAGPItems, function (it, i) {
-            return renderJudgmentItem(it, i, 'judgmentAGP');
-        }, 'judgmentAGP');
-    }
-
-    function initCitationHandlers() {
-        function appendCitationRow(wrapper) {
-            const total = wrapper.find('.extra-citation-row').length;
-            if (total >= 29) {
-                alert('Maximum 30 citations allowed');
-                return;
+        }
+        
+        // Transform judgments with categories
+        const judgements = [];
+        
+        // Process AAG citations (7 year category)
+        if (formData.judgment_aag_citations && formData.judgment_aag_citations.length > 0) {
+            const aagCitations = [];
+            formData.judgment_aag_citations.forEach(citation => {
+                if (citation && citation.trim()) {
+                    aagCitations.push({
+                        citation_type: "7_YEAR",
+                        case_title: "",
+                        case_citation: citation.trim()
+                    });
+                }
+            });
+            
+            if (aagCitations.length > 0) {
+                judgements.push({
+                    category: "AAG",
+                    citations: aagCitations
+                });
             }
-            const html = `
-                <div class="row g-2 mt-2 extra-citation-row">
-                    <div class="col-md-10">
-                        <input type="text" class="form-control judgment-input extraCitationInput"
-                               placeholder="Enter Additional Case Citation">
+        }
+        
+        // Process AGP citations (5 year category)
+        if (formData.judgment_agp_citations && formData.judgment_agp_citations.length > 0) {
+            const agpCitations = [];
+            formData.judgment_agp_citations.forEach(citation => {
+                if (citation && citation.trim()) {
+                    agpCitations.push({
+                        citation_type: "5_YEAR",
+                        case_title: "",
+                        case_citation: citation.trim()
+                    });
+                }
+            });
+            
+            if (agpCitations.length > 0) {
+                judgements.push({
+                    category: "AGP",
+                    citations: agpCitations
+                });
+            }
+        }
+        
+        // Build the final payload
+        const dbPayload = {
+            applicant_id: AF.state.applicant_id || 1,
+            created_by: AF.state.created_by || 1,
+            law_degree_recognized: formData.law_degree_recognized || false,
+            govt_law_officer_experience: formData.previously_worked || false,
+            provide_details_if_yes: formData.previously_worked_details || "",
+            current_facing_criminal_proceedings: formData.current_proceeding || false,
+            current_criminal_cases_details: formData.current_criminal_details || "",
+            current_criminal_cases_present_status: formData.current_criminal_status || "",
+            current_disciplinary_proceeding_details: formData.current_disciplinary_details || "",
+            current_disciplinary_proceeding_present_status: formData.current_disciplinary_status || "",
+            past_facing_criminal_proceedings: formData.past_proceeding || false,
+            past_criminal_cases_details: formData.past_criminal_details || "",
+            past_criminal_cases_present_status: formData.past_criminal_status || "",
+            past_disciplinary_proceeding_details: formData.past_disciplinary_details || "",
+            past_disciplinary_proceeding_present_status: formData.past_disciplinary_status || "",
+            professional_achievement: formData.has_achievements || false,
+            achievement_remarks: formData.achievement_details || "",
+            achievement_support_document: formData.achievement_files && formData.achievement_files.length > 0 ? formData.achievement_files[0] : null,
+            total_bar_experience_years: totalBarExperienceYears,
+            total_practice_years: totalPracticeYears,
+            drafting_experience_years: draftingYears,
+            bar_practice: barPractice,
+            court_practice: courtPractice,
+            judgements: judgements
+        };
+        
+        return dbPayload;
+    }
+    
+    // Optimized date validation
+    function initOptimizedDateValidation() {
+        const TODAY = new Date().toISOString().split('T')[0];
+
+        const validateDates = ($from, $to) => {
+            const fromDate = $from.val();
+            const toDate = $to.val();
+            const $item = $from.closest('.list-item');
+            
+            $to.attr('min', fromDate || '');
+            $from.attr('max', toDate || '');
+            
+            if (fromDate && toDate) {
+                const isValid = new Date(fromDate) <= new Date(toDate);
+                $from.toggleClass('is-invalid', !isValid);
+                $to.toggleClass('is-invalid', !isValid);
+                
+                if (!isValid) {
+                    $item.find('.date-error-message').remove();
+                    $('<div class="invalid-feedback date-error-message">From date cannot be greater than to date</div>')
+                        .insertAfter($to)
+                        .delay(3000)
+                        .fadeOut(300, function() { $(this).remove(); });
+                } else {
+                    $item.find('.date-error-message').remove();
+                }
+            } else {
+                $from.removeClass('is-invalid');
+                $to.removeClass('is-invalid');
+            }
+        };
+        
+        $(document)
+            .on('change', '.bar-from, .practice-from', function() {
+                const $to = $(this).closest('.list-item').find('.bar-to, .practice-to');
+                validateDates($(this), $to);
+            })
+            .on('change', '.bar-to, .practice-to', function() {
+                const $from = $(this).closest('.list-item').find('.bar-from, .practice-from');
+                validateDates($from, $(this));
+            })
+            .on('focus', '.bar-from, .bar-to, .practice-from, .practice-to', function() {
+                $(this).attr('max', TODAY);
+            });
+    }
+
+    // Collect all experience data from form
+    function collectExperienceData() {
+        const payload = {};
+        
+        // 1. Basic Fields
+        payload.law_degree_recognized = toBoolean($('#lawDegreeRecognized1').val());
+        payload.previously_worked = toBoolean($('#previousWorked').val());
+        payload.previously_worked_details = $('#previousWorkedDetails').val().trim() || null;
+        
+        // 2. Current Proceedings
+        const currentProceedingValue = $('input[name="currentProceeding"]:checked').val();
+        payload.current_proceeding = toBoolean(currentProceedingValue);
+        
+        const $currentDetails = $('#currentProceedingDetails');
+        if (payload.current_proceeding === true) {
+            const textareas = $currentDetails.find('textarea');
+            payload.current_criminal_details = textareas.eq(0).val().trim() || null;
+            payload.current_criminal_status = textareas.eq(1).val().trim() || null;
+            payload.current_disciplinary_details = textareas.eq(2).val().trim() || null;
+            payload.current_disciplinary_status = textareas.eq(3).val().trim() || null;
+        } else {
+            payload.current_criminal_details = null;
+            payload.current_criminal_status = null;
+            payload.current_disciplinary_details = null;
+            payload.current_disciplinary_status = null;
+        }
+        
+        // 3. Past Proceedings
+        const pastProceedingValue = $('input[name="pastProceeding"]:checked').val();
+        payload.past_proceeding = toBoolean(pastProceedingValue);
+        
+        const $pastDetails = $('#pastProceedingDetails');
+        if (payload.past_proceeding === true) {
+            const textareas = $pastDetails.find('textarea');
+            payload.past_criminal_details = textareas.eq(0).val().trim() || null;
+            payload.past_criminal_status = textareas.eq(1).val().trim() || null;
+            payload.past_disciplinary_details = textareas.eq(2).val().trim() || null;
+            payload.past_disciplinary_status = textareas.eq(3).val().trim() || null;
+        } else {
+            payload.past_criminal_details = null;
+            payload.past_criminal_status = null;
+            payload.past_disciplinary_details = null;
+            payload.past_disciplinary_status = null;
+        }
+        
+        // 4. Achievement Section
+        payload.has_achievements = toBoolean($('#achievmenetWrap').val());
+        payload.achievement_details = $('#achievementDetails').val().trim() || null;
+        
+        const achievementFiles = $('#achievementFiles')[0]?.files;
+        payload.achievement_files = achievementFiles && achievementFiles.length > 0 
+            ? Array.from(achievementFiles).map(f => f.name) 
+            : null;
+        
+        // 5. Bar Experiences
+        payload.bar_experiences = [];
+        $('#barExpContainer .bar-item').each(function(index) {
+            const $item = $(this);
+            const years = ($item.find('.bar-years').val() || '').trim();
+            const fromDate = $item.find('.bar-from').val() || null;
+            const toDate = $item.find('.bar-to').val() || null;
+            const courtType = ($item.find('.bar-court-type').val() || '').trim() || null;
+            const barCouncil = ($item.find('.bar-council').val() || '').trim() || null;
+            
+            if (years || fromDate || toDate || courtType || barCouncil) {
+                payload.bar_experiences.push({
+                    years: years || null,
+                    from_date: fromDate,
+                    to_date: toDate,
+                    court_type: courtType,
+                    bar_council: barCouncil
+                });
+            }
+        });
+        if (payload.bar_experiences.length === 0) payload.bar_experiences = null;
+        
+        // 6. Practice Items
+        payload.practice_items = [];
+        $('#courtPracticeContainer .practice-item').each(function(index) {
+            const $item = $(this);
+            const courtName = ($item.find('.practice-court').val() || '').trim();
+            const years = ($item.find('.practice-years').val() || '').trim();
+            const fromDate = $item.find('.practice-from').val() || null;
+            const toDate = $item.find('.practice-to').val() || null;
+            
+            if (courtName || years || fromDate || toDate) {
+                payload.practice_items.push({
+                    court_name: courtName || null,
+                    years: years || null,
+                    from_date: fromDate,
+                    to_date: toDate
+                });
+            }
+        });
+        if (payload.practice_items.length === 0) payload.practice_items = null;
+        
+        // 7-8. Judgment citations
+        payload.judgment_aag_citations = [];
+        $('#judgmentAAGContainer .citation-input').each(function() {
+            const val = $(this).val().trim();
+            if (val) payload.judgment_aag_citations.push(val);
+        });
+        if (payload.judgment_aag_citations.length === 0) payload.judgment_aag_citations = null;
+
+        payload.judgment_agp_citations = [];
+        $('#judgmentAGPContainer .citation-input').each(function() {
+            const val = $(this).val().trim();
+            if (val) payload.judgment_agp_citations.push(val);
+        });
+        if (payload.judgment_agp_citations.length === 0) payload.judgment_agp_citations = null;
+        
+        // 9. Drafting Experience
+        payload.drafting_years = $('#draftingYears').val().trim() || null;
+        
+        // 10. Calculated Fields
+        payload.total_bar_years = $('#totalBarYears').val() || null;
+        payload.high_court_years = $('#specificBarYears').val() || null;
+        
+        // 11. Law Officer Remarks
+        payload.law_officer_remarks = $('#lawOfficerRemarks').val().trim() || null;
+        
+        // 12. Timestamp
+        payload.collected_at = new Date().toISOString();
+        
+        return payload;
+    }
+    
+    // Function to recalculate total years
+    function recalculateTotalYears() {
+        let totalYears = 0;
+        let highCourtYears = 0;
+        
+        $('#barExpContainer .bar-item').each(function() {
+            const $item = $(this);
+            const years = parseFloat($item.find('.bar-years').val());
+            const courtType = $item.find('.bar-court-type').val();
+            const fromDate = $item.find('.bar-from').val();
+            const toDate = $item.find('.bar-to').val();
+            
+            if (!isNaN(years)) {
+                totalYears += years;
+                if (courtType === 'High Court') {
+                    highCourtYears += years;
+                }
+            }
+            
+            if (fromDate && toDate && (isNaN(years) || !$item.find('.bar-years').val())) {
+                const from = new Date(fromDate);
+                const to = new Date(toDate);
+                if (to > from) {
+                    const yearDiff = (to - from) / (1000 * 60 * 60 * 24 * 365.25);
+                    totalYears += yearDiff;
+                    if (courtType === 'High Court') {
+                        highCourtYears += yearDiff;
+                    }
+                }
+            }
+        });
+        
+        $('#totalBarYears').val(totalYears > 0 ? totalYears.toFixed(2) + ' years' : '0 years');
+        $('#specificBarYears').val(highCourtYears > 0 ? highCourtYears.toFixed(2) + ' years' : '0 years');
+    }
+    
+    // Create a new bar experience section (BLANK)
+    function createBarSection(sectionNumber) {
+        return `
+            <div class="premium-bar-card bar-item list-item mb-3" data-section="${sectionNumber}">
+                <button type="button" class="bar-remove-btn remove-bar-item d-flex justify-content-center align-items-center"
+                        data-section="${sectionNumber}">
+                    <i class="bi bi-trash3-fill"></i>
+                </button>
+                <div class="bar-card-header">
+                    <div class="bar-icon-wrap"><i class="bi bi-briefcase-fill"></i></div>
+                    <div>
+                        <div class="bar-title">Bar Practice Experience #${sectionNumber}</div>
+                        <div class="bar-subtitle">Advocate Practice & Council Details</div>
+                    </div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-3">
+                        <label class="premium-label"><i class="bi bi-calendar2-check-fill"></i>Years</label>
+                        <input type="number" class="form-control premium-input bar-years"
+                               name="bar_years_${sectionNumber}"
+                               id="bar_years_${sectionNumber}"
+                               value="" 
+                               placeholder="Years" step="0.5">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="premium-label"><i class="bi bi-calendar-event-fill"></i>From Date</label>
+                        <input type="date" class="form-control premium-input bar-from"
+                               name="bar_from_${sectionNumber}"
+                               id="bar_from_${sectionNumber}"
+                               value="">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="premium-label"><i class="bi bi-calendar-range-fill"></i>To Date</label>
+                        <input type="date" class="form-control premium-input bar-to"
+                               name="bar_to_${sectionNumber}"
+                               id="bar_to_${sectionNumber}"
+                               value="">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="premium-label"><i class="bi bi-bank2"></i>Court Type</label>
+                        <select class="form-control premium-input bar-court-type"
+                                name="bar_court_type_${sectionNumber}"
+                                id="bar_court_type_${sectionNumber}">
+                            <option value="">Select</option>
+                            <option value="High Court">High Court</option>
+                            <option value="District Court">District Court</option>
+                            <option value="Tribunal">Tribunal</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row g-2 mt-2">
+                    <div class="col-md-12">
+                        <label class="premium-label"><i class="bi bi-building"></i>Name of the Bar Council / Court</label>
+                        <input type="text" class="form-control premium-input bar-council"
+                               name="bar_council_${sectionNumber}"
+                               id="bar_council_${sectionNumber}"
+                               value="" 
+                               placeholder="Enter Bar Council or Court Name">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="compact-upload-box">
+                        <div class="upload-left">
+                            <div class="upload-file-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div>
+                            <div>
+                                <div class="upload-title">Upload Supporting Documents</div>
+                                <div class="upload-subtitle">PDF / DOC / DOCX</div>
+                            </div>
+                        </div>
+                        <div class="upload-right">
+                            ${buildFileUploadHtml('bar-doc-' + sectionNumber, 'Choose Files', '', 'bar-doc-file', '.pdf,.doc,.docx', true)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Create a new practice section (BLANK)
+    function createPracticeSection(sectionNumber) {
+        return `
+            <div class="premium-practice-card practice-item list-item mb-3" data-section="${sectionNumber}">
+                <button type="button" class="practice-remove-btn remove-practice-item d-flex justify-content-center align-items-center"
+                        data-section="${sectionNumber}">
+                    <i class="bi bi-trash3-fill"></i>
+                </button>
+                <div class="practice-card-header">
+                    <div class="practice-icon-wrap"><i class="bi bi-building-fill-check"></i></div>
+                    <div>
+                        <div class="practice-title">Court Practice Experience #${sectionNumber}</div>
+                        <div class="practice-subtitle">Practice in High Court / Madurai Bench</div>
+                    </div>
+                </div>
+                <div class="row g-2 mt-1">
+                    <div class="col-md-4">
+                        <label class="practice-label"><i class="bi bi-bank"></i>Court / Bench Name</label>
+                        <input type="text" class="form-control practice-input practice-court"
+                               name="practice_court_${sectionNumber}"
+                               id="practice_court_${sectionNumber}"
+                               value="" 
+                               placeholder="Enter Court Name">
                     </div>
                     <div class="col-md-2">
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-primary addCitationBtnInline flex-fill">
-                                <i class="bi bi-plus-lg"></i>
-                            </button>
-                            <button type="button" class="btn btn-danger removeCitationBtn flex-fill">
-                                <i class="bi bi-x-lg"></i>
+                        <label class="practice-label"><i class="bi bi-calendar2-check-fill"></i>Years</label>
+                        <input type="number" class="form-control practice-input practice-years"
+                               name="practice_years_${sectionNumber}"
+                               id="practice_years_${sectionNumber}"
+                               value="" 
+                               placeholder="Years" step="0.5">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="practice-label"><i class="bi bi-calendar-event-fill"></i>From Date</label>
+                        <input type="date" class="form-control practice-input practice-from"
+                               name="practice_from_${sectionNumber}"
+                               id="practice_from_${sectionNumber}"
+                               value="">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="practice-label"><i class="bi bi-calendar-range-fill"></i>To Date</label>
+                        <input type="date" class="form-control practice-input practice-to"
+                               name="practice_to_${sectionNumber}"
+                               id="practice_to_${sectionNumber}"
+                               value="">
+                    </div>
+                </div>
+                <div class="mt-3">
+                    <div class="practice-upload-box">
+                        <div class="practice-upload-left">
+                            <div class="practice-upload-icon"><i class="bi bi-cloud-arrow-up-fill"></i></div>
+                            <div>
+                                <div class="practice-upload-title">Upload Practice Documents</div>
+                                <div class="practice-upload-subtitle">Experience Certificates / Supporting Files</div>
+                            </div>
+                        </div>
+                        <div class="practice-upload-right">
+                            ${buildFileUploadHtml('practice-doc-' + sectionNumber, 'Choose Files', '', 'practice-doc-file', '.pdf,.doc,.docx', true)}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // Render initial bar sections
+    function renderBarSections() {
+        const container = $('#barExpContainer');
+        container.empty();
+        
+        const sections = AF.state.barSections || [1];
+        
+        sections.forEach(sectionNum => {
+            container.append(createBarSection(sectionNum));
+        });
+        
+        barSectionCounter = Math.max(...sections) + 1;
+    }
+    
+    // Render initial practice sections
+    function renderPracticeSections() {
+        const container = $('#courtPracticeContainer');
+        container.empty();
+        
+        const sections = AF.state.practiceSections || [1];
+        
+        sections.forEach(sectionNum => {
+            container.append(createPracticeSection(sectionNum));
+        });
+        
+        practiceSectionCounter = Math.max(...sections) + 1;
+    }
+    
+    // Add new bar section
+    function addBarSection() {
+        const newSectionNum = barSectionCounter++;
+        const $newSection = $(createBarSection(newSectionNum));
+        $('#barExpContainer').append($newSection);
+        
+        const sections = AF.state.barSections || [1];
+        sections.push(newSectionNum);
+        AF.state.barSections = sections;
+        
+        recalculateTotalYears();
+    }
+    
+    // Add new practice section
+    function addPracticeSection() {
+        const newSectionNum = practiceSectionCounter++;
+        const $newSection = $(createPracticeSection(newSectionNum));
+        $('#courtPracticeContainer').append($newSection);
+        
+        const sections = AF.state.practiceSections || [1];
+        sections.push(newSectionNum);
+        AF.state.practiceSections = sections;
+    }
+    
+    // Remove bar section
+    function removeBarSection(sectionNum) {
+        $(`.bar-item[data-section="${sectionNum}"]`).remove();
+        
+        let sections = AF.state.barSections || [1];
+        sections = sections.filter(s => s !== sectionNum);
+        if (sections.length === 0) sections = [1];
+        AF.state.barSections = sections;
+        
+        $('#barExpContainer .bar-item').each(function(index) {
+            const newNum = index + 1;
+            $(this).attr('data-section', newNum);
+            $(this).find('.bar-title').text(`Bar Practice Experience #${newNum}`);
+            $(this).find('.bar-years').attr({name: `bar_years_${newNum}`, id: `bar_years_${newNum}`});
+            $(this).find('.bar-from').attr({name: `bar_from_${newNum}`, id: `bar_from_${newNum}`});
+            $(this).find('.bar-to').attr({name: `bar_to_${newNum}`, id: `bar_to_${newNum}`});
+            $(this).find('.bar-court-type').attr({name: `bar_court_type_${newNum}`, id: `bar_court_type_${newNum}`});
+            $(this).find('.bar-council').attr({name: `bar_council_${newNum}`, id: `bar_council_${newNum}`});
+            $(this).find('.bar-remove-btn').attr('data-section', newNum);
+        });
+        
+        barSectionCounter = sections.length + 1;
+        recalculateTotalYears();
+    }
+    
+    // Remove practice section
+    function removePracticeSection(sectionNum) {
+        $(`.practice-item[data-section="${sectionNum}"]`).remove();
+        
+        let sections = AF.state.practiceSections || [1];
+        sections = sections.filter(s => s !== sectionNum);
+        if (sections.length === 0) sections = [1];
+        AF.state.practiceSections = sections;
+        
+        $('#courtPracticeContainer .practice-item').each(function(index) {
+            const newNum = index + 1;
+            $(this).attr('data-section', newNum);
+            $(this).find('.practice-title').text(`Court Practice Experience #${newNum}`);
+            $(this).find('.practice-court').attr({name: `practice_court_${newNum}`, id: `practice_court_${newNum}`});
+            $(this).find('.practice-years').attr({name: `practice_years_${newNum}`, id: `practice_years_${newNum}`});
+            $(this).find('.practice-from').attr({name: `practice_from_${newNum}`, id: `practice_from_${newNum}`});
+            $(this).find('.practice-to').attr({name: `practice_to_${newNum}`, id: `practice_to_${newNum}`});
+            $(this).find('.practice-remove-btn').attr('data-section', newNum);
+        });
+        
+        practiceSectionCounter = sections.length + 1;
+    }
+    
+    // ============================================================
+    // JUDGMENT CITATION FUNCTIONS
+    // ============================================================
+    
+    function getAAGCitations() {
+        const citations = [];
+        $('#judgmentAAGContainer .citation-input').each(function() {
+            const val = $(this).val();
+            citations.push(val);
+        });
+        return citations.length > 0 ? citations : [''];
+    }
+    
+    function getAGPCitations() {
+        const citations = [];
+        $('#judgmentAGPContainer .citation-input').each(function() {
+            const val = $(this).val();
+            citations.push(val);
+        });
+        return citations.length > 0 ? citations : [''];
+    }
+    
+    function renderJudgmentAAG() {
+        const container = $('#judgmentAAGContainer');
+        container.empty();
+        
+        const citations = AF.state.judgmentAAGCitations || [''];
+        
+        citations.forEach((citation, index) => {
+            const citationHtml = `
+                <div class="citation-item mb-2" data-index="${index}">
+                    <div class="row g-2">
+                        <div class="col-md-10">
+                            <input type="text" class="form-control citation-input" 
+                                   name="judgment_aag_citation_${index}"
+                                   id="judgment_aag_citation_${index}"
+                                   value="${escapeHtml(citation)}" 
+                                   placeholder="Enter Case Citation (e.g., 2023 SCC 123)">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-danger remove-citation-btn w-100">
+                                <i class="bi bi-trash-fill"></i> Remove
                             </button>
                         </div>
                     </div>
-                </div>`;
-            wrapper.append(html);
-            wrapper.find('.extraCitationInput').last().focus();
-        }
-
-        $(document).on('click', '.addCitationBtn', function () {
-            appendCitationRow($(this).closest('.premium-judgment-card').find('.extraCitationWrapper'));
+                </div>
+            `;
+            container.append(citationHtml);
         });
-
-        $(document).on('click', '.addCitationBtnInline', function () {
-            appendCitationRow($(this).closest('.premium-judgment-card').find('.extraCitationWrapper'));
-        });
-
-        $(document).on('click', '.removeCitationBtn', function () {
-            $(this).closest('.extra-citation-row').remove();
-        });
+        
+        const addButtonHtml = `
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button type="button" class="btn btn-primary add-aag-citation-btn">
+                        <i class="bi bi-plus-circle me-2"></i>Add Citation (Max 30)
+                    </button>
+                </div>
+            </div>
+        `;
+        container.append(addButtonHtml);
     }
-
-    function initProceedingToggles() {
-        $(document).on('change', '.proceedingToggle', function () {
-            const target = $(this).data('target');
-            if ($(this).val() === 'Yes') {
-                $(target).removeClass('d-none').slideDown(200);
-            } else {
-                $(target).slideUp(200);
+    
+    function renderJudgmentAGP() {
+        const container = $('#judgmentAGPContainer');
+        container.empty();
+        
+        const citations = AF.state.judgmentAGPCitations || [''];
+        
+        citations.forEach((citation, index) => {
+            const citationHtml = `
+                <div class="citation-item mb-2" data-index="${index}">
+                    <div class="row g-2">
+                        <div class="col-md-10">
+                            <input type="text" class="form-control citation-input" 
+                                   name="judgment_agp_citation_${index}"
+                                   id="judgment_agp_citation_${index}"
+                                   value="${escapeHtml(citation)}" 
+                                   placeholder="Enter Case Citation (e.g., 2023 SCC 123)">
+                        </div>
+                        <div class="col-md-2">
+                            <button type="button" class="btn btn-danger remove-citation-btn w-100">
+                                <i class="bi bi-trash-fill"></i> Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            container.append(citationHtml);
+        });
+        
+        const addButtonHtml = `
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button type="button" class="btn btn-primary add-agp-citation-btn">
+                        <i class="bi bi-plus-circle me-2"></i>Add Citation (Max 30)
+                    </button>
+                </div>
+            </div>
+        `;
+        container.append(addButtonHtml);
+    }
+    
+    function initJudgmentCitationHandlers() {
+        $(document).off('click', '.add-aag-citation-btn').on('click', '.add-aag-citation-btn', function() {
+            let citations = getAAGCitations();
+            const nonEmptyCount = citations.filter(c => c && c.trim() !== '').length;
+            
+            if (nonEmptyCount >= 30) {
+                alert('Maximum 30 citations allowed for AAG section!');
+                return;
+            }
+            
+            citations.push('');
+            AF.state.judgmentAAGCitations = citations;
+            renderJudgmentAAG();
+        });
+        
+        $(document).off('click', '.add-agp-citation-btn').on('click', '.add-agp-citation-btn', function() {
+            let citations = getAGPCitations();
+            const nonEmptyCount = citations.filter(c => c && c.trim() !== '').length;
+            
+            if (nonEmptyCount >= 30) {
+                alert('Maximum 30 citations allowed for AGP section!');
+                return;
+            }
+            
+            citations.push('');
+            AF.state.judgmentAGPCitations = citations;
+            renderJudgmentAGP();
+        });
+        
+        $(document).off('click', '.remove-citation-btn').on('click', '.remove-citation-btn', function() {
+            const $btn = $(this);
+            const $citationItem = $btn.closest('.citation-item');
+            const $container = $citationItem.closest('#judgmentAAGContainer, #judgmentAGPContainer');
+            const isAAG = $container.attr('id') === 'judgmentAAGContainer';
+            const index = $citationItem.data('index');
+            
+            let citations = isAAG ? getAAGCitations() : getAGPCitations();
+            
+            if (index >= 0 && citations.length > 1) {
+                citations.splice(index, 1);
+                const hasNonEmpty = citations.some(c => c && c.trim() !== '');
+                if (!hasNonEmpty && citations.length > 0) {
+                    citations = [''];
+                }
+                
+                if (isAAG) {
+                    AF.state.judgmentAAGCitations = citations;
+                    renderJudgmentAAG();
+                } else {
+                    AF.state.judgmentAGPCitations = citations;
+                    renderJudgmentAGP();
+                }
             }
         });
-
-        $(function () {
-            $('.proceedingToggle').change(function () {
-                const target = $(this).attr('data-target');
-                if ($(this).val() === 'Yes') {
-                    $(target).stop(true, true).slideDown(300);
+        
+        $(document).off('input', '.citation-input').on('input', '.citation-input', function() {
+            const $input = $(this);
+            const $citationItem = $input.closest('.citation-item');
+            const $container = $citationItem.closest('#judgmentAAGContainer, #judgmentAGPContainer');
+            const isAAG = $container.attr('id') === 'judgmentAAGContainer';
+            const newValue = $input.val();
+            const index = $citationItem.data('index');
+            
+            let citations = isAAG ? [...(AF.state.judgmentAAGCitations || [''])] : [...(AF.state.judgmentAGPCitations || [''])];
+            
+            if (index >= 0 && citations[index] !== undefined) {
+                citations[index] = newValue;
+                
+                if (isAAG) {
+                    AF.state.judgmentAAGCitations = citations;
                 } else {
-                    $(target).stop(true, true).slideUp(300);
+                    AF.state.judgmentAGPCitations = citations;
                 }
-            });
+            }
         });
+    }
+    
+    // ============================================================
+    // INITIALIZATION FUNCTIONS
+    // ============================================================
+
+    function initProceedingToggles() {
+        const $currentDetails = $('#currentProceedingDetails');
+        const $pastDetails = $('#pastProceedingDetails');
+        
+        function toggleCurrent() {
+            if ($('#currentProceedingYes').is(':checked')) {
+                $currentDetails.slideDown(300);
+                $currentDetails.find('textarea').prop('required', true);
+            } else {
+                $currentDetails.slideUp(300);
+                $currentDetails.find('textarea').val('').prop('required', false);
+            }
+        }
+        
+        function togglePast() {
+            if ($('#pastProceedingYes').is(':checked')) {
+                $pastDetails.slideDown(300);
+                $pastDetails.find('textarea').prop('required', true);
+            } else {
+                $pastDetails.slideUp(300);
+                $pastDetails.find('textarea').val('').prop('required', false);
+            }
+        }
+        
+        $('#currentProceedingYes, #currentProceedingNo').on('change', toggleCurrent);
+        $('#pastProceedingYes, #pastProceedingNo').on('change', togglePast);
+        
+        toggleCurrent();
+        togglePast();
     }
 
     function initConditionalFields() {
-        const previousWorked = document.getElementById('previousWorked');
-        if (previousWorked) {
-            previousWorked.addEventListener('change', function () {
-                const wrapper = document.getElementById('previousWorkedWrapper');
-                if (!wrapper) return;
-                if (this.value === 'Yes') wrapper.classList.remove('d-none');
-                else wrapper.classList.add('d-none');
-            });
-        }
+        $('#previousWorked').on('change', function() {
+            if ($(this).val() === 'Yes') {
+                $('#previousWorkedWrapper').removeClass('d-none');
+            } else {
+                $('#previousWorkedWrapper').addClass('d-none');
+                $('#previousWorkedDetails').val('');
+            }
+        }).trigger('change');
+        
+        $('#achievmenetWrap').on('change', function() {
+            if ($(this).val() === 'Yes') {
+                $('#achievementDetailsWrapper').removeClass('d-none');
+            } else {
+                $('#achievementDetailsWrapper').addClass('d-none');
+                $('#achievementDetails').val('');
+                $('#achievementFiles').val('');
+            }
+        }).trigger('change');
+    }
 
-        const achievementWrap = document.getElementById('achievmenetWrap');
-        if (achievementWrap) {
-            achievementWrap.addEventListener('change', function () {
-                const wrapper = document.getElementById('achievementDetailsWrapper');
-                if (!wrapper) return;
-                if (this.value === 'Yes') {
-                    wrapper.classList.remove('d-none');
-                } else {
-                    wrapper.classList.add('d-none');
-                    const details = document.getElementById('achievementDetails');
-                    const files = document.getElementById('achievementFiles');
-                    if (details) details.value = '';
-                    if (files) files.value = '';
-                }
+    function initDraftingExperience() {
+        const draftingYears = document.getElementById('draftingYears');
+        if (draftingYears) {
+            draftingYears.addEventListener('change', function() {
+                AF.state.draftingYears = this.value;
             });
+            if (AF.state.draftingYears) {
+                draftingYears.value = AF.state.draftingYears;
+            }
         }
     }
 
     function initDefaultItems() {
-        if (!AF.state.barItems.length) {
-            AF.state.barItems.push({
-                years: '8', from: '2017', to: '2025', barCouncil: 'Bar Council of Tamil Nadu'
-            });
+        if (!AF.state.barSections || AF.state.barSections.length === 0) {
+            AF.state.barSections = [1];
         }
-        if (AF.state.judgmentAGPItems.length === 0) {
-            AF.state.judgmentAGPItems.push({ caseNo: '' });
+        if (!AF.state.practiceSections || AF.state.practiceSections.length === 0) {
+            AF.state.practiceSections = [1];
+        }
+        if (!AF.state.judgmentAAGCitations || AF.state.judgmentAAGCitations.length === 0) {
+            AF.state.judgmentAAGCitations = [''];
+        }
+        if (!AF.state.judgmentAGPCitations || AF.state.judgmentAGPCitations.length === 0) {
+            AF.state.judgmentAGPCitations = [''];
+        }
+        if (!AF.state.draftingYears) {
+            AF.state.draftingYears = '';
         }
     }
+
+    // ============================================================
+    // INITIALIZATION
+    // ============================================================
 
     function init() {
-        initCitationHandlers();
+        initOptimizedDateValidation();
+        initDefaultItems();
+        initJudgmentCitationHandlers();
         initProceedingToggles();
         initConditionalFields();
-        initDefaultItems();
-
-        const addBarBtn = document.getElementById('addBarExpBtn');
-        if (addBarBtn) {
-            addBarBtn.addEventListener('click', function () {
-                AF.state.barItems.push({});
-                renderBar();
-            });
-        }
-
-        const addPracticeBtn = document.getElementById('addPracticeBtn');
-        if (addPracticeBtn) {
-            addPracticeBtn.addEventListener('click', function () {
-                AF.state.practiceItems.push({});
-                renderPractice();
-            });
-        }
-
-        const addJudgmentAAGBtn = document.getElementById('addJudgmentAAGBtn');
-        if (addJudgmentAAGBtn) {
-            addJudgmentAAGBtn.addEventListener('click', function () {
-                AF.state.judgmentAAGItems.push({});
-                renderJudgmentAAG();
-            });
-        }
-
-        const addJudgmentAGPBtn = document.getElementById('addJudgmentAGPBtn');
-        if (addJudgmentAGPBtn) {
-            addJudgmentAGPBtn.addEventListener('click', function () {
-                AF.state.judgmentAGPItems.push({ caseNo: '' });
-                renderJudgmentAGP();
-            });
-        }
-
-        const prevBtn = document.getElementById('prevToTab2');
-        if (prevBtn) prevBtn.addEventListener('click', function () { AF.nav.switchTab(2); });
-
-        const nextBtn = document.getElementById('nextToTab4');
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function () {
-                AF.data.saveDraft();
-                if (AF.tab4) AF.tab4.generatePreview();
-                AF.nav.switchTab(4);
-            });
-        }
+        initDraftingExperience();
+        
+        renderBarSections();
+        renderPracticeSections();
+        renderJudgmentAAG();
+        renderJudgmentAGP();
+        
+        $(document).on('input', '.bar-years, .practice-years, .bar-from, .bar-to, .practice-from, .practice-to', function() {
+            recalculateTotalYears();
+        });
+        
+        $(document).on('change', '.bar-court-type', function() {
+            recalculateTotalYears();
+        });
+        
+        // Save button handler - Transforms to DB format
+        $('#experienceSave').on('click', function(e){
+            e.preventDefault();
+            
+            // Collect raw form data
+            const rawPayload = collectExperienceData();
+            console.log('Raw Form Data:', rawPayload);
+            
+            // Transform to database format
+            const dbPayload = transformToDBFormat(rawPayload);
+            console.log('Database Format Payload:', dbPayload);
+            console.log('Whole Payload:', JSON.stringify(dbPayload, null, 2));
+            
+            // Store in AF state
+            AF.state.experienceData = rawPayload;
+            AF.state.dbExperienceData = dbPayload;
+            
+            if (AF.data && AF.data.saveDraft) AF.data.saveDraft();
+            
+            alert('Experience data collected! Check console for payload.');
+            return dbPayload;
+        });
+        
+        $('#addBarExpBtn').off('click').on('click', function() {
+            addBarSection();
+        });
+        
+        $('#addPracticeBtn').off('click').on('click', function() {
+            addPracticeSection();
+        });
+        
+        $(document).off('click', '.remove-bar-item').on('click', '.remove-bar-item', function() {
+            const sectionNum = $(this).data('section');
+            if ($('#barExpContainer .bar-item').length > 1) {
+                removeBarSection(sectionNum);
+            } else {
+                $('#barExpContainer .bar-years, #barExpContainer .bar-from, #barExpContainer .bar-to, #barExpContainer .bar-council').val('');
+                $('#barExpContainer .bar-court-type').val('');
+                recalculateTotalYears();
+            }
+        });
+        
+        $(document).off('click', '.remove-practice-item').on('click', '.remove-practice-item', function() {
+            const sectionNum = $(this).data('section');
+            if ($('#courtPracticeContainer .practice-item').length > 1) {
+                removePracticeSection(sectionNum);
+            } else {
+                $('#courtPracticeContainer .practice-court, #courtPracticeContainer .practice-years, #courtPracticeContainer .practice-from, #courtPracticeContainer .practice-to').val('');
+            }
+        });
+        
+        $('#prevToTab2').off('click').on('click', function() { 
+            if (AF.nav) AF.nav.switchTab(2); 
+        });
     }
+
+    // ============================================================
+    // EXPOSED API
+    // ============================================================
 
     AF.tab3 = {
         init: init,
-        renderBar: renderBar,
-        renderPractice: renderPractice,
-        renderJudgmentAAG: renderJudgmentAAG,
-        renderJudgmentAGP: renderJudgmentAGP,
-        syncBar: syncBar,
-        syncPractice: syncPractice,
-        syncJudgmentAAG: syncJudgmentAAG,
-        syncJudgmentAGP: syncJudgmentAGP,
-        calculateTotalBarYears: calculateTotalBarYears
+        collectData: collectExperienceData,
+        transformToDBFormat: transformToDBFormat
     };
+    
 })(window.ApplicationForm);
