@@ -50,8 +50,10 @@ class ApplicationModal
     public static function getApplicationById(int $applicationId): ?array
     {
         try {
-            $stmt = Database::ReadConnection()->prepare("SELECT * FROM applications WHERE id = :application_id");
-            $stmt->bindParam(':application_id', $applicationId, PDO::PARAM_INT);
+            
+            $data = json_encode(['application_id' => (int)$applicationId]);
+            $stmt = Database::ReadDatabaseConnection()->prepare("CALL public.sp_application_preview(:data::jsonb)");
+            $stmt->bindParam(':data', $data, PDO::PARAM_STR);
             $stmt->execute();
 
             $application = $stmt->fetch(PDO::FETCH_ASSOC);
