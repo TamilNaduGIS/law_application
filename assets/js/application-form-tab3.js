@@ -1,11 +1,10 @@
 /**
- * Tab 3: Experience Details - With File Upload Support
+ * Tab 3: Experience Details - With File Upload Support (Subfolder Structure)
  */
 (function (AF, global) {
     'use strict';
     
     const escapeHtml = AF.utils.escapeHtml;
-    const buildFileUploadHtml = AF.files.buildFileUploadHtml;
     let initDone = false;
     let tab3Saving = false;
     
@@ -25,6 +24,65 @@
     // Helper function to trim string
     function trimStr(val) {
         return val != null ? String(val).trim() : '';
+    }
+    
+    // Convert file to base64
+    function fileToBase64(file) {
+        return new Promise(function (resolve, reject) {
+            const reader = new FileReader();
+            reader.onload = function () {
+                resolve(typeof reader.result === 'string' ? reader.result : '');
+            };
+            reader.onerror = function () {
+                reject(new Error('Failed to read file.'));
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+    
+    // Upload document with subfolder support
+    function uploadDocument(documentType, file, subFolder) {
+        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+            return Promise.reject(new Error('API client is not loaded.'));
+        }
+        
+        const applicantId = getApplicantId();
+        const applicationId = getApplicationId();
+        
+        if (!applicationId && !applicantId) {
+            return Promise.reject(new Error('Application ID is missing.'));
+        }
+        
+        const appId = applicationId || parseInt(applicantId, 10);
+        
+        return fileToBase64(file).then(function (content) {
+            const payload = {
+                applicant_id: applicantId,
+                application_id: appId,
+                document_type: documentType,
+                file_name: file.name,
+                file_content: content,
+                sub_folder: subFolder || 'experience',
+                uploaded_by: parseInt(applicantId, 10)
+            };
+            
+            console.log('[Tab3] Uploading document:', documentType, 'to folder:', subFolder);
+            
+            return ensureSessionTokens().then(function () {
+                return global.LawPortal.apiRequest(
+                    'vacancy/document/upload',
+                    'POST',
+                    payload
+                );
+            });
+        }).then(function (res) {
+            const body = unwrapApiResult(res);
+            if (!body.ok) {
+                throw new Error(body.error || 'Document upload failed (' + documentType + ').');
+            }
+            console.log('[Tab3] Document uploaded successfully:', body);
+            return body;
+        });
     }
     
     // Ensure session tokens
@@ -101,7 +159,7 @@
             from_date: item.from_date || null,
             to_date: item.to_date || null,
             bar_council_name: trimStr(item.bar_council),
-            supporting_document: null,
+            supporting_document: item.supporting_document || null,
             is_deleted: false
         };
     }
@@ -114,7 +172,7 @@
             years_experience: parseFloat(item.years) || 0,
             from_date: item.from_date || null,
             to_date: item.to_date || null,
-            practice_document: null,
+            practice_document: item.practice_document || null,
             is_deleted: false
         };
     }
@@ -269,8 +327,115 @@
     
     // Initialize file upload handlers for dynamically added elements
     function initFileUploadHandlers() {
-        // Handle bar document file upload button clicks
-        $(document).off('click', '.bar-doc-file + .btn, .bar-doc-file ~ .btn').on('click', '.bar-doc-file + .btn, .bar-doc-file ~ .btn', function(e) {
+        // Handle bar document file upload
+        $(document).off('change', '.bar-doc-file').on('change', '.bar-doc-file', function() {
+            const fileInput = $(this);
+            const file = fileInput[0].files[0];
+            const $barItem = fileInput.closest('.bar-item');
+            const sectionNum = $barItem.data('section');
+            
+            if (!file) return;
+            
+            const fileName = file.name;
+            const uploadTitle = fileInput.closest('.compact-upload-box').find('.upload-title');
+            
+            // Show uploading status
+            uploadTitle.html('<i class="bi bi-hourglass-split text-warning me-1"></i> Uploading...');
+            fileInput.prop('disabled', true);
+            
+            // Upload to server with subfolder 'experience/bar_practice'
+            uploadDocument('BAR_PRACTICE', file, 'experience/bar_practice')
+                .then(function(response) {
+                    uploadTitle.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(fileName));
+                    fileInput.prop('disabled', false);
+                    
+                    // Store the file path in the bar item data
+                    $barItem.data('supporting-document', response.file_path);
+                    console.log('[Tab3] Bar practice document uploaded:', response.file_path);
+                })
+                .catch(function(err) {
+                    uploadTitle.html('<i class="bi bi-x-circle-fill text-danger me-1"></i> Upload failed');
+                    fileInput.prop('disabled', false);
+                    console.error('[Tab3] Upload error:', err);
+                    alert('Failed to upload document: ' + err.message);
+                });
+        });
+        
+        // Handle practice document file upload
+        $(document).off('change', '.practice-doc-file').on('change', '.practice-doc-file', function() {
+            const fileInput = $(this);
+            const file = fileInput[0].files[0];
+            const $practiceItem = fileInput.closest('.practice-item');
+            const sectionNum = $practiceItem.data('section');
+            
+            if (!file) return;
+            
+            const fileName = file.name;
+            const uploadTitle = fileInput.closest('.practice-upload-box').find('.practice-upload-title');
+            
+            // Show uploading status
+            uploadTitle.html('<i class="bi bi-hourglass-split text-warning me-1"></i> Uploading...');
+            fileInput.prop('disabled', true);
+            
+            // Upload to server with subfolder 'experience/court_practice'
+            uploadDocument('COURT_PRACTICE', file, 'experience/court_practice')
+                .then(function(response) {
+                    uploadTitle.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(fileName));
+                    fileInput.prop('disabled', false);
+                    
+                    // Store the file path in the practice item data
+                    $practiceItem.data('practice-document', response.file_path);
+                    console.log('[Tab3] Court practice document uploaded:', response.file_path);
+                })
+                .catch(function(err) {
+                    uploadTitle.html('<i class="bi bi-x-circle-fill text-danger me-1"></i> Upload failed');
+                    fileInput.prop('disabled', false);
+                    console.error('[Tab3] Upload error:', err);
+                    alert('Failed to upload document: ' + err.message);
+                });
+        });
+        
+        // Handle achievement document file upload
+        $(document).off('change', '#achievementFiles').on('change', '#achievementFiles', function() {
+            const fileInput = $(this);
+            const file = fileInput[0].files[0];
+            
+            if (!file) return;
+            
+            const fileName = file.name;
+            const uploadContainer = $('#achievementDetailsWrapper');
+            const uploadTitle = uploadContainer.find('.file-upload-status');
+            
+            if (!uploadTitle.length) {
+                const statusSpan = $('<span class="file-upload-status ms-2"></span>');
+                $(this).after(statusSpan);
+            }
+            
+            const $statusSpan = uploadContainer.find('.file-upload-status');
+            $statusSpan.html('<i class="bi bi-hourglass-split text-warning me-1"></i> Uploading...');
+            fileInput.prop('disabled', true);
+            
+            // Upload to server with subfolder 'experience/achievement'
+            uploadDocument('ACHIEVEMENT', file, 'experience/achievement')
+                .then(function(response) {
+                    $statusSpan.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(fileName));
+                    fileInput.prop('disabled', false);
+                    AF.state.achievementDocumentPath = response.file_path;
+                    console.log('[Tab3] Achievement document uploaded:', response.file_path);
+                })
+                .catch(function(err) {
+                    $statusSpan.html('<i class="bi bi-x-circle-fill text-danger me-1"></i> Upload failed');
+                    fileInput.prop('disabled', false);
+                    console.error('[Tab3] Upload error:', err);
+                    alert('Failed to upload achievement document: ' + err.message);
+                });
+        });
+    }
+    
+    // Create button click handlers for file upload triggers
+    function initUploadButtonHandlers() {
+        // Trigger bar file input on button click
+        $(document).off('click', '.bar-upload-btn').on('click', '.bar-upload-btn', function(e) {
             e.preventDefault();
             const fileInput = $(this).siblings('.bar-doc-file');
             if (fileInput.length) {
@@ -278,50 +443,12 @@
             }
         });
         
-        // Handle practice document file upload button clicks
-        $(document).off('click', '.practice-doc-file + .btn, .practice-doc-file ~ .btn').on('click', '.practice-doc-file + .btn, .practice-doc-file ~ .btn', function(e) {
+        // Trigger practice file input on button click
+        $(document).off('click', '.practice-upload-btn').on('click', '.practice-upload-btn', function(e) {
             e.preventDefault();
             const fileInput = $(this).siblings('.practice-doc-file');
             if (fileInput.length) {
                 fileInput.click();
-            }
-        });
-        
-        // Handle file selection for bar documents
-        $(document).off('change', '.bar-doc-file').on('change', '.bar-doc-file', function() {
-            const fileInput = $(this);
-            const fileName = fileInput.val().split('\\').pop();
-            const uploadBox = fileInput.closest('.compact-upload-box');
-            
-            if (fileName && uploadBox.length) {
-                const uploadTitle = uploadBox.find('.upload-title');
-                if (uploadTitle.length) {
-                    uploadTitle.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(fileName));
-                }
-                // Store file preview
-                if (fileInput[0].files && fileInput[0].files[0] && AF.files && typeof AF.files.storeFilePreview === 'function') {
-                    const previewKey = fileInput.attr('id') || 'bar-doc';
-                    AF.files.storeFilePreview(previewKey, fileInput[0].files[0]);
-                }
-            }
-        });
-        
-        // Handle file selection for practice documents
-        $(document).off('change', '.practice-doc-file').on('change', '.practice-doc-file', function() {
-            const fileInput = $(this);
-            const fileName = fileInput.val().split('\\').pop();
-            const uploadBox = fileInput.closest('.practice-upload-box');
-            
-            if (fileName && uploadBox.length) {
-                const uploadTitle = uploadBox.find('.practice-upload-title');
-                if (uploadTitle.length) {
-                    uploadTitle.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(fileName));
-                }
-                // Store file preview
-                if (fileInput[0].files && fileInput[0].files[0] && AF.files && typeof AF.files.storeFilePreview === 'function') {
-                    const previewKey = fileInput.attr('id') || 'practice-doc';
-                    AF.files.storeFilePreview(previewKey, fileInput[0].files[0]);
-                }
             }
         });
     }
@@ -421,11 +548,6 @@
         payload.has_achievements = toBoolean($('#achievmenetWrap').val());
         payload.achievement_details = $('#achievementDetails').val().trim() || null;
         
-        const achievementFiles = $('#achievementFiles')[0]?.files;
-        payload.achievement_files = achievementFiles && achievementFiles.length > 0 
-            ? Array.from(achievementFiles).map(f => f.name) 
-            : null;
-        
         // 5. Bar Experiences
         payload.bar_experiences = [];
         $('#barExpContainer .bar-item').each(function() {
@@ -442,7 +564,8 @@
                     from_date: fromDate,
                     to_date: toDate,
                     court_type: courtType,
-                    bar_council: barCouncil
+                    bar_council: barCouncil,
+                    supporting_document: $item.data('supporting-document') || null
                 });
             }
         });
@@ -462,7 +585,8 @@
                     court_name: courtName || null,
                     years: years || null,
                     from_date: fromDate,
-                    to_date: toDate
+                    to_date: toDate,
+                    practice_document: $item.data('practice-document') || null
                 });
             }
         });
@@ -607,7 +731,7 @@
                         </div>
                         <div class="upload-right">
                             <input type="file" class="bar-doc-file d-none" id="bar-doc-${sectionNumber}" accept=".pdf,.doc,.docx">
-                            <button type="button" class="btn btn-outline-primary btn-upload-file">
+                            <button type="button" class="btn btn-outline-primary btn-upload-file bar-upload-btn">
                                 <i class="bi bi-cloud-upload-fill me-2"></i>Choose Files
                             </button>
                         </div>
@@ -675,7 +799,7 @@
                         </div>
                         <div class="practice-upload-right">
                             <input type="file" class="practice-doc-file d-none" id="practice-doc-${sectionNumber}" accept=".pdf,.doc,.docx">
-                            <button type="button" class="btn btn-outline-primary btn-upload-file">
+                            <button type="button" class="btn btn-outline-primary btn-upload-file practice-upload-btn">
                                 <i class="bi bi-cloud-upload-fill me-2"></i>Choose Files
                             </button>
                         </div>
@@ -699,6 +823,7 @@
         barSectionCounter = Math.max(...sections) + 1;
         // Re-initialize file upload handlers after rendering
         initFileUploadHandlers();
+        initUploadButtonHandlers();
     }
     
     // Render initial practice sections
@@ -715,6 +840,7 @@
         practiceSectionCounter = Math.max(...sections) + 1;
         // Re-initialize file upload handlers after rendering
         initFileUploadHandlers();
+        initUploadButtonHandlers();
     }
     
     // Add new bar section
@@ -730,6 +856,7 @@
         recalculateTotalYears();
         // Re-initialize file upload handlers for the new section
         initFileUploadHandlers();
+        initUploadButtonHandlers();
     }
     
     // Add new practice section
@@ -744,6 +871,7 @@
         
         // Re-initialize file upload handlers for the new section
         initFileUploadHandlers();
+        initUploadButtonHandlers();
     }
     
     // Remove bar section
@@ -972,10 +1100,7 @@
             }
         });
     }
-    
-    // ============================================================
-    // VALIDATION FUNCTIONS
-    // ============================================================
+
     
     function validateStep3() {
         // Validate Law Degree
@@ -1258,6 +1383,7 @@
         initConditionalFields();
         initDraftingExperience();
         initFileUploadHandlers();
+        initUploadButtonHandlers();
         
         renderBarSections();
         renderPracticeSections();
@@ -1314,7 +1440,61 @@
             if (AF.nav) AF.nav.switchTab(2); 
         });
     }
+    // Add these functions to your Tab 3 code before the exposed API
 
+    function syncBar() {
+        AF.state.barItems = [];
+        $('#barExpContainer .bar-item').each(function(index) {
+            const $item = $(this);
+            AF.state.barItems.push({
+                years: $item.find('.bar-years').val() || '',
+                from: $item.find('.bar-from').val() || '',
+                to: $item.find('.bar-to').val() || '',
+                barCouncil: $item.find('.bar-council').val() || '',
+                courtType: $item.find('.bar-court-type').val() || ''
+            });
+        });
+        // calculateTotalBarYears();
+        // calculateHighCourtYears();
+    }
+
+    function syncPractice() {
+        AF.state.practiceItems = [];
+        $('#courtPracticeContainer .practice-item').each(function(index) {
+            const $item = $(this);
+            AF.state.practiceItems.push({
+                courtName: $item.find('.practice-court').val() || '',
+                years: $item.find('.practice-years').val() || '',
+                from: $item.find('.practice-from').val() || '',
+                to: $item.find('.practice-to').val() || ''
+            });
+        });
+    }
+
+    function syncJudgmentAAG() {
+        const citations = [];
+        $('#judgmentAAGContainer .citation-input').each(function() {
+            const val = $(this).val().trim();
+            if (val) citations.push(val);
+        });
+        AF.state.judgmentAAGCitations = citations.length > 0 ? citations : [''];
+    }
+
+    function syncJudgmentAGP() {
+        const citations = [];
+        $('#judgmentAGPContainer .citation-input').each(function() {
+            const val = $(this).val().trim();
+            if (val) citations.push(val);
+        });
+        AF.state.judgmentAGPCitations = citations.length > 0 ? citations : [''];
+    }
+
+    function syncAll() {
+        syncBar();
+        syncPractice();
+        syncJudgmentAAG();
+        syncJudgmentAGP();
+    }
     // ============================================================
     // EXPOSED API
     // ============================================================
@@ -1325,6 +1505,7 @@
     AF.api.postExperienceSave = postExperienceSave;
     AF.api.buildExperienceSavePayload = buildExperienceSavePayload;
     AF.api.collectExperienceData = collectExperienceData;
+    AF.api.uploadDocument = uploadDocument;
 
     AF.tab3 = {
         init: init,
@@ -1335,44 +1516,50 @@
         onSaveAndContinue: onSaveAndContinue,
         fetchExperienceData: fetchExperienceData,
         loadExperienceData: loadExperienceData,
-        populateExperienceData: populateExperienceData
+        populateExperienceData: populateExperienceData,
+        uploadDocument: uploadDocument,
+        syncBar: syncBar,
+        syncPractice: syncPractice,
+        syncJudgmentAAG: syncJudgmentAAG,
+        syncJudgmentAGP: syncJudgmentAGP,
+        syncAll: syncAll
     };
     
     function fetchExperienceData(applicationId) {
-    if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
-        return Promise.reject(new Error('API client is not loaded.'));
-    }
-    
-    const applicantId = getApplicantId();
-    const idToUse = parseInt(applicationId, 10) || parseInt(applicantId, 10);
-    
-    if (!idToUse) {
-        return Promise.reject(new Error('Application ID or Applicant ID is required.'));
-    }
-    
-    const payload = {
-        applicant_id: idToUse
-    };
-    
-    console.log('[Tab3] Fetching experience data for applicant:', idToUse);
-    
-    return ensureSessionTokens().then(function () {
-        return global.LawPortal.apiRequest(
-            'vacancy/experience/fetchExperience',
-            'POST',
-            payload
-        );
-    }).then(function (res) {
-        const body = unwrapApiResult(res);
-        if (!body.ok) {
-            throw new Error(body.error || 'Unable to fetch experience details.');
+        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+            return Promise.reject(new Error('API client is not loaded.'));
         }
-        console.log('[Tab3] Experience data fetched:', body);
-        return body;
-    });
-}
+        
+        const applicantId = getApplicantId();
+        const apId = parseInt(applicationId, 10) || parseInt(applicantId, 10);
+        
+        if (!apId) {
+            return Promise.reject(new Error('Application ID or Applicant ID is required.'));
+        }
+        
+        const payload = {
+            applicant_id: apId
+        };
+        
+        console.log('[Tab3] Fetching experience data for applicant:', apId);
+        
+        return ensureSessionTokens().then(function () {
+            return global.LawPortal.apiRequest(
+                'vacancy/experience/fetchExperience',
+                'POST',
+                payload
+            );
+        }).then(function (res) {
+            const body = unwrapApiResult(res);
+            if (!body.ok) {
+                throw new Error(body.error || 'Unable to fetch experience details.');
+            }
+            console.log('[Tab3] Experience data fetched:', body);
+            return body;
+        });
+    }
 
-    function populateExperienceData(response) {
+function populateExperienceData(response) {
     if (!response || !response.ok) {
         console.log('[Tab3] No experience data to populate or response not ok');
         return;
@@ -1488,7 +1675,7 @@
         $('#achievementDetails').val(experience.achievement_remarks);
     }
     
-    // 5. Bar Experiences
+    // 5. Bar Experiences - WITH FILE DISPLAY
     if (barPractice && barPractice.length > 0) {
         // Clear existing sections
         $('#barExpContainer').empty();
@@ -1510,7 +1697,7 @@
         barSectionCounter = barPractice.length + 1;
         renderBarSections();
         
-        // Populate values after render
+        // Populate values after render and set file names
         barPractice.forEach(function(practice, index) {
             const $item = $('#barExpContainer .bar-item').eq(index);
             if ($item.length) {
@@ -1518,11 +1705,21 @@
                 $item.find('.bar-from').val(practice.from_date || '');
                 $item.find('.bar-to').val(practice.to_date || '');
                 $item.find('.bar-council').val(practice.bar_council_name || '');
+                
+                // Handle supporting document display
+                if (practice.supporting_document && practice.supporting_document !== '') {
+                    $item.data('supporting-document', practice.supporting_document);
+                    const uploadTitle = $item.find('.upload-title');
+                    if (uploadTitle.length) {
+                        const fileName = practice.supporting_document.split('/').pop();
+                        uploadTitle.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(fileName));
+                    }
+                }
             }
         });
     }
     
-    // 6. Court Practices
+    // 6. Court Practices - WITH FILE DISPLAY
     if (courtPractice && courtPractice.length > 0) {
         // Clear existing sections
         $('#courtPracticeContainer').empty();
@@ -1543,7 +1740,7 @@
         practiceSectionCounter = courtPractice.length + 1;
         renderPracticeSections();
         
-        // Populate values after render
+        // Populate values after render and set file names
         courtPractice.forEach(function(practice, index) {
             const $item = $('#courtPracticeContainer .practice-item').eq(index);
             if ($item.length) {
@@ -1551,6 +1748,16 @@
                 $item.find('.practice-years').val(practice.years_experience || '');
                 $item.find('.practice-from').val(practice.from_date || '');
                 $item.find('.practice-to').val(practice.to_date || '');
+                
+                // Handle practice document display
+                if (practice.practice_document && practice.practice_document !== '') {
+                    $item.data('practice-document', practice.practice_document);
+                    const uploadTitle = $item.find('.practice-upload-title');
+                    if (uploadTitle.length) {
+                        const fileName = practice.practice_document.split('/').pop();
+                        uploadTitle.html('<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(fileName));
+                    }
+                }
             }
         });
     }
@@ -1578,13 +1785,17 @@
             }
         });
         
-        if (aagCitations.length > 0) {
-            AF.state.judgmentAAGCitations = aagCitations;
+        // Remove duplicates if needed (optional)
+        const uniqueAAG = [...new Set(aagCitations)];
+        const uniqueAGP = [...new Set(agpCitations)];
+        
+        if (uniqueAAG.length > 0) {
+            AF.state.judgmentAAGCitations = uniqueAAG;
             renderJudgmentAAG();
         }
         
-        if (agpCitations.length > 0) {
-            AF.state.judgmentAGPCitations = agpCitations;
+        if (uniqueAGP.length > 0) {
+            AF.state.judgmentAGPCitations = uniqueAGP;
             renderJudgmentAGP();
         }
     }
@@ -1609,29 +1820,27 @@
      * Load experience data when tab is opened
      */
     function loadExperienceData() {
-    const applicationId = getApplicationId();
-    const applicantId = getApplicantId();
-    
-    const idToUse = parseInt(applicationId, 10) || parseInt(applicantId, 10);
-    
-    if (!idToUse) {
-        console.log('[Tab3] No application ID or applicant ID found, skipping load');
-        return Promise.resolve(null);
+        const applicationId = getApplicationId();
+        const applicantId = getApplicantId();
+        
+        const apId = parseInt(applicationId, 10) || parseInt(applicantId, 10);
+        
+        if (!apId) {
+            console.log('[Tab3] No application ID or applicant ID found, skipping load');
+            return Promise.resolve(null);
+        }
+        
+        return fetchExperienceData(apId)
+            .then(function(response) {
+                if (response && response.ok) {
+                    populateExperienceData(response);
+                }
+                return response;
+            })
+            .catch(function(err) {
+                console.warn('[Tab3] Failed to load experience data:', err);
+                return null;
+            });
     }
-    
-    return fetchExperienceData(idToUse)
-        .then(function(response) {
-            if (response && response.ok) {
-                populateExperienceData(response);
-            }
-            return response;
-        })
-        .catch(function(err) {
-            console.warn('[Tab3] Failed to load experience data:', err);
-            return null;
-        });
-}
 
 })(window.ApplicationForm, window);
-
-
