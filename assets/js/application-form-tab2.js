@@ -76,15 +76,77 @@
         );
     }
 
+    function snapshotEduFilesFromDom() {
+        document.querySelectorAll('#eduListContainer .list-item').forEach(function (item, idx) {
+            const fi = item.querySelector('.certificateUpload');
+            if (fi && fi.files && fi.files[0] && AF.files && typeof AF.files.storeFilePreview === 'function') {
+                AF.files.storeFilePreview('edu-' + idx, fi.files[0]);
+            }
+        });
+    }
+
+    function snapshotAdditionalFilesFromDom() {
+        document.querySelectorAll('#additionalListContainer .list-item').forEach(function (item, idx) {
+            const fi = item.querySelector('.add-cert-file');
+            if (fi && fi.files && fi.files.length && AF.files && typeof AF.files.storeFilesPreview === 'function') {
+                AF.files.storeFilesPreview('add-' + idx, fi.files);
+            }
+        });
+    }
+
+    function restoreEduCertificateUi() {
+        document.querySelectorAll('#eduListContainer .list-item').forEach(function (row, idx) {
+            const item = (AF.state.eduItems || [])[idx];
+            const preview = AF.state.filePreviews && AF.state.filePreviews['edu-' + idx];
+            const label = (item && item.certificateFileName)
+                || (preview && preview.name)
+                || row.getAttribute('data-cert-name');
+            if (!label) return;
+            row.setAttribute('data-cert-name', label);
+            const uploadTitle = row.querySelector('.edu-upload-title');
+            if (uploadTitle) {
+                uploadTitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(label);
+            }
+        });
+    }
+
+    function restoreAdditionalCertificateUi() {
+        document.querySelectorAll('#additionalListContainer .list-item').forEach(function (row, idx) {
+            const item = (AF.state.additionalItems || [])[idx];
+            const preview = AF.state.filePreviews && AF.state.filePreviews['add-' + idx];
+            let label = (item && item.certificateFileName) || row.getAttribute('data-cert-name');
+            if (!label && preview) {
+                if (Array.isArray(preview) && preview.length) {
+                    label = preview.length === 1 ? preview[0].name : preview.length + ' file(s) selected';
+                } else if (preview.name) {
+                    label = preview.name;
+                }
+            }
+            if (!label) return;
+            row.setAttribute('data-cert-name', label);
+            const uploadTitle = row.querySelector('.add-upload-title');
+            if (uploadTitle) {
+                uploadTitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(label);
+            }
+        });
+    }
+
     function syncEdu() {
         const previous = AF.state.eduItems || [];
         AF.state.eduItems = [];
         document.querySelectorAll('#eduListContainer .list-item').forEach(function (item, idx) {
             const prev = previous[idx] || {};
+            const previewKey = 'edu-' + idx;
+            const preview = AF.state.filePreviews && AF.state.filePreviews[previewKey];
             const fileInput = item.querySelector('.certificateUpload');
             let certName = item.getAttribute('data-cert-name') || prev.certificateFileName || '';
             if (fileInput && fileInput.files && fileInput.files[0]) {
                 certName = fileInput.files[0].name;
+                if (AF.files && typeof AF.files.storeFilePreview === 'function') {
+                    AF.files.storeFilePreview(previewKey, fileInput.files[0]);
+                }
+            } else if (!certName && preview && preview.name) {
+                certName = preview.name;
             }
             AF.state.eduItems.push({
                 educationId: prev.educationId || parseInt(item.getAttribute('data-education-id'), 10) || 0,
@@ -106,10 +168,23 @@
         AF.state.additionalItems = [];
         document.querySelectorAll('#additionalListContainer .list-item').forEach(function (item, idx) {
             const prev = previous[idx] || {};
+            const previewKey = 'add-' + idx;
+            const preview = AF.state.filePreviews && AF.state.filePreviews[previewKey];
             const fileInput = item.querySelector('.add-cert-file');
             let certName = item.getAttribute('data-cert-name') || prev.certificateFileName || '';
-            if (fileInput && fileInput.files && fileInput.files[0]) {
-                certName = fileInput.files[0].name;
+            if (fileInput && fileInput.files && fileInput.files.length) {
+                certName = fileInput.files.length === 1
+                    ? fileInput.files[0].name
+                    : fileInput.files.length + ' file(s) selected';
+                if (AF.files && typeof AF.files.storeFilesPreview === 'function') {
+                    AF.files.storeFilesPreview(previewKey, fileInput.files);
+                }
+            } else if (!certName && preview) {
+                if (Array.isArray(preview) && preview.length) {
+                    certName = preview.length === 1 ? preview[0].name : preview.length + ' file(s) selected';
+                } else if (preview.name) {
+                    certName = preview.name;
+                }
             }
             AF.state.additionalItems.push({
                 additionalId: prev.additionalId || parseInt(item.getAttribute('data-additional-id'), 10) || 0,
@@ -128,10 +203,12 @@
 
     function renderEdu() {
         AF.lists.renderList('eduListContainer', AF.state.eduItems, renderEduItem, 'edu');
+        restoreEduCertificateUi();
     }
 
     function renderAdditional() {
         AF.lists.renderList('additionalListContainer', AF.state.additionalItems, renderAddItem, 'add');
+        restoreAdditionalCertificateUi();
     }
 
     function initUploadHandlers() {
@@ -140,12 +217,21 @@
             eduContainer.setAttribute('data-cert-ui-bound', '1');
             eduContainer.addEventListener('change', function (e) {
                 if (!e.target.classList.contains('certificateUpload')) return;
+                const row = e.target.closest('.list-item');
+                const rows = document.querySelectorAll('#eduListContainer .list-item');
+                const idx = row ? Array.prototype.indexOf.call(rows, row) : -1;
                 const fileCount = e.target.files ? e.target.files.length : 0;
                 const box = e.target.closest('.edu-upload-box');
                 const uploadTitle = box ? box.querySelector('.edu-upload-title') : null;
-                if (uploadTitle && fileCount > 0) {
-                    uploadTitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + fileCount + ' file(s) selected';
+                if (idx >= 0 && fileCount > 0 && AF.files && typeof AF.files.storeFilePreview === 'function') {
+                    AF.files.storeFilePreview('edu-' + idx, e.target.files[0]);
                 }
+                if (uploadTitle && fileCount > 0) {
+                    const label = fileCount === 1 ? e.target.files[0].name : fileCount + ' file(s) selected';
+                    uploadTitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(label);
+                    if (row) row.setAttribute('data-cert-name', label);
+                }
+                syncEdu();
             });
         }
 
@@ -154,12 +240,21 @@
             addContainer.setAttribute('data-cert-ui-bound', '1');
             addContainer.addEventListener('change', function (e) {
                 if (!e.target.classList.contains('add-cert-file')) return;
+                const row = e.target.closest('.list-item');
+                const rows = document.querySelectorAll('#additionalListContainer .list-item');
+                const idx = row ? Array.prototype.indexOf.call(rows, row) : -1;
                 const fileCount = e.target.files ? e.target.files.length : 0;
                 const box = e.target.closest('.add-upload-box');
                 const title = box ? box.querySelector('.add-upload-title') : null;
-                if (title && fileCount > 0) {
-                    title.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + fileCount + ' file(s) selected';
+                if (idx >= 0 && fileCount > 0 && AF.files && typeof AF.files.storeFilesPreview === 'function') {
+                    AF.files.storeFilesPreview('add-' + idx, e.target.files);
                 }
+                if (title && fileCount > 0) {
+                    const label = fileCount === 1 ? e.target.files[0].name : fileCount + ' file(s) selected';
+                    title.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(label);
+                    if (row) row.setAttribute('data-cert-name', label);
+                }
+                syncAdditional();
             });
         }
     }
@@ -387,16 +482,22 @@
         const addEduBtn = document.getElementById('addEduBtn');
         if (addEduBtn) {
             addEduBtn.addEventListener('click', function () {
+                snapshotEduFilesFromDom();
+                syncEdu();
                 AF.state.eduItems.push({});
                 renderEdu();
+                restoreEduCertificateUi();
             });
         }
 
         const addAdditionalBtn = document.getElementById('addAdditionalBtn');
         if (addAdditionalBtn) {
             addAdditionalBtn.addEventListener('click', function () {
+                snapshotAdditionalFilesFromDom();
+                syncAdditional();
                 AF.state.additionalItems.push({});
                 renderAdditional();
+                restoreAdditionalCertificateUi();
             });
         }
 
@@ -447,6 +548,8 @@
         renderAdditional: renderAdditional,
         syncEdu: syncEdu,
         syncAdditional: syncAdditional,
+        snapshotEduFilesFromDom: snapshotEduFilesFromDom,
+        snapshotAdditionalFilesFromDom: snapshotAdditionalFilesFromDom,
         validateStep2: validateStep2
     };
 })(window.ApplicationForm);

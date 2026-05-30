@@ -385,6 +385,13 @@ window.ApplicationForm = (function () {
         const btn = e.target.closest('.remove-item') || e.target;
         const idx = parseInt(btn.getAttribute('data-idx'), 10);
         const type = btn.getAttribute('data-type');
+        if (type === 'edu' && AF.tab2) {
+            if (typeof AF.tab2.snapshotEduFilesFromDom === 'function') AF.tab2.snapshotEduFilesFromDom();
+            AF.tab2.syncEdu();
+        } else if (type === 'add' && AF.tab2) {
+            if (typeof AF.tab2.snapshotAdditionalFilesFromDom === 'function') AF.tab2.snapshotAdditionalFilesFromDom();
+            AF.tab2.syncAdditional();
+        }
         const lists = {
             edu: state.eduItems,
             add: state.additionalItems,
@@ -394,7 +401,40 @@ window.ApplicationForm = (function () {
             judgmentAGP: state.judgmentAGPItems
         };
         if (lists[type]) lists[type].splice(idx, 1);
+        reindexFilePreviewsAfterRemove(type, idx);
         renderAll();
+    }
+
+    function reindexFilePreviewsAfterRemove(type, removedIdx) {
+        const prefixMap = {
+            edu: 'edu-',
+            add: 'add-',
+            bar: 'bar-',
+            practice: 'practice-'
+        };
+        const prefix = prefixMap[type];
+        if (!prefix || !state.filePreviews) return;
+
+        const keys = Object.keys(state.filePreviews).filter(function (k) {
+            return k.indexOf(prefix) === 0;
+        }).sort(function (a, b) {
+            return parseInt(a.slice(prefix.length), 10) - parseInt(b.slice(prefix.length), 10);
+        });
+
+        const next = {};
+        keys.forEach(function (key) {
+            const i = parseInt(key.slice(prefix.length), 10);
+            if (i < removedIdx) {
+                next[key] = state.filePreviews[key];
+            } else if (i > removedIdx) {
+                next[prefix + (i - 1)] = state.filePreviews[key];
+            }
+        });
+
+        keys.forEach(function (key) { delete state.filePreviews[key]; });
+        Object.keys(next).forEach(function (key) {
+            state.filePreviews[key] = next[key];
+        });
     }
 
     function renderAll() {
