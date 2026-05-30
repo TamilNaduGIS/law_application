@@ -126,6 +126,251 @@
         return payload;
     }
 
+    function basenameFromPath(path) {
+        const s = String(path || '').trim();
+        if (!s) return '';
+        const parts = s.split(/[/\\]/);
+        return parts[parts.length - 1] || s;
+    }
+
+    function isRowMarkedDeleted(row) {
+        if (!row || typeof row !== 'object') return true;
+        const flag = row.is_deleted ?? row.isDeleted ?? row.deleted ?? false;
+        return flag === true || flag === 1 || flag === '1' || flag === 't' || flag === 'true';
+    }
+
+    function mapEducationRowToEduItem(row) {
+        if (isRowMarkedDeleted(row)) {
+            return null;
+        }
+        const certPath = String(pickField(row, ['certificate_path', 'certificatePath']) || '').trim();
+        let certFileName = String(pickField(row, [
+            'certificate_file_name',
+            'certificateFileName',
+            'file_name',
+            'fileName'
+        ]) || '').trim();
+        if (!certFileName && certPath) {
+            certFileName = basenameFromPath(certPath);
+        }
+        const marks = pickField(row, ['marks_percentage', 'marksPercentage', 'percentage']);
+
+        return {
+            educationId: parseInt(pickField(row, ['education_id', 'educationId']), 10) || 0,
+            exam: pickField(row, ['qualification_name', 'qualificationName', 'exam']),
+            year: pickField(row, ['year_of_passing', 'yearOfPassing', 'year']),
+            board: pickField(row, ['university_name', 'universityName', 'board']),
+            institution: pickField(row, ['institution', 'institution_name', 'institutionName']),
+            special: pickField(row, ['specialization', 'special', 'subject']),
+            percentage: marks !== '' && marks != null ? String(marks) : '',
+            certificatePath: certPath,
+            certificateFileName: certFileName,
+            isDeleted: false
+        };
+    }
+
+    function mapAdditionalRowToItem(row) {
+        if (isRowMarkedDeleted(row)) {
+            return null;
+        }
+        const certPath = String(pickField(row, ['certificate_path', 'certificatePath']) || '').trim();
+        let certFileName = String(pickField(row, [
+            'certificate_file_name',
+            'certificateFileName',
+            'file_name',
+            'fileName'
+        ]) || '').trim();
+        if (!certFileName && certPath) {
+            certFileName = basenameFromPath(certPath);
+        }
+        const marks = pickField(row, ['marks_percentage', 'marksPercentage', 'percentage']);
+
+        return {
+            additionalId: parseInt(pickField(row, [
+                'add_qualification_id',
+                'addQualificationId',
+                'additional_qualification_id',
+                'additionalQualificationId',
+                'additional_id'
+            ]), 10) || 0,
+            exam: pickField(row, ['qualification_name', 'qualificationName', 'exam']),
+            year: pickField(row, ['year_of_passing', 'yearOfPassing', 'year']),
+            board: pickField(row, [
+                'board_university',
+                'university_name',
+                'universityName',
+                'board'
+            ]),
+            institution: pickField(row, [
+                'institution_name',
+                'institution',
+                'institutionName'
+            ]),
+            subject: pickField(row, [
+                'subject_name',
+                'specialization',
+                'subject',
+                'special'
+            ]),
+            percentage: marks !== '' && marks != null ? String(marks) : '',
+            certificatePath: certPath,
+            certificateFileName: certFileName,
+            isDeleted: false
+        };
+    }
+
+    function extractQualificationsBody(res) {
+        if (!res) return null;
+
+        let body = res;
+        if (global.SecureAPI && typeof global.SecureAPI.unwrapResponse === 'function') {
+            body = global.SecureAPI.unwrapResponse(res) || res;
+        } else if (res.data !== undefined) {
+            body = res.data;
+        }
+
+        if (body && body.data && typeof body.data === 'object' && !Array.isArray(body.data)) {
+            body = body.data;
+        }
+
+        if (!body || typeof body !== 'object' || Array.isArray(body)) {
+            return null;
+        }
+
+        if (body.error && body.ok !== true) {
+            return null;
+        }
+
+        return body;
+    }
+
+    function loadTab2Qualifications(applicantId) {
+        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+            return Promise.resolve({ eduItems: [], additionalItems: [] });
+        }
+
+        let resolvedId = String(applicantId || '').trim();
+        if (!resolvedId) {
+            resolvedId = getApplicantId();
+        }
+        if (!resolvedId) {
+            return Promise.resolve({ eduItems: [], additionalItems: [] });
+        }
+
+        return ensureSessionTokens().then(function () {
+            return global.LawPortal.apiRequest('vacancy/education/get', 'POST', {
+                applicant_id: resolvedId,
+                applicantId: resolvedId
+            });
+        }).then(function (res) {
+            const body = extractQualificationsBody(res);
+            if (!body) {
+                return { eduItems: [], additionalItems: [] };
+            }
+
+            const educationRows = Array.isArray(body.education) ? body.education : [];
+            const additionalRows = Array.isArray(body.additional_qualification)
+                ? body.additional_qualification
+                : [];
+
+            const eduItems = educationRows
+                .map(mapEducationRowToEduItem)
+                .filter(function (item) {
+                    return item && !item.isDeleted
+                        && (item.exam || item.board || item.institution || item.certificatePath);
+                });
+
+            const additionalItems = additionalRows
+                .map(mapAdditionalRowToItem)
+                .filter(function (item) {
+                    return item && !item.isDeleted
+                        && (item.exam || item.year || item.certificatePath
+                            || item.percentage || item.additionalId);
+                });
+
+            const applicationId = parseInt(body.application_id, 10);
+            if (!isNaN(applicationId) && applicationId > 0) {
+                global.sessionStorage.setItem('applicationId', String(applicationId));
+            }
+
+            return {
+                eduItems: eduItems,
+                additionalItems: additionalItems,
+                applicationId: !isNaN(applicationId) && applicationId > 0 ? applicationId : 0
+            };
+        }).catch(function (err) {
+            console.warn('Tab2 qualifications:', err && err.message ? err.message : err);
+            return { eduItems: [], additionalItems: [] };
+        });
+    }
+
+    function applyTab2QualificationsToState(qualifications, options) {
+        if (!qualifications) return;
+
+        const replace = !options || options.replace !== false;
+        if (replace) {
+            AF.state.eduItems = (qualifications.eduItems || []).slice();
+            AF.state.additionalItems = (qualifications.additionalItems || []).slice();
+            return;
+        }
+
+        if (qualifications.eduItems && qualifications.eduItems.length) {
+            AF.state.eduItems = qualifications.eduItems.slice();
+        }
+        if (qualifications.additionalItems && qualifications.additionalItems.length) {
+            AF.state.additionalItems = qualifications.additionalItems.slice();
+        }
+    }
+
+    function clearTab2FilePreviews() {
+        const previews = AF.state.filePreviews || {};
+        Object.keys(previews).forEach(function (key) {
+            if (key.indexOf('edu-') === 0 || key.indexOf('add-') === 0) {
+                delete previews[key];
+            }
+        });
+    }
+
+    function renderTab2Qualifications() {
+        if (AF.tab2 && typeof AF.tab2.renderEdu === 'function') {
+            AF.tab2.renderEdu();
+        }
+        if (AF.tab2 && typeof AF.tab2.renderAdditional === 'function') {
+            AF.tab2.renderAdditional();
+        }
+    }
+
+    let tab2QualificationsFetchPromise = null;
+
+    /**
+     * Re-fetch Tab 2 education/additional rows from the server and re-render.
+     */
+    function refreshTab2QualificationsFromApi() {
+        if (tab2QualificationsFetchPromise) {
+            return tab2QualificationsFetchPromise;
+        }
+
+        tab2QualificationsFetchPromise = loadTab2Qualifications(getApplicantId())
+            .then(function (data) {
+                applyTab2QualificationsToState(data, { replace: true });
+                clearTab2FilePreviews();
+                renderTab2Qualifications();
+                return data;
+            })
+            .finally(function () {
+                tab2QualificationsFetchPromise = null;
+            });
+
+        return tab2QualificationsFetchPromise;
+    }
+
+    /**
+     * Called when the Qualifications tab becomes active (initial load uses startForm).
+     */
+    function onQualificationsTabActivated() {
+        return refreshTab2QualificationsFromApi();
+    }
+
     function ensureSessionTokens() {
         if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
             return Promise.resolve();
@@ -447,7 +692,7 @@
     function mapEduItemToPayload(item) {
         const year = parseYearOfPassing(item.year);
         const marks = parseMarksPercentage(item.percentage);
-        return {
+        const row = {
             education_id: parseInt(item.educationId, 10) || 0,
             qualification_name: trimStr(item.exam),
             year_of_passing: year !== null ? year : 0,
@@ -457,6 +702,10 @@
             marks_percentage: marks !== null ? marks : 0,
             certificate_path: trimStr(item.certificatePath)
         };
+        if (item.isDeleted) {
+            row.is_deleted = true;
+        }
+        return row;
     }
 
     /**
@@ -487,13 +736,16 @@
     function mapAdditionalItemToPayload(item) {
         const year = parseYearOfPassing(item.year);
         const marks = parseMarksPercentage(item.percentage);
+        const addId = parseInt(item.additionalId, 10) || 0;
+
         return {
-            additional_qualification_id: parseInt(item.additionalId, 10) || 0,
+            add_qualification_id: addId,
+            additional_qualification_id: addId,
             qualification_name: trimStr(item.exam),
             year_of_passing: year !== null ? year : 0,
-            university_name: trimStr(item.board),
-            institution: trimStr(item.institution),
-            specialization: trimStr(item.subject),
+            board_university: trimStr(item.board),
+            institution_name: trimStr(item.institution),
+            subject_name: trimStr(item.subject),
             marks_percentage: marks !== null ? marks : 0,
             certificate_path: trimStr(item.certificatePath)
         };
@@ -501,17 +753,70 @@
 
     function buildEducationSavePayload(eduItems) {
         const meta = buildTab2SaveMeta();
-        const education = (eduItems || [])
-            .filter(function (item) {
-                return item && !item.isDeleted;
-            })
-            .map(mapEduItemToPayload);
+        const active = (eduItems || []).filter(function (item) {
+            return item && !item.isDeleted;
+        });
+        const deleted = (eduItems || []).filter(function (item) {
+            return item && item.isDeleted && parseInt(item.educationId, 10) > 0;
+        });
+        const education = active.map(mapEduItemToPayload).concat(
+            deleted.map(mapEduItemToPayload)
+        );
 
         return {
             applicant_id: meta.applicant_id,
             created_by: meta.created_by,
             education: education
         };
+    }
+
+    function deleteEducationRecord(educationId) {
+        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+            return Promise.reject(new Error('API client is not loaded.'));
+        }
+        const applicantId = parseInt(getApplicantId(), 10) || 0;
+        const eduId = parseInt(educationId, 10) || 0;
+        if (!applicantId || !eduId) {
+            return Promise.reject(new Error('Invalid education record.'));
+        }
+
+        return ensureSessionTokens().then(function () {
+            return global.LawPortal.apiRequest('vacancy/education/delete', 'POST', {
+                applicant_id: applicantId,
+                education_id: eduId
+            });
+        }).then(function (res) {
+            const body = unwrapApiResult(res);
+            if (!body.ok) {
+                throw new Error(body.error || 'Unable to delete educational qualification.');
+            }
+            return body;
+        });
+    }
+
+    function deleteAdditionalQualificationRecord(additionalId) {
+        if (!global.LawPortal || typeof global.LawPortal.apiRequest !== 'function') {
+            return Promise.reject(new Error('API client is not loaded.'));
+        }
+        const applicantId = parseInt(getApplicantId(), 10) || 0;
+        const rowId = parseInt(additionalId, 10) || 0;
+        if (!applicantId || !rowId) {
+            return Promise.reject(new Error('Invalid additional qualification record.'));
+        }
+
+        return ensureSessionTokens().then(function () {
+            return global.LawPortal.apiRequest('vacancy/additional/delete', 'POST', {
+                applicant_id: applicantId,
+                add_qualification_id: rowId,
+                additional_qualification_id: rowId
+            });
+        }).then(function (res) {
+            const body = unwrapApiResult(res);
+            if (!body.ok) {
+                throw new Error(body.error || 'Unable to delete additional qualification.');
+            }
+            return body;
+        });
     }
 
     function buildAdditionalSavePayload(additionalItems) {
@@ -786,6 +1091,15 @@
         mapRowToPersonal: mapRowToPersonal,
         mapToApplicationPayload: mapToApplicationPayload,
         loadApplicantDetails: loadApplicantDetails,
+        loadTab2Qualifications: loadTab2Qualifications,
+        applyTab2QualificationsToState: applyTab2QualificationsToState,
+        refreshTab2QualificationsFromApi: refreshTab2QualificationsFromApi,
+        onQualificationsTabActivated: onQualificationsTabActivated,
+        renderTab2Qualifications: renderTab2Qualifications,
+        deleteEducationRecord: deleteEducationRecord,
+        deleteAdditionalQualificationRecord: deleteAdditionalQualificationRecord,
+        mapEducationRowToEduItem: mapEducationRowToEduItem,
+        mapAdditionalRowToItem: mapAdditionalRowToItem,
         ensureSessionTokens: ensureSessionTokens,
         buildPersonalSavePayload: buildPersonalSavePayload,
         savePersonalInfo: savePersonalInfo,
