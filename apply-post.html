@@ -1,295 +1,290 @@
 <!DOCTYPE html>
 <html lang="en" katalonextensionid="ljdobmomdgdljniojadhoplhkpialdid">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Law Officers Application Portal</title>
-    <!-- Bootstrap + Icons -->
-    <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/sign-up.css">
-    <link rel="stylesheet" href="assets/css/common.css">
 
-    <style type="text/css">
-        /* ==========================
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Law Officers Application Portal</title>
+  <!-- Bootstrap + Icons -->
+  <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/sign-up.css">
+  <link rel="stylesheet" href="assets/css/common.css">
+
+  <style type="text/css">
+    /* ==========================
    PREMIUM BACK TO TOP
 ========================== */
 
-.back-to-top-btn{
-    position:fixed;
-    right:24px;
-    bottom:24px;
-    width:56px;
-    height:56px;
-    border:none;
-    border-radius:18px;
-    cursor:pointer;
+    .back-to-top-btn {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      width: 56px;
+      height: 56px;
+      border: none;
+      border-radius: 18px;
+      cursor: pointer;
 
-    background:linear-gradient(
-        135deg,
-        #1f3291,
-        #3f46c7
-    );
+      background: linear-gradient(135deg,
+          #1f3291,
+          #3f46c7);
 
-    color:#fff;
+      color: #fff;
 
-    display:flex;
-    align-items:center;
-    justify-content:center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
 
-    font-size:28px;
+      font-size: 28px;
 
-    box-shadow:
-        0 12px 30px rgba(31,50,145,.28),
-        0 4px 12px rgba(31,50,145,.18);
+      box-shadow:
+        0 12px 30px rgba(31, 50, 145, .28),
+        0 4px 12px rgba(31, 50, 145, .18);
 
-    z-index:9999;
+      z-index: 9999;
 
-    opacity:0;
-    visibility:hidden;
+      opacity: 0;
+      visibility: hidden;
 
-    transform:
-        translateY(30px)
-        scale(.85);
+      transform:
+        translateY(30px) scale(.85);
 
-    transition:
+      transition:
         all .35s ease;
-}
+    }
 
-/* Visible State */
+    /* Visible State */
 
-.back-to-top-btn.show{
+    .back-to-top-btn.show {
 
-    opacity:1;
-    visibility:visible;
+      opacity: 1;
+      visibility: visible;
 
-    transform:
-        translateY(0)
-        scale(1);
+      transform:
+        translateY(0) scale(1);
 
-}
+    }
 
-/* Hover */
+    /* Hover */
 
-.back-to-top-btn:hover{
+    .back-to-top-btn:hover {
 
-    transform:
-        translateY(-4px)
-        scale(1.05);
+      transform:
+        translateY(-4px) scale(1.05);
 
-    box-shadow:
-        0 18px 40px rgba(31,50,145,.35);
+      box-shadow:
+        0 18px 40px rgba(31, 50, 145, .35);
 
-}
+    }
 
-/* Click */
+    /* Click */
 
-.back-to-top-btn:active{
+    .back-to-top-btn:active {
 
-    transform:scale(.95);
+      transform: scale(.95);
 
-}
+    }
 
-/* Icon Animation */
+    /* Icon Animation */
 
-.back-to-top-btn i{
+    .back-to-top-btn i {
 
-    position:relative;
-    z-index:2;
+      position: relative;
+      z-index: 2;
 
-    transition:.3s;
+      transition: .3s;
 
-}
+    }
 
-.back-to-top-btn:hover i{
+    .back-to-top-btn:hover i {
 
-    transform:
+      transform:
         translateY(-3px);
 
-}
+    }
 
-/* Ripple Effect */
+    /* Ripple Effect */
 
-.btn-ripple{
+    .btn-ripple {
 
-    position:absolute;
+      position: absolute;
 
-    width:100%;
-    height:100%;
+      width: 100%;
+      height: 100%;
 
-    border-radius:18px;
+      border-radius: 18px;
 
-    background:
-        rgba(255,255,255,.12);
+      background:
+        rgba(255, 255, 255, .12);
 
-    animation:
+      animation:
         pulseGlow 2s infinite;
 
-}
-
-/* Glow Animation */
-
-@keyframes pulseGlow{
-
-    0%{
-
-        transform:scale(1);
-        opacity:.6;
-
     }
 
-    70%{
+    /* Glow Animation */
 
-        transform:scale(1.25);
-        opacity:0;
+    @keyframes pulseGlow {
+
+      0% {
+
+        transform: scale(1);
+        opacity: .6;
+
+      }
+
+      70% {
+
+        transform: scale(1.25);
+        opacity: 0;
+
+      }
+
+      100% {
+
+        opacity: 0;
+
+      }
 
     }
-
-    100%{
-
-        opacity:0;
-
-    }
-
-}
-    </style>
+  </style>
 
 
-    <!-- JS -->
-    <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
-    <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
-    <script src="assets/js/main.js"></script> 
-  </head>
-  <body>
-    <header class="premium-topbar">
-      <!-- LEFT -->
-      <div class="topbar-left">
-        <!-- TN LOGO -->
-        <div class="tn-logo-wrapper">
-          <a href="#"><img src="assets/img/tn_logo.png" alt="Tamil Nadu Logo" class="tn-logo"></a>
+  <!-- JS -->
+  <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
+  <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/main.js"></script>
+</head>
+
+<body>
+  <header class="premium-topbar">
+    <!-- LEFT -->
+    <div class="topbar-left">
+      <!-- TN LOGO -->
+      <div class="tn-logo-wrapper">
+        <a href="#"><img src="assets/img/tn_logo.png" alt="Tamil Nadu Logo" class="tn-logo"></a>
+      </div>
+      <!-- PROJECT INFO -->
+      <div class="project-info">
+        <div class="gov-title">
+          Government of Tamil Nadu
         </div>
-        <!-- PROJECT INFO -->
-        <div class="project-info">
-          <div class="gov-title">
-            Government of Tamil Nadu
-          </div>
-          <div class="project-title">
-            <i class="bi bi-bank2"></i>
-            Law Officers Application Portal
-          </div>
+        <div class="project-title">
+          <i class="bi bi-bank2"></i>
+          Law Officers Application Portal
         </div>
       </div>
+    </div>
 
 
-      <div class="topbar-right">
+    <div class="topbar-right">
 
-    <div class="user-chip">
+      <div class="user-chip">
 
         <div class="user-avatar">
-            <i class="bi bi-person-fill"></i>
+          <i class="bi bi-person-fill"></i>
         </div>
 
         <div class="user-info">
-            <span class="welcome-text">Welcome</span>
-            <strong>UserName</strong>
+          <span class="welcome-text">Welcome</span>
+          <strong>UserName</strong>
         </div>
 
-    </div>
+      </div>
 
-    <a class="logout-btn text-white deco-none" href="index.html">
+      <a class="logout-btn text-white deco-none" href="index.html">
 
         <i class="bi bi-box-arrow-right"></i>
 
         Logout
 
-    </a>
+      </a>
 
-</div>
+    </div>
 
-    </header>
-    <section class="container-fluid main-section whitebg">
-      <div class="wrap container">
-        
-        <section class="vacancy-section">
+  </header>
+  <section class="container-fluid main-section whitebg">
+    <div class="wrap container">
 
-    <div class="section-header">
+      <section class="vacancy-section">
 
-        <div>
+        <div class="section-header">
+
+          <div>
             <span class="section-tag">
-                <i class="bi bi-briefcase-fill"></i>
-                Recruitment 2025
+              <i class="bi bi-briefcase-fill"></i>
+              Recruitment 2025
             </span>
 
             <h2>Available Law Officer Positions</h2>
 
             <p>
-                Government of Tamil Nadu • Public (Law Officers) Department
+              Government of Tamil Nadu • Public (Law Officers) Department
             </p>
-        </div>
+          </div>
 
-        <div class="vacancy-summary">
+          <div class="vacancy-summary">
 
             <div class="summary-card">
-                <h3>140</h3>
-                <span>Total Vacancies</span>
+              <h3>140</h3>
+              <span>Total Vacancies</span>
             </div>
 
             <div class="summary-card">
-                <h3>8</h3>
-                <span>Categories</span>
+              <h3>8</h3>
+              <span>Categories</span>
             </div>
+
+          </div>
 
         </div>
 
-    </div>
 
+        <div class="alert alert-primary border-0 rounded-4 mb-4">
 
-    <div class="alert alert-primary border-0 rounded-4 mb-4">
+          <i class="bi bi-info-circle-fill me-2"></i>
 
-    <i class="bi bi-info-circle-fill me-2"></i>
+          Applicants can select post category.
+          Vacancy distribution shown below is subject to final approval.
 
-    Applicants can select post category.
-    Vacancy distribution shown below is subject to final approval.
-
-</div>
+        </div>
 
 
 
 
-<div class="table-actions">
-    
-    <button id="btnApplyPost"
-        class="apply-post-btn"
-        >
-    Apply for Selected Post(s)
-</button>
+        <div class="table-actions">
 
-</div>
+          <button id="btnApplyPost" class="apply-post-btn">
+            Apply for Selected Post(s)
+          </button>
+
+        </div>
 
 
 
 
 
-    <div class="vacancy-table-wrapper">
+        <div class="vacancy-table-wrapper">
 
-    <table class="vacancy-table">
+          <table class="vacancy-table">
 
-        <thead>
+            <thead>
 
-            <tr>
+              <tr>
                 <th>Sl.No</th>
                 <th>Position</th>
                 <th>Madras HC</th>
                 <th>Madurai Bench</th>
                 <th>Total</th>
                 <!-- <th>Apply</th> -->
-            </tr>
+              </tr>
 
-        </thead>
+            </thead>
 
-        <tbody>
+            <tbody>
 
-            <!-- <tr>
+              <!-- <tr>
 
                 <td>01</td>
 
@@ -332,255 +327,256 @@
 
             </tr> -->
 
-            <tr>
+              <tr>
 
-    <td>01</td>
+                <td>01</td>
 
-    <td>
-        <h6>Additional Advocate General</h6>
-        <small>Senior Law Officer</small>
-    </td>
+                <td>
+                  <h6>Additional Advocate General</h6>
+                  <small>Senior Law Officer</small>
+                </td>
 
-    <td>
+                <td>
 
-        <div class="bench-card">
+                  <div class="bench-card">
 
-            <label class="premium-checkbox">
-                <input type="checkbox" name="madras_1">
-                <span></span>
-            </label>
+                    <label class="premium-checkbox">
+                      <input type="checkbox" name="madras_1">
+                      <span></span>
+                    </label>
 
-            <div class="count-badge primary">
-                5
-            </div>
+                    <div class="count-badge primary">
+                      5
+                    </div>
+
+                  </div>
+
+                </td>
+
+                <td>
+
+                  <div class="bench-card">
+
+                    <label class="premium-checkbox">
+                      <input type="checkbox" name="madurai_1">
+                      <span></span>
+                    </label>
+
+                    <div class="count-badge secondary">
+                      3
+                    </div>
+
+                  </div>
+
+                </td>
+
+                <td>
+                  <span class="total-badge">
+                    8
+                  </span>
+                </td>
+
+              </tr>
+
+
+            </tbody>
+
+          </table>
 
         </div>
 
-    </td>
 
-    <td>
 
-        <div class="bench-card">
 
-            <label class="premium-checkbox">
-                <input type="checkbox" name="madurai_1">
-                <span></span>
-            </label>
 
-            <div class="count-badge secondary">
-                3
-            </div>
+    </div>
+  </section>
 
+
+  <footer class="premium-footer">
+    <!-- TOP -->
+    <div class="footer-top-area">
+      <!-- LEFT -->
+      <div class="footer-brand-area">
+        <div class="footer-logo-wrap">
+          <img src="assets/img/tn_logo.png" class="footer-tn-logo" alt="TN Logo">
         </div>
-
-    </td>
-
-    <td>
-        <span class="total-badge">
-            8
-        </span>
-    </td>
-
-</tr>
-
-
-        </tbody>
-
-    </table>
-
-</div>
-
-
-
-
-
-      </div>   
-    </section>
-    
-
-    <footer class="premium-footer">
-      <!-- TOP -->
-      <div class="footer-top-area">
-        <!-- LEFT -->
-        <div class="footer-brand-area">
-          <div class="footer-logo-wrap">
-            <img src="assets/img/tn_logo.png" class="footer-tn-logo" alt="TN Logo">
+        <div class="footer-brand-content">
+          <div class="footer-gov-title">
+            Government of Tamil Nadu
           </div>
-          <div class="footer-brand-content">
-            <div class="footer-gov-title">
-              Government of Tamil Nadu
-            </div>
-            <div class="footer-portal-title">
-              <i class="bi bi-bank2"></i>
-              Law Officers Recruitment Portal
-            </div>
-            <div class="footer-desc">
-              Official digital recruitment platform for Law Officers appointments,
-              managed under Government of Tamil Nadu standards and secure application workflow.
-            </div>
+          <div class="footer-portal-title">
+            <i class="bi bi-bank2"></i>
+            Law Officers Recruitment Portal
           </div>
-        </div>
-        <!-- RIGHT -->
-        <div class="footer-right-grid">
-          <!-- VISITOR -->
-          <div class="footer-widget-card">
-            <div class="footer-widget-icon">
-              <i class="bi bi-people-fill"></i>
-            </div>
-            <div>
-              <div class="footer-widget-label">
-                Visitor Count
-              </div>
-              <div class="footer-widget-value" id="visitorCount">12,48,923</div>
-            </div>
-          </div>
-          <!-- UPDATED -->
-          <div class="footer-widget-card">
-            <div class="footer-widget-icon blue">
-              <i class="bi bi-clock-history"></i>
-            </div>
-            <div>
-              <div class="footer-widget-label">
-                Last Updated
-              </div>
-              <div class="footer-widget-value small" id="lastUpdatedTime">29 May 2026, 06:31:12 pm</div>
-            </div>
+          <div class="footer-desc">
+            Official digital recruitment platform for Law Officers appointments,
+            managed under Government of Tamil Nadu standards and secure application workflow.
           </div>
         </div>
       </div>
-      <!-- MIDDLE -->
-      <div class="footer-middle-area">
-        <!-- QUICK LINKS -->
-        <div class="footer-links-section">
-          <div class="footer-section-title">
-            <i class="bi bi-grid-fill"></i>
-            Quick Links
+      <!-- RIGHT -->
+      <div class="footer-right-grid">
+        <!-- VISITOR -->
+        <div class="footer-widget-card">
+          <div class="footer-widget-icon">
+            <i class="bi bi-people-fill"></i>
           </div>
-          <div class="footer-links-list">
-            <a href="#" class="footer-link-item">
+          <div>
+            <div class="footer-widget-label">
+              Visitor Count
+            </div>
+            <div class="footer-widget-value" id="visitorCount">12,48,923</div>
+          </div>
+        </div>
+        <!-- UPDATED -->
+        <div class="footer-widget-card">
+          <div class="footer-widget-icon blue">
+            <i class="bi bi-clock-history"></i>
+          </div>
+          <div>
+            <div class="footer-widget-label">
+              Last Updated
+            </div>
+            <div class="footer-widget-value small" id="lastUpdatedTime">29 May 2026, 06:31:12 pm</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- MIDDLE -->
+    <div class="footer-middle-area">
+      <!-- QUICK LINKS -->
+      <div class="footer-links-section">
+        <div class="footer-section-title">
+          <i class="bi bi-grid-fill"></i>
+          Quick Links
+        </div>
+        <div class="footer-links-list">
+          <a href="#" class="footer-link-item">
             <i class="bi bi-chevron-right"></i>
             Download Notification
-            </a>
-            <a href="job-post.html" class="footer-link-item">
+          </a>
+          <a href="job-post.html" class="footer-link-item">
             <i class="bi bi-chevron-right"></i>
             Job Post
-            </a>
+          </a>
+        </div>
+      </div>
+      <!-- SECURITY -->
+      <div class="footer-links-section">
+        <div class="footer-section-title">
+          <i class="bi bi-shield-check"></i>
+          Security &amp; Compliance
+        </div>
+        <div class="security-badges">
+          <div class="security-badge">
+            <i class="bi bi-patch-check-fill"></i>
+            Secure Portal
+          </div>
+          <div class="security-badge">
+            <i class="bi bi-lock-fill"></i>
+            SSL Protected
+          </div>
+          <div class="security-badge">
+            <i class="bi bi-fingerprint"></i>
+            Secure Authentication
           </div>
         </div>
-        <!-- SECURITY -->
-        <div class="footer-links-section">
-          <div class="footer-section-title">
-            <i class="bi bi-shield-check"></i>
-            Security &amp; Compliance
-          </div>
-          <div class="security-badges">
-            <div class="security-badge">
-              <i class="bi bi-patch-check-fill"></i>
-              Secure Portal
-            </div>
-            <div class="security-badge">
-              <i class="bi bi-lock-fill"></i>
-              SSL Protected
-            </div>
-            <div class="security-badge">
-              <i class="bi bi-fingerprint"></i>
-              Secure Authentication
-            </div>
-          </div>
+      </div>
+      <!-- SOCIAL -->
+      <div class="footer-links-section">
+        <div class="footer-section-title">
+          <i class="bi bi-share-fill"></i>
+          Social Media
         </div>
-        <!-- SOCIAL -->
-        <div class="footer-links-section">
-          <div class="footer-section-title">
-            <i class="bi bi-share-fill"></i>
-            Social Media
-          </div>
-          <div class="social-icons-wrap">
-            <a href="#" class="social-icon">
+        <div class="social-icons-wrap">
+          <a href="#" class="social-icon">
             <i class="bi bi-facebook"></i>
-            </a>
-            <a href="#" class="social-icon">
+          </a>
+          <a href="#" class="social-icon">
             <i class="bi bi-twitter-x"></i>
-            </a>
-            <a href="#" class="social-icon">
+          </a>
+          <a href="#" class="social-icon">
             <i class="bi bi-instagram"></i>
-            </a>
-            <a href="#" class="social-icon">
+          </a>
+          <a href="#" class="social-icon">
             <i class="bi bi-youtube"></i>
-            </a>
-            <a href="#" class="social-icon">
+          </a>
+          <a href="#" class="social-icon">
             <i class="bi bi-linkedin"></i>
-            </a>
-          </div>
+          </a>
         </div>
       </div>
-      <!-- BOTTOM -->
-      <div class="footer-bottom-area">
-        <div class="footer-copyright">
-          <i class="bi bi-c-circle"></i>
-          Copyright 2026 TNeGA. All Rights Reserved.
-        </div>
-        <div class="footer-dev-text">
-          <i class="bi bi-code-slash"></i>
-          Designed &amp; Developed by TNeGA
-        </div>
+    </div>
+    <!-- BOTTOM -->
+    <div class="footer-bottom-area">
+      <div class="footer-copyright">
+        <i class="bi bi-c-circle"></i>
+        Copyright 2026 TNeGA. All Rights Reserved.
       </div>
-    </footer>
+      <div class="footer-dev-text">
+        <i class="bi bi-code-slash"></i>
+        Designed &amp; Developed by TNeGA
+      </div>
+    </div>
+  </footer>
 
 
 
-<button id="backToTopBtn" class="back-to-top-btn">
+  <button id="backToTopBtn" class="back-to-top-btn">
 
     <span class="btn-ripple"></span>
 
     <i class="bi bi-arrow-up-short"></i>
 
-</button>
+  </button>
 
 
-<script>
-$(document).ready(function () {
+  <script>
+    $(document).ready(function () {
 
-    $('#btnApplyPost').on('click', function () {
+      $('#btnApplyPost').on('click', function () {
 
         window.location.href = 'application-form.html';
 
+      });
+
     });
-
-});
-</script>
+  </script>
 
 
-<script>
-$(function(){
+  <script>
+    $(function () {
 
-    const $btn = $('#backToTopBtn');
+      const $btn = $('#backToTopBtn');
 
-    $(window).on('scroll', function(){
+      $(window).on('scroll', function () {
 
-        if($(this).scrollTop() > 300){
+        if ($(this).scrollTop() > 300) {
 
-            $btn.addClass('show');
+          $btn.addClass('show');
 
-        }else{
+        } else {
 
-            $btn.removeClass('show');
+          $btn.removeClass('show');
 
         }
 
-    });
+      });
 
-    $btn.on('click', function(){
+      $btn.on('click', function () {
 
         $('html, body').animate({
 
-            scrollTop:0
+          scrollTop: 0
 
         }, 700);
 
-    });
+      });
 
-});
-</script>
-    
-  </body>
+    });
+  </script>
+
+</body>
+
 </html>
