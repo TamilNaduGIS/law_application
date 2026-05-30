@@ -22,6 +22,7 @@ use App\Controllers\UserController;
 use App\Controllers\OtpController;
 use App\Controllers\VacancyController;
 use App\Middleware\CSRFMiddleware;
+use App\Controllers\ApplicationController;
 
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params([
@@ -137,7 +138,11 @@ $router->add('POST', '/api/vacancy/experience/fetchExperience', [VacancyControll
     new AuthMiddleware(),
     new CSRFMiddleware(),
 ]);
-
+$router->add('POST', '/api/application/preview', [ApplicationController::class, 'getPreviewApplication'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
 // Dispatch the request
 
 $request = new Request();

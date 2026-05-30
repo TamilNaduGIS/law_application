@@ -186,4 +186,19 @@ class ApplicationModal
             return null;
         }
     }
+
+    public static function getPreviewApplicationById(int $applicationId): ?array
+    {
+        try {
+            $stmt = Database::ReadDatabaseConnection()->prepare(
+                'SELECT * FROM fn_application_preview(:application_id)'
+            );
+            $stmt->bindParam(':application_id', $applicationId, PDO::PARAM_INT);
+            $stmt->execute();
+
+            return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+        } catch (PDOException $e) {
+            return null;
+        }
+    }
 }

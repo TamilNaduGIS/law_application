@@ -20,7 +20,13 @@ class ApplicationController extends Controller
 
     public function getPreviewApplication(Request $request, Response $response)
     {
-        $applicationId = $request->get('applicationId');
+        $data = is_array($this->requestData) ? $this->requestData : [];
+        $applicationId = $data['applicationId'] ?? null;
+
+        if (!$applicationId) {
+            return $response->json(['error' => 'applicationId is required'], 400);
+        }
+        
         $application = ApplicationModal::getApplicationById((int) $applicationId);
 
         if (!$application) {
