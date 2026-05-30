@@ -287,7 +287,8 @@
                     if (res && res.ok && res.session) {
                         saveSession(res.session);
                         otpModal.hide();
-                        global.location.href = 'dashboard.html';
+                        const returnTo = new URLSearchParams(global.location.search).get('return');
+                        global.location.href = returnTo || 'apply-post.html';
                         return;
                     }
                     showError((res && res.error) || 'OTP verification failed.');
