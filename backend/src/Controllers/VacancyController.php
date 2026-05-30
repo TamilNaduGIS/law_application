@@ -231,5 +231,45 @@ class VacancyController extends Controller
     ];
   }
 
-  
+//   CALL public.sp_application_save_education
+// (
+// '{
+//     "application_id":1,
+//     "created_by":1,
+//     "education":
+//     [
+//         {
+//             "education_id":0,
+//             "qualification_name":"B.L",
+//             "year_of_passing":2015,
+//             "university_name":"Madras University",
+//             "specialization":"Law",
+//             "marks_percentage":78.50,
+//             "certificate_path":"uploads/bl_certificate.pdf",
+//             "is_deleted":false
+//         },
+//         {
+//             "education_id":0,
+//             "qualification_name":"LLM",
+//             "year_of_passing":2018,
+//             "university_name":"Tamil Nadu Dr Ambedkar Law University",
+//             "specialization":"Constitutional Law",
+//             "marks_percentage":82.00,
+//             "certificate_path":"uploads/llm_certificate.pdf",
+//             "is_deleted":false
+//         }
+//     ]
+// }'::jsonb,
+// NULL
+// );
+
+  public function saveEducation(Request $request): Response
+  {
+    $this->setUserId($request);
+    $data = $this->requestData;
+    $applicationId = (int) ($data['application_id'] ?? $data['applicationId'] ?? 0);
+    $education = (array) ($data['education'] ?? $data['education'] ?? []);
+    $result = ApplicationModal::saveEducation($applicationId, $education);
+    return $this->encryptResponse($result);
+  }
 }

@@ -150,4 +150,9 @@ class ApplicationModal
 
         return null;
     }
+
+    public static function saveEducation(int $applicationId, array $education): array
+    {
+        return self::callJsonProcedure('sp_application_save_education', $education);
+    }
 }
