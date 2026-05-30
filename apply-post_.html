@@ -8,153 +8,6 @@
     <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
     <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/css/sign-up.css">
-    <link rel="stylesheet" href="assets/css/common.css">
-
-    <style type="text/css">
-        /* ==========================
-   PREMIUM BACK TO TOP
-========================== */
-
-.back-to-top-btn{
-    position:fixed;
-    right:24px;
-    bottom:24px;
-    width:56px;
-    height:56px;
-    border:none;
-    border-radius:18px;
-    cursor:pointer;
-
-    background:linear-gradient(
-        135deg,
-        #1f3291,
-        #3f46c7
-    );
-
-    color:#fff;
-
-    display:flex;
-    align-items:center;
-    justify-content:center;
-
-    font-size:28px;
-
-    box-shadow:
-        0 12px 30px rgba(31,50,145,.28),
-        0 4px 12px rgba(31,50,145,.18);
-
-    z-index:9999;
-
-    opacity:0;
-    visibility:hidden;
-
-    transform:
-        translateY(30px)
-        scale(.85);
-
-    transition:
-        all .35s ease;
-}
-
-/* Visible State */
-
-.back-to-top-btn.show{
-
-    opacity:1;
-    visibility:visible;
-
-    transform:
-        translateY(0)
-        scale(1);
-
-}
-
-/* Hover */
-
-.back-to-top-btn:hover{
-
-    transform:
-        translateY(-4px)
-        scale(1.05);
-
-    box-shadow:
-        0 18px 40px rgba(31,50,145,.35);
-
-}
-
-/* Click */
-
-.back-to-top-btn:active{
-
-    transform:scale(.95);
-
-}
-
-/* Icon Animation */
-
-.back-to-top-btn i{
-
-    position:relative;
-    z-index:2;
-
-    transition:.3s;
-
-}
-
-.back-to-top-btn:hover i{
-
-    transform:
-        translateY(-3px);
-
-}
-
-/* Ripple Effect */
-
-.btn-ripple{
-
-    position:absolute;
-
-    width:100%;
-    height:100%;
-
-    border-radius:18px;
-
-    background:
-        rgba(255,255,255,.12);
-
-    animation:
-        pulseGlow 2s infinite;
-
-}
-
-/* Glow Animation */
-
-@keyframes pulseGlow{
-
-    0%{
-
-        transform:scale(1);
-        opacity:.6;
-
-    }
-
-    70%{
-
-        transform:scale(1.25);
-        opacity:0;
-
-    }
-
-    100%{
-
-        opacity:0;
-
-    }
-
-}
-    </style>
-
-
     <!-- JS -->
     <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
     <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
@@ -179,33 +32,26 @@
           </div>
         </div>
       </div>
-
-
-      <div class="topbar-right">
-
-    <div class="user-chip">
-
-        <div class="user-avatar">
-            <i class="bi bi-person-fill"></i>
-        </div>
-
-        <div class="user-info">
-            <span class="welcome-text">Welcome</span>
-            <strong>UserName</strong>
-        </div>
-
-    </div>
-
-    <a class="logout-btn text-white deco-none" href="index.html">
-
-        <i class="bi bi-box-arrow-right"></i>
-
-        Logout
-
-    </a>
-
-</div>
-
+      <!-- RIGHT --> 
+      <button class="premium-login-btn" onclick="window.location.href='login.html'">
+      <span class="login-btn-glow"></span>
+      <span class="login-btn-content">
+      <span class="login-icon-wrap">
+      <i class="bi bi-shield-lock-fill"></i>
+      </span>
+      <span class="login-text-wrap">
+      <span class="login-main-text">
+      Login
+      </span>
+      <span class="login-sub-text">
+      Secure Portal Access
+      </span>
+      </span>
+      <span class="login-arrow">
+      <i class="bi bi-arrow-right-circle-fill"></i>
+      </span>
+      </span>
+      </button>
     </header>
     <section class="container-fluid main-section whitebg">
       <div class="wrap container">
@@ -248,26 +94,25 @@
 
     <i class="bi bi-info-circle-fill me-2"></i>
 
-    Applicants can select post category.
+    Applicants can select only one post category.
     Vacancy distribution shown below is subject to final approval.
 
 </div>
 
 
+<div class="selection-bar">
 
+    <div>
+        <strong>Selected Post:</strong>
+        Additional Advocate General
+    </div>
 
-<div class="table-actions">
-    
-    <button id="btnApplyPost"
-        class="apply-post-btn"
-        >
-    Apply for Selected Post(s)
-</button>
+    <button class="btn btn-primary px-5">
+        Continue Application
+        <i class="bi bi-arrow-right ms-2"></i>
+    </button>
 
 </div>
-
-
-
 
 
     <div class="vacancy-table-wrapper">
@@ -282,14 +127,14 @@
                 <th>Madras HC</th>
                 <th>Madurai Bench</th>
                 <th>Total</th>
-                <!-- <th>Apply</th> -->
+                <th>Apply</th>
             </tr>
 
         </thead>
 
         <tbody>
 
-            <!-- <tr>
+            <tr>
 
                 <td>01</td>
 
@@ -330,59 +175,7 @@
                     </label>
                 </td>
 
-            </tr> -->
-
-            <tr>
-
-    <td>01</td>
-
-    <td>
-        <h6>Additional Advocate General</h6>
-        <small>Senior Law Officer</small>
-    </td>
-
-    <td>
-
-        <div class="bench-card">
-
-            <label class="premium-checkbox">
-                <input type="checkbox" name="madras_1">
-                <span></span>
-            </label>
-
-            <div class="count-badge primary">
-                5
-            </div>
-
-        </div>
-
-    </td>
-
-    <td>
-
-        <div class="bench-card">
-
-            <label class="premium-checkbox">
-                <input type="checkbox" name="madurai_1">
-                <span></span>
-            </label>
-
-            <div class="count-badge secondary">
-                3
-            </div>
-
-        </div>
-
-    </td>
-
-    <td>
-        <span class="total-badge">
-            8
-        </span>
-    </td>
-
-</tr>
-
+            </tr>
 
         </tbody>
 
@@ -461,7 +254,7 @@
             <i class="bi bi-chevron-right"></i>
             Download Notification
             </a>
-            <a href="job-post.html" class="footer-link-item">
+            <a href="apply-post.html" class="footer-link-item">
             <i class="bi bi-chevron-right"></i>
             Job Post
             </a>
@@ -528,59 +321,8 @@
 
 
 
-<button id="backToTopBtn" class="back-to-top-btn">
+ 
 
-    <span class="btn-ripple"></span>
-
-    <i class="bi bi-arrow-up-short"></i>
-
-</button>
-
-
-<script>
-$(document).ready(function () {
-
-    $('#btnApplyPost').on('click', function () {
-
-        window.location.href = 'application-form.html';
-
-    });
-
-});
-</script>
-
-
-<script>
-$(function(){
-
-    const $btn = $('#backToTopBtn');
-
-    $(window).on('scroll', function(){
-
-        if($(this).scrollTop() > 300){
-
-            $btn.addClass('show');
-
-        }else{
-
-            $btn.removeClass('show');
-
-        }
-
-    });
-
-    $btn.on('click', function(){
-
-        $('html, body').animate({
-
-            scrollTop:0
-
-        }, 700);
-
-    });
-
-});
-</script>
     
   </body>
 </html>
