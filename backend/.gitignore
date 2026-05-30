@@ -1,0 +1,67 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment files (VERY IMPORTANT)
+.env
+.env.local
+.env.*.local
+
+# Composer dependencies
+/vendor/
+
+# Node modules (if frontend used)
+node_modules/
+
+# Build files
+dist/
+build/
+
+# Cache
+cache/
+tmp/
+*.cache
+
+# Uploaded files
+uploads/
+public/uploads/
+
+# PHPUnit
+.phpunit.result.cache
+
+# Laravel specific (if you use Laravel)
+storage/*.key
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+bootstrap/cache/
+
+# Database
+*.sql
+*.sqlite
+
+# Misc
+*.zip
+*.tar.gz
+*.bak
+
+# Local test / debug scripts
+test_*.php
+debug_*.php
+check_env.php

@@ -14,9 +14,9 @@
     const marker = '/law_application';
     const idx = path.toLowerCase().indexOf(marker);
     if (idx !== -1) {
-      return window.location.origin + path.substring(0, idx + marker.length) + '/API_Base/public/';
+      return window.location.origin + path.substring(0, idx + marker.length) + '/backend/public/';
     }
-    return new URL('API_Base/public/', window.location.href).href.replace(/\/?$/, '/');
+    return new URL('backend/public/', window.location.href).href.replace(/\/?$/, '/');
   }
 
   window.SecureAPI = {

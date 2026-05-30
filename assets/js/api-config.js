@@ -9,10 +9,10 @@
         const idx = lower.indexOf(marker);
 
         if (idx !== -1) {
-            return global.location.origin + path.substring(0, idx + marker.length) + '/API_Base/public/api';
+            return global.location.origin + path.substring(0, idx + marker.length) + '/backend/public/api';
         }
 
-        return new URL('API_Base/public/api', global.location.href).href.replace(/\/$/, '');
+        return new URL('backend/public/api', global.location.href).href.replace(/\/$/, '');
     }
 
     global.LawPortal = global.LawPortal || {};
