@@ -1237,6 +1237,35 @@
             });
         });
     }
+
+    // /** Legacy sync helpers for application-form-core.js / tab4 preview. */
+    // function syncJudgmentAAG() {
+    //     AF.state.judgmentAAGCitations = getAAGCitations();
+    //     AF.state.judgmentAAGItems = AF.state.judgmentAAGCitations
+    //         .filter(function (c) { return String(c || '').trim(); })
+    //         .map(function (c) {
+    //             return {
+    //                 caseNo: '',
+    //                 caseDetails: String(c).trim(),
+    //                 judgment: '',
+    //                 remarks: ''
+    //             };
+    //         });
+    // }
+
+    // function syncJudgmentAGP() {
+    //     AF.state.judgmentAGPCitations = getAGPCitations();
+    //     AF.state.judgmentAGPItems = AF.state.judgmentAGPCitations
+    //         .filter(function (c) { return String(c || '').trim(); })
+    //         .map(function (c) {
+    //             return {
+    //                 caseNo: '',
+    //                 caseDetails: String(c).trim(),
+    //                 judgment: '',
+    //                 remarks: ''
+    //             };
+    //         });
+    // }
     
     // ============================================================
     // INITIALIZATION FUNCTIONS

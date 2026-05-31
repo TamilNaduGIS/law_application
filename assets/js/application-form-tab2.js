@@ -345,9 +345,8 @@
         syncEdu();
         syncAdditional();
 
-        const applicantId = AF.api && typeof AF.api.requireApplicantId === 'function'
-            ? parseInt(sessionStorage.getItem('applicantId'), 10)
-            : 0;
+        const applicantId = parseInt(sessionStorage.getItem('applicantId'), 10);
+
         if (!applicantId) {
             alert('Applicant ID is missing. Please log in again.');
             return false;

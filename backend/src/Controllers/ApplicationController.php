@@ -12,21 +12,23 @@ use App\Models\ApplicationModal;
 
 class ApplicationController extends Controller
 {
-    public function __construct()
+    public function getPreviewApplication(): Response
     {
-        parent::__construct();
-        $this->sessionService = new SessionService();
-    }
+        $data = is_array($this->requestData) ? $this->requestData : [];
+        $applicationId = $data['applicant_id'] ?? null;
 
-    public function getPreviewApplication(Request $request, Response $response)
-    {
-        $applicationId = $request->get('applicationId');
+        if (!$applicationId) {
+            return $this->json(['error' => 'applicationId is required'], 400);
+        }
+        
         $application = ApplicationModal::getApplicationById((int) $applicationId);
 
         if (!$application) {
-            return $response->json(['error' => 'Application not found'], 404);
+            return $this->json(['error' => 'Application not found'], 404);
         }
 
-        return $response->json($application);
+        return $this->json($application);
+
+       
     }
 }
