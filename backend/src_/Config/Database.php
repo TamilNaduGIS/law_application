@@ -15,11 +15,11 @@ class Database
     public static function ReadDatabaseConnection(): PDO
     {
       
-        $host = '10.236.250.35';
+        $host = '192.168.4.250';
         $port = 5432;
         $dbName = 'law_officers_application';
-        $username = 'ramesh';
-        $password = 'Ramesh!@#2025';
+        $username = 'postgres';
+        $password = 'postgres';
 
 
         // If AWS secret 'password' is not set, fallback to DB_PASS env or empty string
@@ -44,11 +44,11 @@ class Database
     public static function WriteConnection(): PDO
     {
 
-        $host = '10.236.250.35';
+        $host = '192.168.4.250';
         $port = 5432;
         $dbName = 'law_officers_application';
-        $username = 'ramesh';
-        $password = 'Ramesh!@#2025';
+        $username = 'postgres';
+        $password = 'postgres';
 
 
         // If AWS secret 'password' is not set, fallback to DB_PASS env or empty string
