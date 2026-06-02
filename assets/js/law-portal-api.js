@@ -43,6 +43,7 @@
         if (session.refresh_token) {
             global.localStorage.setItem('refresh_token', session.refresh_token);
         }
+        global.sessionStorage.removeItem('af_tokens_synced');
         if (session.encryption_key) {
             global.sessionStorage.setItem('encryption_key', session.encryption_key);
         }

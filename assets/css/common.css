@@ -137,3 +137,87 @@
 .modal {
     z-index: 9999999999 !important;
 }
+
+/* Softer placeholder text (all inputs site-wide) */
+:root {
+    --placeholder-color: rgba(100, 116, 139, 0.42);
+}
+
+input::placeholder,
+textarea::placeholder,
+.form-control::placeholder,
+.form-input::placeholder,
+.premium-input::placeholder,
+.edu-input::placeholder,
+.add-input::placeholder,
+.practice-input::placeholder {
+    color: var(--placeholder-color);
+    opacity: 1;
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder,
+.form-control::-webkit-input-placeholder,
+.form-input::-webkit-input-placeholder,
+.premium-input::-webkit-input-placeholder,
+.edu-input::-webkit-input-placeholder,
+.add-input::-webkit-input-placeholder,
+.practice-input::-webkit-input-placeholder {
+    color: var(--placeholder-color);
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder,
+.form-control::-moz-placeholder,
+.form-input::-moz-placeholder,
+.premium-input::-moz-placeholder,
+.edu-input::-moz-placeholder,
+.add-input::-moz-placeholder,
+.practice-input::-moz-placeholder {
+    color: var(--placeholder-color);
+    opacity: 1;
+}
+
+/* Full-page centered loader (bootstrap, token refresh, preview) */
+.af-prefill-loader--viewport {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.88);
+    backdrop-filter: blur(3px);
+    border-radius: 0;
+    margin: 0;
+    min-height: 0;
+}
+
+.af-prefill-loader--viewport .af-prefill-loader-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 22px 32px;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.14);
+}
+
+.af-prefill-loader--viewport .af-prefill-loader-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: #334155;
+    text-align: center;
+    max-width: 280px;
+    margin: 0;
+}
+
+.af-prefill-loader--viewport .af-prefill-spinner {
+    width: 2.5rem;
+    height: 2.5rem;
+}
+
+.af-prefill-loader--auth {
+    z-index: 10060;
+}

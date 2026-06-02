@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Submitted Applications — Law Officers Portal</title>
+  <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/sign-up.css">
+  <link rel="stylesheet" href="assets/css/common.css?v=20250601a">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #f8fafc;
+    }
+
+    .main-section {
+      flex: 1 0 auto;
+    }
+
+    .submitted-section {
+      padding: 28px 0 48px;
+    }
+
+    .submitted-section h2 {
+      font-size: 28px;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 18px;
+    }
+
+    .search-box-wrap {
+      position: relative;
+      margin-bottom: 18px;
+    }
+
+    .search-box-wrap i {
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64748b;
+      font-size: 18px;
+    }
+
+    .search-box-wrap input {
+      width: 100%;
+      height: 48px;
+      border: 1px solid #dbeafe;
+      border-radius: 14px;
+      padding: 0 16px 0 46px;
+      font-size: 15px;
+      background: #fff;
+      box-shadow: 0 4px 14px rgba(15, 23, 42, .04);
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .view-app-btn {
+      border: none;
+      border-radius: 10px;
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #1f3291, #4338ca);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .view-app-btn:hover {
+      color: #fff;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(31, 50, 145, .22);
+    }
+
+    .application-no {
+      font-weight: 700;
+      color: #1f3291;
+      letter-spacing: .2px;
+    }
+
+    .top-menu-btn.active {
+      background: rgba(255, 255, 255, .16);
+      border-color: rgba(255, 255, 255, .28);
+    }
+
+    #applicationPreviewModal .modal-content {
+      border: none;
+      border-radius: 0;
+      min-height: 100vh;
+    }
+
+    #applicationPreviewModal .modal-header {
+      background: #1f3291;
+      color: #fff;
+      border: 0;
+      padding: 14px 20px;
+    }
+
+    #applicationPreviewModal .btn-close {
+      filter: invert(1);
+    }
+
+    #applicationPreviewFrame {
+      width: 100%;
+      height: calc(100vh - 64px);
+      border: 0;
+      background: #fff;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="premium-topbar">
+    <div class="topbar-left">
+      <div class="tn-logo-wrapper">
+        <a href="index.html"><img src="assets/img/tn_logo.png" alt="Tamil Nadu Logo" class="tn-logo"></a>
+      </div>
+      <div class="project-info">
+        <div class="gov-title">Government of Tamil Nadu</div>
+        <div class="project-title">
+          <i class="bi bi-bank2"></i>
+          Law Officers Application Portal
+        </div>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-chip">
+        <div class="user-avatar"><i class="bi bi-person-fill"></i></div>
+        <div class="user-info">
+          <span class="welcome-text">Welcome</span>
+          <strong id="userDisplayName">Applicant</strong>
+        </div>
+      </div>
+      <a class="top-menu-btn active deco-none" href="submitted-applications.html">
+        <i class="bi bi-file-earmark-text-fill"></i>
+        Applications
+      </a>
+      <a class="top-menu-btn deco-none" href="apply-post.html">
+        <i class="bi bi-briefcase-fill"></i>
+        Apply
+      </a>
+      <a class="logout-btn text-white deco-none" href="#" id="logoutLink">
+        <i class="bi bi-box-arrow-right"></i>
+        Logout
+      </a>
+    </div>
+  </header>
+
+  <section class="container-fluid main-section whitebg">
+    <div class="wrap container submitted-section">
+      <h2>Submitted Applications</h2>
+
+      <div class="search-box-wrap">
+        <i class="bi bi-search"></i>
+        <input type="text" id="applicationSearchInput" placeholder="Search Application ID">
+      </div>
+
+      <div class="vacancy-table-wrapper">
+        <table class="vacancy-table">
+          <thead>
+            <tr>
+              <th>Sl.No</th>
+              <th>Position</th>
+              <th>Application ID</th>
+              <th>Status</th>
+              <th>Submitted On</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="submittedApplicationsBody">
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">Loading submitted applications…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <footer class="premium-footer">
+    <div class="footer-bottom-area">
+      <div class="footer-copyright">
+        <i class="bi bi-c-circle"></i>
+        Copyright 2026 TNeGA. All Rights Reserved.
+      </div>
+      <div class="footer-dev-text">
+        <i class="bi bi-code-slash"></i>
+        Designed &amp; Developed by TNeGA
+      </div>
+    </div>
+  </footer>
+
+  <div class="modal fade" id="applicationPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title mb-0">
+            <i class="bi bi-file-earmark-pdf-fill me-2"></i>
+            <span id="previewModalTitle">Application Preview</span>
+          </h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-0">
+          <iframe id="applicationPreviewFrame" title="Application Preview"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
+  <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
+  <script src="assets/js/api-config.js"></script>
+  <!-- hashed  --><!--<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script> -->
+  <!-- Local --><script src="assets/vendor/crypto/crypto_v4.4.1.js"></script>
+  <script src="assets/js/secure-api.js"></script>
+  <script src="assets/js/law-portal-api.js"></script>
+  <script src="assets/js/app-data.js"></script>
+  <script src="assets/js/job-selection.js?v=20250602a"></script>
+  <script src="assets/js/submitted-applications.js?v=20250602a"></script>
+</body>
+
+</html>

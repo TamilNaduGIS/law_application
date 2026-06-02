@@ -89,14 +89,13 @@ class UserController extends Controller
         $enrolment = strtoupper(trim((string) ($body['enrolmentNo'] ?? '')));
         if ($enrolment === '') {
             $errors['enrolmentNo'] = 'Bar Council enrolment number is required.';
-        } elseif (!preg_match('/^[A-Z]{2}\/[0-9]{1,5}\/[0-9]{2}$/', $enrolment)) {
-            $errors['enrolmentNo'] = 'Invalid format. Use AB/1234/YY';
         }
+        
 
         $enrolmentSr = strtoupper(trim((string) ($body['enrolmentNoSr'] ?? '')));
-        if ($enrolmentSr !== '' && !preg_match('/^[A-Z]{2}\/[0-9]{1,5}\/[0-9]{2}SR$/', $enrolmentSr)) {
-            $errors['enrolmentnosr'] = 'Invalid format. Use AB/1234/YYSR';
-        }
+        // if ($enrolmentSr !== '' && !preg_match('/^[A-Z]{2}\/[0-9]{4}\/[0-9]{4}SR$/', $enrolmentSr)) {
+        //     $errors['enrolmentnosr'] = 'Invalid format. Use MS/1234/0123SR';
+        // }
 
         $enrolmentDate = trim((string) ($body['enrolmentDate'] ?? ''));
         if ($enrolmentDate === '') {
@@ -182,13 +181,32 @@ class UserController extends Controller
             $errors['nationality'] = 'Nationality is required.';
         }
 
+        $religion = trim((string) ($body['religion'] ?? ''));
+        $allowedReligions = [
+            'Buddhist',
+            'Christian',
+            'Hindu',
+            'Muslim',
+            'Jain',
+            'Others',
+            'Sikh',
+            'Parsi',
+            'Not Stated',
+            'Zoroastrian',
+        ];
+        if ($religion === '') {
+            $errors['religion'] = 'Religion is required.';
+        } elseif (!in_array($religion, $allowedReligions, true)) {
+            $errors['religion'] = 'Select a valid religion.';
+        }
+
         $community = trim((string) ($body['community'] ?? ''));
         if ($community === '') {
             $errors['community'] = 'Community is required.';
         }
 
         $caste = trim((string) ($body['caste'] ?? ''));
-        if ($community !== '' && $caste === '') {
+        if ($caste === '') {
             $errors['caste'] = 'Caste is required.';
         }
 
@@ -232,7 +250,7 @@ class UserController extends Controller
             'mobile_no' => trim((string) $body['mobile']),
             'phone_no' => trim((string) ($body['phone'] ?? '')),
             'email_id' => trim((string) $body['email']),
-           
+            'caste' => trim((string) $body['caste']),
             'gender' => (string) $body['gender'],
             'marital_status' => self::MARITAL_MAP[$maritalCode],
             'dob' => trim((string) $body['dob']),
@@ -295,9 +313,10 @@ class UserController extends Controller
 
         if ($enrollment === '') {
             $errors['enrolmentNumber'] = 'Bar Council enrolment number is required.';
-        } elseif (!preg_match('/^[A-Z]{2}\/[0-9]{1,5}\/[0-9]{2,4}$/', $enrollment)) {
-            $errors['enrolmentNumber'] = 'Invalid format. Use AB/1234/YY';
-        }
+        } 
+        // elseif (!preg_match('/^[A-Z]{2}\/[0-9]{4}\/[0-9]{4}$/', $enrollment)) {
+        //     $errors['enrolmentNumber'] = 'Invalid format. Use MS/1234/0123';
+        // }
 
         if ($mobile === '') {
             $errors['mobileNumber'] = 'Mobile number is required.';
@@ -389,8 +408,8 @@ class UserController extends Controller
 
         $encryptionKey = EncryptionHelper::generateUserKey();
         $csrfToken = bin2hex(random_bytes(32));
-        $access = JWTHelper::generate($applicantId, ['user'], 150000, false);
-        $refresh = JWTHelper::generate($applicantId, ['user'], 144000, true);
+        $access = JWTHelper::generate($applicantId, ['user'], 40, false);
+        $refresh = JWTHelper::generate($applicantId, ['user'], 10080, true);
 
         SessionService::createSession(
             $applicantId,

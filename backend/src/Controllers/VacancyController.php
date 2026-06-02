@@ -20,13 +20,44 @@ class VacancyController extends Controller
     'O' => 'Other',
   ];
 
+  /**
+   * Public vacancy list for index.html (no login required).
+   * Same data source as getVacancies() but returns plain JSON.
+   */
+  public function getPublicNotifiedVacancies(Request $request): Response
+  {
+    try {
+      $data = $this->fetchAvailablePostsRows();
+      return $this->json([
+        'ok' => true,
+        'data' => $data,
+        'total_count' => count($data),
+      ]);
+    } catch (\PDOException $e) {
+      error_log('getPublicNotifiedVacancies: ' . $e->getMessage());
+      return $this->json([
+        'ok' => false,
+        'error' => 'Unable to load vacancies.',
+      ], 500);
+    }
+  }
+
   public function getVacancies(Request $request): Response
   {
     $this->setUserId($request);
+    $data = $this->fetchAvailablePostsRows();
+    return $this->encryptResponse($data);
+  }
+
+  /**
+   * @return list<array<string, mixed>>
+   */
+  private function fetchAvailablePostsRows(): array
+  {
     $query = 'SELECT * FROM public.fn_get_available_posts()';
     $result = Database::ReadDatabaseConnection()->query($query);
     $data = $result->fetchAll(PDO::FETCH_ASSOC);
-    return $this->encryptResponse($data);
+    return is_array($data) ? $data : [];
   }
 
   public function getVacancyDetails(Request $request): Response
@@ -46,20 +77,49 @@ class VacancyController extends Controller
       ]);
     }
 
-    $query = 'SELECT * FROM public.applicant_registration WHERE applicant_id = :applicantId';
+    $query = 'SELECT * FROM public.fn_application_get_personal_info(:applicantId)';
     $stmt = Database::ReadDatabaseConnection()->prepare($query);
     $stmt->bindParam(':applicantId', $applicantId, PDO::PARAM_STR);
     $stmt->execute();
     $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-    return $this->encryptResponse($row ?: []);
+    // print_r(json_decode($row['fn_application_get_personal_info'], true));
+    return $this->encryptResponse(json_decode($row['fn_application_get_personal_info'], true) ?: []);
   }
 
-  /**
-   * POST /api/vacancy/education/get
-   * Reads public.fn_application_get_education_details(applicant_id).
-   * Also attempts public.fn_application_get_additional_qualification_details when available.
-   */
+  public function getCasteDetails(Request $request): Response
+  {
+    $this->setUserId($request);
+    $data = is_array($this->requestData) ? $this->requestData : [];
+    $community = trim((string) ($data['community'] ?? ''));
+
+    if ($community === '') {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Community is required.']);
+    }
+
+    try {
+      $stmt = Database::ReadDatabaseConnection()->prepare(
+        'SELECT * FROM public.fn_get_caste_details(:community)'
+      );
+      $stmt->bindValue(':community', $community, PDO::PARAM_STR);
+      $stmt->execute();
+      $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+      $castes = [];
+      foreach ($rows as $row) {
+        $name = $row['caste'] ?? $row['caste_name'] ?? $row['sub_caste'] ?? null;
+        if ($name !== null && trim((string) $name) !== '') {
+          $castes[] = trim((string) $name);
+        }
+      }
+
+      $castes = array_values(array_unique($castes));
+
+      return $this->encryptResponse(['ok' => true, 'castes' => $castes]);
+    } catch (\PDOException $e) {
+      error_log('getCasteDetails: ' . $e->getMessage());
+      return $this->encryptResponse(['ok' => false, 'error' => 'Unable to load caste details.']);
+    }
+  }
   public function getEducationDetails(Request $request): Response
   {
     $this->setUserId($request);
@@ -109,6 +169,12 @@ class VacancyController extends Controller
     $applicationId = ApplicationModal::resolveApplicationId($applicantId, $data);
 
     $payload = $this->buildPersonalInfoPayload($data, $applicantId, $applicationId);
+
+    $pincodeError = $this->validatePersonalInfoPincodes($payload);
+    if ($pincodeError !== null) {
+      return $this->encryptResponse(['ok' => false, 'error' => $pincodeError]);
+    }
+
     $result = ApplicationModal::savePersonalInfo($payload);
     $result['application_id'] = $applicationId;
     $result['applicant_id'] = $applicantId;
@@ -121,25 +187,14 @@ class VacancyController extends Controller
     $this->setUserId($request);
     $data = is_array($this->requestData) ? $this->requestData : [];
 
-    $applicantId = (int) (
-      $data['applicant_id']
-      ?? $data['applicantId']
-      ?? $this->sessionUserId
-      ?? 0
-    );
-
-    if ($applicantId <= 0) {
-      return $this->encryptResponse(['ok' => false, 'error' => 'Applicant ID is required.']);
-    }
-
-    $applicationId = ApplicationModal::resolveApplicationId($applicantId, $data);
-    if ($applicationId <= 0) {
-      return $this->encryptResponse(['ok' => false, 'error' => 'Invalid Application Id. Save Tab 1 first.']);
-    }
-
+    $applicationId = (int) ($data['application_id'] ?? $data['applicationId'] ?? 0);
     $documentType = strtoupper(trim((string) ($data['document_type'] ?? $data['documentType'] ?? '')));
     $fileName = trim((string) ($data['file_name'] ?? $data['fileName'] ?? ''));
     $fileContent = (string) ($data['file_content'] ?? $data['fileContent'] ?? $data['file_base64'] ?? '');
+
+    if ($applicationId <= 0) {
+      return $this->encryptResponse(['ok' => false, 'error' => 'Application ID is required.']);
+    }
 
     if ($documentType === '') {
       return $this->encryptResponse(['ok' => false, 'error' => 'Document type is required.']);
@@ -194,16 +249,60 @@ class VacancyController extends Controller
 
     $createdBy = (int) ($data['created_by'] ?? $data['createdBy'] ?? $applicantId);
 
+    $enrolmentDateRaw = trim((string) (
+      $data['date_of_enrollment']
+      ?? $data['enrolment_date']
+      ?? $data['enrolmentDate']
+      ?? ''
+    ));
+
+    $certificateName = trim((string) (
+      $data['certificate_name']
+      ?? $data['certificateName']
+      ?? $data['enrolment_cert_file_name']
+      ?? $data['enrolmentCertFileName']
+      ?? ''
+    ));
+
+    $certificatePath = trim((string) (
+      $data['certificate_path']
+      ?? $data['certificatePath']
+      ?? $data['enrolment_cert_path']
+      ?? $data['enrolmentCertPath']
+      ?? ''
+    ));
+
+    $subCaste = trim((string) ($data['sub_caste'] ?? $data['subCaste'] ?? ''));
+
+    $seniorEnrolment = strtoupper(trim((string) (
+      $data['bar_council_enrollement_number_senior']
+      ?? $data['senior_enrolment_no']
+      ?? $data['seniorEnrolmentNo']
+      ?? ''
+    )));
+
+    $yearsOfPracticeHcm = trim((string) (
+      $data['years_of_practice_hcm']
+      ?? $data['yearsOfPracticeHcm']
+      ?? ''
+    ));
+
     return [
-      'application_id' => $applicationId,
+      'applicant_id' => $applicationId,
       'applicant_name' => trim((string) ($data['applicant_name'] ?? $data['advocateName'] ?? '')),
       'bar_council_enrollement_number' => $enrolment,
+      'bar_council_enrollement_number_senior' => $seniorEnrolment,
       'father_name' => trim((string) ($data['father_name'] ?? $data['fatherName'] ?? '')),
       'gender' => self::GENDER_MAP[$genderRaw] ?? $genderRaw,
       'dob' => $this->formatDobForProcedure($dobRaw),
+      'date_of_enrollment' => $this->formatDobForProcedure($enrolmentDateRaw),
       'nationality' => trim((string) ($data['nationality'] ?? 'Indian')) ?: 'Indian',
       'religion' => trim((string) ($data['religion'] ?? '')),
       'community' => trim((string) ($data['community'] ?? '')),
+      'sub_caste' => $subCaste,
+      'certificate_name' => $certificateName,
+      'certificate_path' => $certificatePath,
+      'years_of_practice_hcm' => $yearsOfPracticeHcm !== '' ? $yearsOfPracticeHcm : null,
       'photo_path' => $photoPath,
       'mobile_no' => trim((string) ($data['mobile_no'] ?? $data['mobile'] ?? '')),
       'phone_number' => trim((string) ($data['phone_number'] ?? $data['phone_no'] ?? $data['phone'] ?? '')),
@@ -233,6 +332,34 @@ class VacancyController extends Controller
   }
 
   /**
+   * @param array<string, mixed> $payload
+   */
+  private function validatePersonalInfoPincodes(array $payload): ?string
+  {
+    $officePin = trim((string) ($payload['office_pincode'] ?? ''));
+    $permanentPin = trim((string) ($payload['permanent_pincode'] ?? ''));
+    $officeAddress = trim((string) ($payload['office_address'] ?? ''));
+    $permanentAddress = trim((string) ($payload['permanent_address'] ?? ''));
+    $officeDistrict = trim((string) ($payload['office_district'] ?? ''));
+    $permanentDistrict = trim((string) ($payload['permanent_district'] ?? ''));
+
+    if ($officePin !== '' && !preg_match('/^[1-9][0-9]{5}$/', $officePin)) {
+      return 'Enter a valid 6-digit office pincode (first digit cannot be 0).';
+    }
+    if ($permanentPin !== '' && !preg_match('/^[1-9][0-9]{5}$/', $permanentPin)) {
+      return 'Enter a valid 6-digit permanent pincode (first digit cannot be 0).';
+    }
+    if ($officePin === '' && ($officeAddress !== '' || $officeDistrict !== '')) {
+      return 'Office pincode is required when office address or district is provided.';
+    }
+    if ($permanentPin === '' && ($permanentAddress !== '' || $permanentDistrict !== '')) {
+      return 'Permanent pincode is required when permanent address or district is provided.';
+    }
+
+    return null;
+  }
+
+  /**
    * @return array{ok: bool, file_name?: string, file_path?: string, error?: string}
    */
   private function storeUploadedFile(int $applicationId, string $documentType, string $fileName, string $fileContent): array
@@ -251,9 +378,20 @@ class VacancyController extends Controller
       return ['ok' => false, 'error' => 'Invalid file content.'];
     }
 
-    $maxBytes = $documentType === 'PHOTO' ? 5 * 1024 * 1024 : 10 * 1024 * 1024;
+    $maxBytes = 5 * 1024 * 1024;
     if (strlen($binary) > $maxBytes) {
-      return ['ok' => false, 'error' => 'File exceeds maximum allowed size.'];
+      return ['ok' => false, 'error' => 'File size must not exceed 5 MB.'];
+    }
+
+    $extension = strtolower(pathinfo($safeName, PATHINFO_EXTENSION));
+    $allowedExtensions = $documentType === 'PHOTO'
+      ? ['jpg', 'jpeg', 'png']
+      : ['jpg', 'jpeg', 'png', 'pdf'];
+    if ($extension === '' || !in_array($extension, $allowedExtensions, true)) {
+      $formatMsg = $documentType === 'PHOTO'
+        ? 'Photo must be JPG or PNG only.'
+        : 'Certificate must be JPG, PNG or PDF only.';
+      return ['ok' => false, 'error' => $formatMsg];
     }
 
     $uploadRoot = dirname(__DIR__, 2) . '/public/uploads/applicants/' . $applicationId;
@@ -277,10 +415,37 @@ class VacancyController extends Controller
     ];
   }
 
-  /**
-   * POST /api/vacancy/education/delete
-   * Body: { "applicant_id": 2, "education_id": 5 } or { "education_ids": [5, 6] }
-   */
+  //   CALL public.sp_application_save_education
+  // (
+  // '{
+  //     "application_id":1,
+  //     "created_by":1,
+  //     "education":
+  //     [
+  //         {
+  //             "education_id":0,
+  //             "qualification_name":"B.L",
+  //             "year_of_passing":2015,
+  //             "university_name":"Madras University",
+  //             "specialization":"Law",
+  //             "marks_percentage":78.50,
+  //             "certificate_path":"uploads/bl_certificate.pdf",
+  //             "is_deleted":false
+  //         },
+  //         {
+  //             "education_id":0,
+  //             "qualification_name":"LLM",
+  //             "year_of_passing":2018,
+  //             "university_name":"Tamil Nadu Dr Ambedkar Law University",
+  //             "specialization":"Constitutional Law",
+  //             "marks_percentage":82.00,
+  //             "certificate_path":"uploads/llm_certificate.pdf",
+  //             "is_deleted":false
+  //         }
+  //     ]
+  // }'::jsonb,
+  // NULL
+  // );
   public function deleteEducation(Request $request): Response
   {
     $this->setUserId($request);
@@ -386,7 +551,7 @@ class VacancyController extends Controller
       }
     }
 
-    return array_values(array_unique(array_filter($ids, static fn (int $id): bool => $id > 0)));
+    return array_values(array_unique(array_filter($ids, static fn(int $id): bool => $id > 0)));
   }
 
   public function saveEducation(Request $request): Response
@@ -746,6 +911,7 @@ class VacancyController extends Controller
 
       $item = [
         'bar_practice_id' => (int) ($row['bar_practice_id'] ?? $row['id'] ?? 0),
+        'court_type' => trim((string) ($row['court_type'] ?? $row['courtType'] ?? '')),
         'years_experience' => (float) ($row['years_experience'] ?? $row['years'] ?? $row['yearsExperience'] ?? 0),
         'from_date' => $this->normalizeDate($row['from_date'] ?? $row['fromDate'] ?? null),
         'to_date' => $this->normalizeDate($row['to_date'] ?? $row['toDate'] ?? null),
@@ -829,11 +995,19 @@ class VacancyController extends Controller
     if (is_array($aagCitations) && !empty($aagCitations)) {
       $aagCitationItems = [];
       foreach ($aagCitations as $citation) {
-        if (!empty(trim((string) $citation))) {
+        $text = '';
+        if (is_array($citation)) {
+          $text = trim((string) (
+            $citation['case_citation'] ?? $citation['caseCitation'] ?? $citation['value'] ?? $citation['citation'] ?? ''
+          ));
+        } else {
+          $text = trim((string) $citation);
+        }
+        if ($text !== '') {
           $aagCitationItems[] = [
             'citation_type' => '7_YEAR',
             'case_title' => '',
-            'case_citation' => trim((string) $citation),
+            'case_citation' => $text,
           ];
         }
       }
@@ -851,11 +1025,19 @@ class VacancyController extends Controller
     if (is_array($agpCitations) && !empty($agpCitations)) {
       $agpCitationItems = [];
       foreach ($agpCitations as $citation) {
-        if (!empty(trim((string) $citation))) {
+        $text = '';
+        if (is_array($citation)) {
+          $text = trim((string) (
+            $citation['case_citation'] ?? $citation['caseCitation'] ?? $citation['value'] ?? $citation['citation'] ?? ''
+          ));
+        } else {
+          $text = trim((string) $citation);
+        }
+        if ($text !== '') {
           $agpCitationItems[] = [
             'citation_type' => '5_YEAR',
             'case_title' => '',
-            'case_citation' => trim((string) $citation),
+            'case_citation' => $text,
           ];
         }
       }
@@ -947,5 +1129,40 @@ class VacancyController extends Controller
     }
 
     return $normalized;
+  }
+
+
+  public function getVacancySelectionsbyApplicantID(Request $request): Response
+  {
+    $this->setUserId($request);
+    $data = is_array($this->requestData) ? $this->requestData : [];
+    $applicantId = (int) (
+      $data['applicant_id']
+      ?? $data['applicantId']
+      ?? $this->sessionUserId
+      ?? 0
+    );
+
+    if ($applicantId <= 0) {
+      return $this->encryptResponse([
+        'ok' => false,
+        'error' => 'Applicant ID is required',
+      ]);
+    }
+
+    $sql = 'SELECT selected_checkboxes FROM application_post_selection WHERE applicant_id = :applicantId LIMIT 1';
+    $stmt = Database::ReadDatabaseConnection()->prepare($sql);
+    $stmt->bindValue(':applicantId', $applicantId, PDO::PARAM_INT);
+    $stmt->execute();
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $selectedCheckboxes = trim((string) ($row['selected_checkboxes'] ?? ''));
+
+    return $this->encryptResponse([
+      'ok' => true,
+      'selected_checkboxes' => $selectedCheckboxes,
+      'submitted' => $selectedCheckboxes !== '',
+      'data' => $row ? [$row] : [],
+    ]);
   }
 }

@@ -14,6 +14,12 @@ use App\Models\LoginTransaction;
 
 class AuthController extends Controller
 {
+    /** Access token lifetime (minutes). */
+    private const ACCESS_TOKEN_MINUTES = 40;
+
+    /** Refresh token lifetime (minutes) — must exceed typical form-fill duration (7 days). */
+    private const REFRESH_TOKEN_MINUTES = 10080;
+
     public function __construct(?Request $request = null)
     {
         if ($request !== null && !empty($request->getUser()['uid'])) {
@@ -42,8 +48,8 @@ class AuthController extends Controller
             return $this->error('Session expired', 401);
         }
 
-        $newAccess = JWTHelper::generate($userId, $roles, 15, false);
-        $newRefresh = JWTHelper::generate($userId, $roles, 10, true);
+        $newAccess = JWTHelper::generate($userId, $roles, self::ACCESS_TOKEN_MINUTES, false);
+        $newRefresh = JWTHelper::generate($userId, $roles, self::REFRESH_TOKEN_MINUTES, true);
 
         SessionService::updateTokens($userId, $newAccess['jti'], $newRefresh['jti']);
 

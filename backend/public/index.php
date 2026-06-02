@@ -24,8 +24,7 @@ use App\Controllers\VacancyController;
 use App\Middleware\CSRFMiddleware;
 use App\Controllers\ApplicationController;
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_set_cookie_params([
+if (session_status() === PHP_SESSION_NONE) {    session_set_cookie_params([
         'lifetime' => 86400,
         'path' => '/',
         'httponly' => true,
@@ -79,6 +78,11 @@ $router->add('POST', '/api/otp/verify', [OtpController::class, 'verifyOtp'], [
     new RateLimitMiddleware(10, 60)
 ]);
 
+// Public read-only vacancy list for home page (no auth / CSRF)
+$router->add('GET', '/api/home/vacancies', [VacancyController::class, 'getPublicNotifiedVacancies'], [
+    new RateLimitMiddleware(60, 60),
+]);
+
 $router->add('POST', '/api/vacancies', [VacancyController::class, 'getVacancies'], [
     new RateLimitMiddleware(10, 60),
     new AuthMiddleware(),
@@ -87,6 +91,12 @@ $router->add('POST', '/api/vacancies', [VacancyController::class, 'getVacancies'
 
 $router->add('POST', '/api/vacancy/details', [VacancyController::class, 'getVacancyDetails'], [
     new RateLimitMiddleware(10, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
+$router->add('POST', '/api/caste/details', [VacancyController::class, 'getCasteDetails'], [
+    new RateLimitMiddleware(30, 60),
     new AuthMiddleware(),
     new CSRFMiddleware(),
 ]);
@@ -102,7 +112,6 @@ $router->add('POST', '/api/vacancy/document/upload', [VacancyController::class, 
     new AuthMiddleware(),
     new CSRFMiddleware(),
 ]);
-
 $router->add('POST', '/api/vacancy/education/get', [VacancyController::class, 'getEducationDetails'], [
     new RateLimitMiddleware(20, 60),
     new AuthMiddleware(),
@@ -127,6 +136,13 @@ $router->add('POST', '/api/vacancy/additional/save', [VacancyController::class, 
     new CSRFMiddleware(),
 ]);
 
+$router->add('POST', '/api/vacancy/additional/delete', [VacancyController::class, 'deleteAdditionalQualification'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
+
 $router->add('POST', '/api/vacancy/experience/saveExperience', [VacancyController::class, 'saveExperience'], [
     new RateLimitMiddleware(20, 60),
     new AuthMiddleware(),
@@ -138,11 +154,26 @@ $router->add('POST', '/api/vacancy/experience/fetchExperience', [VacancyControll
     new AuthMiddleware(),
     new CSRFMiddleware(),
 ]);
+
 $router->add('POST', '/api/application/preview', [ApplicationController::class, 'getPreviewApplication'], [
     new RateLimitMiddleware(20, 60),
     new AuthMiddleware(),
     new CSRFMiddleware(),
 ]);
+
+$router->add('POST', '/api/application/submit', [ApplicationController::class, 'submitApplication'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
+$router->add('POST', '/api/vacancy/selections/get', [VacancyController::class, 'getVacancySelectionsbyApplicantID'], [
+    new RateLimitMiddleware(20, 60),
+    new AuthMiddleware(),
+    new CSRFMiddleware(),
+]);
+
+
 // Dispatch the request
 
 $request = new Request();

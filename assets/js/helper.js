@@ -10,89 +10,94 @@ function applyInputValidation(inputId, rules = []) {
     //  8	            Allow digits, characters, and only allow - and _ as special characters (no other special chars)
     //  9	            Allow only digits but first number should not be 0 (removes leading zeros)
     // 10	            For name input: prevent numbers, starting character must be a letter, allow only . and space
+    // 11	            Bar Council enrolment: uppercase, A-Z, 0-9 and / only (e.g. MS/1234/0123)
     // 12	            PAN: uppercase A-Z0-9 only, max 10 chars
-        const inputField = $('#' + inputId);
-        inputField.off('input').on('input', function () {
-            let value = this.value;
-            if (rules.includes(1)) {
-                value = value.replace(/[^0-9]/g, '');
+    const inputField = $('#' + inputId);
+    inputField.off('input').on('input', function () {
+        let value = this.value;
+        if (rules.includes(1)) {
+            value = value.replace(/[^0-9]/g, '');
+        }
+
+        if (rules.includes(4)) {
+            value = value.replace(/[^a-zA-Z0-9]/g, '');
+        }
+        if (rules.includes(6)) {
+            value = value.replace(/[^\w\s]/gi, '');
+        }
+        if (rules.includes(8)) {
+            value = value.replace(/[^a-zA-Z0-9_\-]/g, '');
+        }
+        if (rules.includes(9)) {
+            // First remove all non-digits
+            value = value.replace(/[^0-9]/g, '');
+            // Then remove leading zeros
+            value = value.replace(/^0+/, '');
+        }
+        if (rules.includes(10)) {
+            // Remove any numbers
+            value = value.replace(/[0-9]/g, '');
+            // Allow only letters, dots, and spaces
+            value = value.replace(/[^a-zA-Z.\s]/g, '');
+            // Ensure first character is a letter (if value is not empty)
+            if (value.length > 0 && !/^[a-zA-Z]/.test(value)) {
+                value = value.substring(1);
             }
-            
-            if (rules.includes(4)) {
-                value = value.replace(/[^a-zA-Z0-9]/g, '');
+        }
+        if (rules.includes(11)) {
+            value = value.toUpperCase();
+            value = value.replace(/[^A-Z0-9/]/g, '');
+            if (value.length > 0 && /^[\/0-9]/.test(value)) {
+                value = '';
             }
-            if (rules.includes(6)) {
-                value = value.replace(/[^\w\s]/gi, '');
+            const maxLen = parseInt(inputField.attr('maxlength'), 10);
+            if (!isNaN(maxLen) && maxLen > 0 && value.length > maxLen) {
+                value = value.substring(0, maxLen);
             }
-            if (rules.includes(8)) {
-                value = value.replace(/[^a-zA-Z0-9_\-]/g, '');
-            }
-            if (rules.includes(9)) {
-                // First remove all non-digits
-                value = value.replace(/[^0-9]/g, '');
-                // Then remove leading zeros
-                value = value.replace(/^0+/, '');
-            }
-            if (rules.includes(10)) {
-                // Remove any numbers
-                value = value.replace(/[0-9]/g, '');
-                // Allow only letters, dots, and spaces
-                value = value.replace(/[^a-zA-Z.\s]/g, '');
-                // Ensure first character is a letter (if value is not empty)
-                if (value.length > 0 && !/^[a-zA-Z]/.test(value)) {
-                    value = value.substring(1);
-                }
-            }
-            if (rules.includes(11)) {
-                value = value.toUpperCase();
-                value = value.replace(/[^A-Z0-9\/]/g, '');
-                if (value.length > 0 && /^[\/0-9]/.test(value)) {
-                    value = '';
-                }
-            }
-            if (rules.includes(12)) {
-                value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
-                if (value.length > 10) {
-                    value = value.substring(0, 10);
-                }
-            }
-            if (rules.includes(2)) {
-                value = value.replace(/[^0-9]/g, ''); // Remove anything that's not a digit
-                if (value.length > 10) {
-                    value = value.substring(0, 10);
-                }
-            }
-    
-            if (rules.includes(3)) {
-                if (!/^[6-9]/.test(value)) {
-                    value = value.replace(/^[^6-9]*/, '');
-                }
+        }
+        if (rules.includes(12)) {
+            value = value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (value.length > 10) {
                 value = value.substring(0, 10);
             }
-            if (rules.includes(7)) {
-                // do nothing in input; will validate on blur
+        }
+        if (rules.includes(2)) {
+            value = value.replace(/[^0-9]/g, ''); // Remove anything that's not a digit
+            if (value.length > 10) {
+                value = value.substring(0, 10);
             }
-    
-            this.value = value;
-        });
-        if (rules.includes(5)) {
-            inputField.on('paste', function (e) {
-                e.preventDefault();
-            });
-            inputField.on('copy cut', function (e) {
-                e.preventDefault();
-            });
+        }
+
+        if (rules.includes(3)) {
+            if (!/^[6-9]/.test(value)) {
+                value = value.replace(/^[^6-9]*/, '');
+            }
+            value = value.substring(0, 10);
         }
         if (rules.includes(7)) {
-            inputField.off('blur.gmailValidate').on('blur.gmailValidate', function () {
-                const value = this.value.trim();
-                if (value === '') return;
-        
-                const gmailRegex = /^[a-zA-Z0-9._%+-]+@\.com$/i;
-                if (!gmailRegex.test(value)) {
-                    alert('Please enter a valid Gmail address');
-            
-                }
-            });
+            // do nothing in input; will validate on blur
         }
+
+        this.value = value;
+    });
+    if (rules.includes(5)) {
+        inputField.on('paste', function (e) {
+            e.preventDefault();
+        });
+        inputField.on('copy cut', function (e) {
+            e.preventDefault();
+        });
     }
+    if (rules.includes(7)) {
+        inputField.off('blur.gmailValidate').on('blur.gmailValidate', function () {
+            const value = this.value.trim();
+            if (value === '') return;
+
+            const gmailRegex = /^[a-zA-Z0-9._%+-]+@\.com$/i;
+            if (!gmailRegex.test(value)) {
+                alert('Please enter a valid Gmail address');
+
+            }
+        });
+    }
+}

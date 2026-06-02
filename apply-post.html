@@ -9,9 +9,23 @@
   <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
   <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/sign-up.css">
-  <link rel="stylesheet" href="assets/css/common.css">
+  <link rel="stylesheet" href="assets/css/common.css?v=20250601a">
 
   <style type="text/css">
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-section {
+      flex: 1 0 auto;
+    }
+
+    .premium-footer {
+      flex-shrink: 0;
+    }
+
     /* ==========================
    PREMIUM BACK TO TOP
 ========================== */
@@ -104,6 +118,86 @@
 
     }
 
+    /* Application ID column (shown after submit) */
+    .vacancy-table:not(.vacancy-table--submitted) .col-application-id,
+    .vacancy-table:not(.vacancy-table--submitted) .application-id-cell {
+      display: none;
+    }
+
+    .vacancy-table .col-application-id {
+      min-width: 7.5rem;
+      white-space: nowrap;
+    }
+
+    .application-id-list {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.2rem;
+    }
+
+    .bench-card--submitted {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .bench-submitted-check {
+      width: 26px;
+      height: 26px;
+      border-radius: 10px;
+      background: #7c3aed;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 1rem;
+      line-height: 1;
+    }
+
+    .bench-submitted-check--empty {
+      background: #e2e8f0;
+      border: 2px solid #cbd5e1;
+    }
+
+    .apply-post-btn--locked,
+    .apply-post-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed !important;
+      pointer-events: none;
+      filter: grayscale(0.15);
+    }
+
+    .vacancy-table-wrapper--locked {
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .vacancy-table-wrapper--locked .application-id-link {
+      pointer-events: auto;
+      user-select: text;
+    }
+
+    .application-id-link {
+      font-size: 0.7rem;
+      line-height: 1.25;
+      font-weight: 600;
+      color: #1d4ed8;
+      text-decoration: none;
+      word-break: break-all;
+    }
+
+    .application-id-link:hover {
+      color: #1e40af;
+      text-decoration: underline;
+    }
+
+    .application-id-cell .text-muted {
+      font-size: 0.7rem;
+    }
+
     /* Ripple Effect */
 
     .btn-ripple {
@@ -148,8 +242,115 @@
       }
 
     }
-  </style>
 
+    .table-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding: 10px 16px;
+
+      background: #ffffff;
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+
+      box-shadow:
+        0 4px 12px rgba(0, 0, 0, .04);
+    }
+
+    .selected-posts-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .selected-posts-info i {
+      color: #16a34a;
+      font-size: 16px;
+    }
+
+    .selected-posts-info .label {
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    .selected-posts-value {
+      color: #1f3291;
+      font-weight: 700;
+    }
+
+    .apply-post-btn {
+      height: 40px;
+      padding: 0 16px;
+
+      border: none;
+      border-radius: 10px;
+
+      background: linear-gradient(135deg,
+          #1f3291,
+          #4338ca);
+
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      transition: .25s;
+    }
+
+    .apply-post-btn:hover {
+      transform: translateY(-2px);
+
+      box-shadow:
+        0 8px 20px rgba(31, 50, 145, .20);
+    }
+
+    .selected-posts-value {
+      display: flex;
+      flex-direction: row !important;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .post-badge {
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #eef2ff;
+      color: #1f3291;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid #c7d2fe;
+    }
+
+    .selected-posts-empty {
+      color: #94a3b8;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .table-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 10px 14px;
+      background: #fff;
+      border-radius: 12px;
+      border: 1px solid #e5e7eb;
+      margin-bottom: 16px;
+    }
+
+    .apply-post-btn {
+      height: 38px;
+      padding: 0 14px;
+      font-size: 13px;
+      border-radius: 10px;
+    }
+  </style>
 
   <!-- JS -->
   <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
@@ -193,6 +394,11 @@
 
       </div>
 
+      <a class="top-menu-btn deco-none" href="index.html" id="homeLink">
+        <i class="bi bi-house-door-fill"></i>
+        Home
+      </a>
+
       <a class="logout-btn text-white deco-none" href="index.html" id="logoutLink">
 
         <i class="bi bi-box-arrow-right"></i>
@@ -214,7 +420,7 @@
           <div>
             <span class="section-tag">
               <i class="bi bi-briefcase-fill"></i>
-              Recruitment 2025
+              Application 2026
             </span>
 
             <h2>Available Law Officer Positions</h2>
@@ -255,6 +461,20 @@
 
         <div class="table-actions">
 
+          <div class="selected-posts-info">
+
+            <i class="bi bi-check2-circle"></i>
+
+            <span class="label">
+              Selected Post(s):
+            </span>
+
+            <div id="selectedPostsText" class="selected-posts-value">
+              <span class="selected-posts-empty">None selected</span>
+            </div>
+
+          </div>
+
           <button id="btnApplyPost" class="apply-post-btn">
             Apply for Selected Post(s)
           </button>
@@ -274,17 +494,17 @@
               <tr>
                 <th>Sl.No</th>
                 <th>Position</th>
-                <th>Madras HC</th>
-                <th>Madurai Bench</th>
+                <th>Madras HC(A)</th>
+                <th>Madurai Bench(B)</th>
                 <th>Total</th>
-                <!-- <th>Apply</th> -->
+                <th class="col-application-id">Application ID</th>
               </tr>
 
             </thead>
 
             <tbody id="vacancyTableBody">
               <tr id="vacancyLoadingRow">
-                <td colspan="5" class="text-center text-muted py-4">Loading vacancies…</td>
+                <td colspan="6" class="text-center text-muted py-4">Loading vacancies…</td>
               </tr>
             </tbody>
 
@@ -299,122 +519,9 @@
     </div>
   </section>
 
-
   <footer class="premium-footer">
-    <!-- TOP -->
-    <div class="footer-top-area">
-      <!-- LEFT -->
-      <div class="footer-brand-area">
-        <div class="footer-logo-wrap">
-          <img src="assets/img/tn_logo.png" class="footer-tn-logo" alt="TN Logo">
-        </div>
-        <div class="footer-brand-content">
-          <div class="footer-gov-title">
-            Government of Tamil Nadu
-          </div>
-          <div class="footer-portal-title">
-            <i class="bi bi-bank2"></i>
-            Law Officers Recruitment Portal
-          </div>
-          <div class="footer-desc">
-            Official digital recruitment platform for Law Officers appointments,
-            managed under Government of Tamil Nadu standards and secure application workflow.
-          </div>
-        </div>
-      </div>
-      <!-- RIGHT -->
-      <div class="footer-right-grid">
-        <!-- VISITOR -->
-        <div class="footer-widget-card">
-          <div class="footer-widget-icon">
-            <i class="bi bi-people-fill"></i>
-          </div>
-          <div>
-            <div class="footer-widget-label">
-              Visitor Count
-            </div>
-            <div class="footer-widget-value" id="visitorCount">12,48,923</div>
-          </div>
-        </div>
-        <!-- UPDATED -->
-        <div class="footer-widget-card">
-          <div class="footer-widget-icon blue">
-            <i class="bi bi-clock-history"></i>
-          </div>
-          <div>
-            <div class="footer-widget-label">
-              Last Updated
-            </div>
-            <div class="footer-widget-value small" id="lastUpdatedTime">29 May 2026, 06:31:12 pm</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- MIDDLE -->
-    <div class="footer-middle-area">
-      <!-- QUICK LINKS -->
-      <div class="footer-links-section">
-        <div class="footer-section-title">
-          <i class="bi bi-grid-fill"></i>
-          Quick Links
-        </div>
-        <div class="footer-links-list">
-          <a href="#" class="footer-link-item">
-            <i class="bi bi-chevron-right"></i>
-            Download Notification
-          </a>
-          <a href="job-post.html" class="footer-link-item">
-            <i class="bi bi-chevron-right"></i>
-            Job Post
-          </a>
-        </div>
-      </div>
-      <!-- SECURITY -->
-      <div class="footer-links-section">
-        <div class="footer-section-title">
-          <i class="bi bi-shield-check"></i>
-          Security &amp; Compliance
-        </div>
-        <div class="security-badges">
-          <div class="security-badge">
-            <i class="bi bi-patch-check-fill"></i>
-            Secure Portal
-          </div>
-          <div class="security-badge">
-            <i class="bi bi-lock-fill"></i>
-            SSL Protected
-          </div>
-          <div class="security-badge">
-            <i class="bi bi-fingerprint"></i>
-            Secure Authentication
-          </div>
-        </div>
-      </div>
-      <!-- SOCIAL -->
-      <div class="footer-links-section">
-        <div class="footer-section-title">
-          <i class="bi bi-share-fill"></i>
-          Social Media
-        </div>
-        <div class="social-icons-wrap">
-          <a href="#" class="social-icon">
-            <i class="bi bi-facebook"></i>
-          </a>
-          <a href="#" class="social-icon">
-            <i class="bi bi-twitter-x"></i>
-          </a>
-          <a href="#" class="social-icon">
-            <i class="bi bi-instagram"></i>
-          </a>
-          <a href="#" class="social-icon">
-            <i class="bi bi-youtube"></i>
-          </a>
-          <a href="#" class="social-icon">
-            <i class="bi bi-linkedin"></i>
-          </a>
-        </div>
-      </div>
-    </div>
+
+
     <!-- BOTTOM -->
     <div class="footer-bottom-area">
       <div class="footer-copyright">
@@ -430,6 +537,7 @@
 
 
 
+
   <button id="backToTopBtn" class="back-to-top-btn">
 
     <span class="btn-ripple"></span>
@@ -438,16 +546,17 @@
 
   </button>
 
-
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <!-- hashed--><!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
+  <!-- Local --><script src="assets/vendor/sweet-alert/sweetalert2 v11.26.25.js"></script>
   <script src="assets/js/portal-alert.js"></script>
   <script src="assets/js/api-config.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <!-- hashed  --><!--<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script> -->
+  <!-- Local --><script src="assets/vendor/crypto/crypto_v4.4.1.js"></script>
   <script src="assets/js/secure-api.js"></script>
   <script src="assets/js/law-portal-api.js"></script>
   <script src="assets/js/app-data.js"></script>
-  <script src="assets/js/job-selection.js"></script>
-  <script src="assets/js/apply-post.js"></script>
+  <script src="assets/js/job-selection.js?v=20250603g"></script>
+  <script src="assets/js/apply-post.js?v=20250602g"></script>
 
   <script>
     $(function () {

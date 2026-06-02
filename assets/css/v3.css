@@ -387,7 +387,8 @@ label .form-label,
 }
 
 .form-input::placeholder {
-    color: var(--text-muted);
+    color: rgba(100, 116, 139, 0.42);
+    opacity: 1;
 }
 
 /* -- BUTTONS -- */

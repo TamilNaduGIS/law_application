@@ -21,6 +21,56 @@
             && global.sessionStorage.getItem('isLoggedIn') === 'true';
     }
 
+    const APPLY_POST_URL = 'apply-post.html';
+    const LOGIN_URL = 'login.html';
+    const ALREADY_LOGGED_IN_MESSAGE = 'You are already logged in. Redirecting to Apply Post page.';
+
+    function redirectAuthenticatedUser(options) {
+        if (!isAuthenticated()) {
+            return false;
+        }
+
+        const opts = options || {};
+        const target = opts.target || APPLY_POST_URL;
+        const message = opts.message || ALREADY_LOGGED_IN_MESSAGE;
+        const delayMs = typeof opts.delayMs === 'number' ? opts.delayMs : 1600;
+
+        function go() {
+            global.location.replace(target);
+        }
+
+        if (opts.showToast === false) {
+            go();
+            return true;
+        }
+
+        if (typeof global.Swal !== 'undefined') {
+            global.Swal.fire({
+                icon: 'info',
+                title: 'Already logged in',
+                text: message,
+                timer: delayMs,
+                showConfirmButton: false,
+                allowOutsideClick: false
+            });
+            setTimeout(go, delayMs);
+            return true;
+        }
+
+        if (global.LawPortal && typeof global.LawPortal.alert === 'function') {
+            global.LawPortal.alert({
+                icon: 'info',
+                title: 'Already logged in',
+                text: message
+            });
+            setTimeout(go, delayMs);
+            return true;
+        }
+
+        go();
+        return true;
+    }
+
     const AppData = {
         getSession() {
             if (!this.isLoggedIn()) {
@@ -47,6 +97,23 @@
             SESSION_KEYS.forEach(function (key) {
                 global.sessionStorage.removeItem(key);
             });
+        },
+
+        navigateToLogin(options) {
+            if (this.isLoggedIn()) {
+                redirectAuthenticatedUser(options);
+                return;
+            }
+            const opts = options || {};
+            global.location.href = opts.loginUrl || LOGIN_URL;
+        },
+
+        redirectIfAuthenticated(options) {
+            return redirectAuthenticatedUser(options);
+        },
+
+        requireGuestForLogin(options) {
+            return !redirectAuthenticatedUser(options);
         },
 
         requireAuth(loginUrl) {

@@ -8,7 +8,18 @@ window.PortalNav = window.PortalNav || {
  */
 window.ApplicationForm = (function () {
     const params = new URLSearchParams(window.location.search);
+    const previewView = params.get('previewView') === '1' || params.get('readonly') === '1';
+
+    function isSubmittedHyperlinkView() {
+        if (params.get('previewView') !== '1') return false;
+        if (params.get('submitted') === '1') return true;
+        if (sessionStorage.getItem('applicationSubmitted') === 'true') return true;
+        return !!params.get('jobId');
+    }
     const jobId = params.get('jobId') || sessionStorage.getItem('selectedJobId') || '';
+    if (jobId) {
+        sessionStorage.setItem('selectedJobId', jobId);
+    }
     const session = window.AppData && typeof AppData.getSession === 'function'
         ? AppData.getSession()
         : null;
@@ -19,13 +30,38 @@ window.ApplicationForm = (function () {
         ? AppData.getApplication(userId, jobId)
         : null;
     const formMode = 'full';
+    const readOnlyView = previewView
+        || sessionStorage.getItem('applicationSubmitted') === 'true';
     const postName = sessionStorage.getItem('selectedPost') || '—';
 
     function getStoredVacancies() {
         if (window.JobSelection) {
-            return JobSelection.readStoredVacancies();
+            return JobSelection.enrichSelections(JobSelection.readStoredVacancies());
         }
         return [];
+    }
+
+    /** After submit, Application ID hyperlink passes a single jobId — show only that post in preview. */
+    function getStoredVacanciesForView() {
+        let selections = getStoredVacancies();
+        if (!isSubmittedHyperlinkView()) {
+            return selections;
+        }
+        const focusRaw = String(jobId || '').trim();
+        if (!focusRaw || !window.JobSelection || typeof JobSelection.filterSelectionsByJobIds !== 'function') {
+            return selections;
+        }
+        return JobSelection.filterSelectionsByJobIds(selections, focusRaw);
+    }
+
+    function syncCourtBenchForSubmittedPreview() {
+        if (!isSubmittedHyperlinkView()) {
+            return;
+        }
+        const selections = getStoredVacanciesForView();
+        if (selections.length === 1 && selections[0].courtBench) {
+            sessionStorage.setItem('courtBench', selections[0].courtBench);
+        }
     }
 
     const state = {
@@ -46,7 +82,19 @@ window.ApplicationForm = (function () {
             remarks: ''
         }],
         judgmentAGPItems: [],
-        filePreviews: {}
+        filePreviews: {},
+        /** Tab 1 upload paths (like Tab 2 certificatePath on each row) — cleared when user removes file. */
+        applicantUploads: {
+            photoPath: '',
+            photoFileName: '',
+            enrolmentCertPath: '',
+            enrolmentCertFileName: ''
+        },
+        /** Keys user removed locally — block API preview from re-prefilling until re-upload. */
+        uploadCleared: {},
+        experienceHydrated: false,
+        /** Cached applicant row from initial load — used to re-hydrate Tab 1 when needed. */
+        applicantRowCache: null
     };
 
     const tabs = {
@@ -58,7 +106,599 @@ window.ApplicationForm = (function () {
     const tabButtons = document.querySelectorAll('.main-tab');
 
     const FILE_NAME_MAX_LEN = 20;
+    const FILE_UPLOAD_MAX_BYTES = 5 * 1024 * 1024;
+    const FILE_UPLOAD_MAX_MB = 5;
+    const PHOTO_UPLOAD_ACCEPT = '.jpg,.jpeg,.png';
+    const CERT_UPLOAD_ACCEPT = '.pdf,.jpg,.jpeg,.png';
+    const PHOTO_EXT_REGEX = /\.(jpe?g|png)$/i;
+    const CERT_EXT_REGEX = /\.(jpe?g|png|pdf)$/i;
 
+    function resolveUploadKind(input) {
+        if (!input) return 'certificate';
+        if (input.id === 'photoUpload') return 'photo';
+        if (input.getAttribute('data-upload-kind') === 'photo') return 'photo';
+        return 'certificate';
+    }
+
+    function validateUploadFile(file, kind) {
+        if (!file) {
+            return { ok: false, message: 'No file selected.' };
+        }
+        const isPhoto = kind === 'photo';
+        const name = String(file.name || '');
+        const extOk = isPhoto
+            ? PHOTO_EXT_REGEX.test(name)
+            : CERT_EXT_REGEX.test(name);
+        const mime = String(file.type || '').toLowerCase();
+        const mimeOk = isPhoto
+            ? (mime === 'image/jpeg' || mime === 'image/png' || mime === 'image/jpg')
+            : (mime === 'image/jpeg' || mime === 'image/png' || mime === 'image/jpg' || mime === 'application/pdf');
+        if (!extOk && !mimeOk) {
+            return {
+                ok: false,
+                message: isPhoto
+                    ? 'Photo must be JPG or PNG only (maximum ' + FILE_UPLOAD_MAX_MB + ' MB).'
+                    : 'Only JPG, JPEG, PNG or PDF files are allowed (maximum ' + FILE_UPLOAD_MAX_MB + ' MB).'
+            };
+        }
+        if (file.size > FILE_UPLOAD_MAX_BYTES) {
+            return {
+                ok: false,
+                message: 'File size must not exceed ' + FILE_UPLOAD_MAX_MB + ' MB.'
+            };
+        }
+        return { ok: true };
+    }
+
+    function validateUploadFiles(files, kind) {
+        if (!files || !files.length) {
+            return { ok: true };
+        }
+        for (let i = 0; i < files.length; i++) {
+            const check = validateUploadFile(files[i], kind);
+            if (!check.ok) {
+                return check;
+            }
+        }
+        return { ok: true };
+    }
+
+    function getUploadHint(kind) {
+        if (kind === 'photo') {
+            return 'Allowed formats: JPG, JPEG, PNG only. Maximum file size: ' + FILE_UPLOAD_MAX_MB + ' MB.';
+        }
+        return 'Allowed formats: JPG, JPEG, PNG or PDF only. Maximum file size: ' + FILE_UPLOAD_MAX_MB + ' MB.';
+    }
+
+    function getUploadHintHtml(kind) {
+        return '<p class="upload-field-hint small mb-2">' + escapeHtml(getUploadHint(kind)) + '</p>';
+    }
+
+    function findUploadFieldRoot(input) {
+        if (!input) return null;
+        const strip = input.closest('.cert-upload-strip');
+        if (strip) {
+            return strip.closest('.list-item') || strip.closest('.field-row') || strip;
+        }
+        const custom = input.closest('.custom-file-upload');
+        if (custom) {
+            return custom.closest('.field-row') || custom.closest('.list-item') || custom.parentElement;
+        }
+        const compact = input.closest('.compact-upload-wrapper');
+        if (compact) {
+            return compact.closest('#enrolmentCertUploadMount')
+                || compact.closest('.field-row')
+                || compact.parentElement;
+        }
+        const box = input.closest('.compact-upload-box, .practice-upload-box, .edu-upload-box, .add-upload-box');
+        if (box) {
+            return box.closest('.list-item') || box.closest('.field-row') || box.parentElement;
+        }
+        return input.closest('.field-row')
+            || input.closest('.list-item')
+            || null;
+    }
+
+    function findOrCreateUploadErrorEl(root) {
+        if (!root) return null;
+        let el = root.querySelector('.upload-field-error');
+        if (!el) {
+            el = document.createElement('p');
+            el.className = 'upload-field-error small mb-2';
+            el.setAttribute('role', 'alert');
+            el.hidden = true;
+            const hint = root.querySelector('.upload-field-hint');
+            if (hint && hint.parentNode) {
+                hint.parentNode.insertBefore(el, hint.nextSibling);
+            } else {
+                root.insertBefore(el, root.firstChild);
+            }
+        }
+        return el;
+    }
+
+    function setUploadFieldError(input, message) {
+        const text = message != null ? String(message).trim() : '';
+        if (!text) return;
+        const root = findUploadFieldRoot(input);
+        const el = findOrCreateUploadErrorEl(root);
+        if (el) {
+            el.textContent = text;
+            el.hidden = false;
+            el.style.display = 'block';
+            el.classList.add('is-visible');
+            if (root) root.classList.add('has-upload-error');
+        }
+    }
+
+    function clearUploadFieldError(input) {
+        if (!input) return;
+        const scopes = [];
+        const root = findUploadFieldRoot(input);
+        if (root) scopes.push(root);
+        ['.cert-upload-strip', '.field-row', '.list-item', '#enrolmentCertUploadMount'].forEach(function (sel) {
+            const el = input.closest(sel);
+            if (el && scopes.indexOf(el) === -1) scopes.push(el);
+        });
+        scopes.forEach(function (scope) {
+            scope.querySelectorAll('.upload-field-error').forEach(function (errEl) {
+                errEl.textContent = '';
+                errEl.hidden = true;
+                errEl.classList.remove('is-visible');
+                errEl.style.display = 'none';
+            });
+            scope.classList.remove('has-upload-error');
+        });
+    }
+
+    function buildFileUploadSelectedPanelHtml() {
+        return (
+            '<div class="upload-selected-panel" hidden>' +
+            '<div class="upload-selected-inner">' +
+            '<span class="upload-selected-thumb" aria-hidden="true"><i class="bi bi-file-earmark-check-fill"></i></span>' +
+            '<div class="upload-selected-meta">' +
+            '<span class="upload-file-name" title=""></span>' +
+            '<button type="button" class="upload-replace-trigger btn btn-link btn-sm p-0">Replace file</button>' +
+            '</div>' +
+            '<button type="button" class="upload-file-remove-btn" hidden aria-label="Remove file" title="Remove file">' +
+            '<i class="bi bi-x-lg"></i></button>' +
+            '</div></div>'
+        );
+    }
+
+    function ensureSelectedPanel(host) {
+        if (!host || host.querySelector('.upload-selected-panel')) {
+            return;
+        }
+        host.insertAdjacentHTML('beforeend', buildFileUploadSelectedPanelHtml());
+    }
+
+    function wrapElementInPickPanel(host, element) {
+        if (!host || !element || host.querySelector('.upload-pick-panel')) {
+            return;
+        }
+        const pick = document.createElement('div');
+        pick.className = 'upload-pick-panel';
+        element.parentNode.insertBefore(pick, element);
+        pick.appendChild(element);
+    }
+
+    function ensureUploadHostForInput(input) {
+        if (!input) {
+            return null;
+        }
+        let host = input.closest('.file-upload-host');
+        if (host) {
+            ensureSelectedPanel(host);
+            return host;
+        }
+
+        const compactWrap = input.closest('.compact-upload-wrapper');
+        if (compactWrap) {
+            host = compactWrap;
+            host.classList.add('file-upload-host');
+            const label = host.querySelector('label.compact-upload-card');
+            if (label) {
+                wrapElementInPickPanel(host, label);
+            }
+            ensureSelectedPanel(host);
+            return host;
+        }
+
+        const strip = input.closest('.cert-upload-strip');
+        if (strip) {
+            host = strip;
+            host.classList.add('file-upload-host');
+            const label = strip.querySelector('label.edu-upload-box, label.add-upload-box');
+            if (label) {
+                wrapElementInPickPanel(host, label);
+            }
+            ensureSelectedPanel(host);
+            return host;
+        }
+
+        const custom = input.closest('.custom-file-upload');
+        if (custom) {
+            host = custom;
+            host.classList.add('file-upload-host');
+            const btn = custom.querySelector('.btn-upload-file');
+            if (btn) {
+                wrapElementInPickPanel(host, btn);
+            }
+            ensureSelectedPanel(host);
+            return host;
+        }
+
+        const box = input.closest('.compact-upload-box, .practice-upload-box');
+        if (box) {
+            host = box.closest('.file-upload-host');
+            if (!host) {
+                host = document.createElement('div');
+                host.className = 'file-upload-host tab3-file-upload-host';
+                const parent = box.parentNode;
+                if (parent) {
+                    parent.insertBefore(host, box);
+                    const pick = document.createElement('div');
+                    pick.className = 'upload-pick-panel';
+                    host.appendChild(pick);
+                    pick.appendChild(box);
+                    ensureSelectedPanel(host);
+                }
+            } else {
+                ensureSelectedPanel(host);
+            }
+            return host;
+        }
+
+        return null;
+    }
+
+    function isUploadHostLocked(host) {
+        if (!host) {
+            return false;
+        }
+        if (host.classList.contains('prefilled-locked')) {
+            return true;
+        }
+        const lockedAncestor = host.closest('.prefilled-locked');
+        return !!lockedAncestor;
+    }
+
+    /**
+     * Show selected-file panel (filename only; Replace file → ❌ to clear).
+     * @param {Object} [options] replaceReady — show ❌ immediately (saved/server file)
+     */
+    function showFileUploadSelected(input, fileName, options) {
+        options = options || {};
+        if (!input || !fileName) {
+            return;
+        }
+        const host = ensureUploadHostForInput(input);
+        if (!host) {
+            return;
+        }
+
+        const pick = host.querySelector('.upload-pick-panel');
+        const panel = host.querySelector('.upload-selected-panel');
+        const nameEl = host.querySelector('.upload-file-name');
+        const removeBtn = host.querySelector('.upload-file-remove-btn');
+        const replaceTrig = host.querySelector('.upload-replace-trigger');
+        const thumb = host.querySelector('.upload-selected-thumb');
+        const locked = isUploadHostLocked(host);
+
+        if (nameEl) {
+            nameEl.textContent = truncateFileName(fileName, 48);
+            nameEl.title = fileName;
+        }
+        if (thumb) {
+            if (options.thumbnailHtml) {
+                thumb.innerHTML = options.thumbnailHtml;
+            } else if (options.isPhoto) {
+                thumb.innerHTML = '<i class="bi bi-person-badge-fill"></i>';
+            } else {
+                thumb.innerHTML = '<i class="bi bi-file-earmark-check-fill"></i>';
+            }
+        }
+
+        if (pick) {
+            pick.hidden = false;
+            pick.style.display = '';
+        }
+        if (panel) {
+            panel.hidden = false;
+        }
+        host.classList.add('has-upload');
+        host.classList.remove('replace-ready');
+
+        if (pick) {
+            pick.hidden = true;
+            pick.style.display = 'none';
+        }
+
+        if (removeBtn) {
+            removeBtn.hidden = true;
+        }
+        if (replaceTrig) {
+            replaceTrig.hidden = locked || !!options.hideReplace;
+        }
+
+        if (options.replaceReady && !locked) {
+            host.classList.add('replace-ready');
+            if (removeBtn) {
+                removeBtn.hidden = false;
+            }
+            if (replaceTrig) {
+                replaceTrig.hidden = true;
+            }
+        }
+
+        const custom = input.closest('.custom-file-upload');
+        if (custom) {
+            custom.classList.add('has-file');
+            const textEl = custom.querySelector('.upload-btn-text');
+            if (textEl && options.keepButtonLabel) {
+                textEl.textContent = truncateFileName(fileName);
+                textEl.title = fileName;
+            }
+        }
+    }
+
+    function clearFileUpload(input, options) {
+        options = options || {};
+        if (!input) {
+            return;
+        }
+        const host = options.host || ensureUploadHostForInput(input);
+        const previewKey = resolvePreviewKey(input);
+        if (previewKey) {
+            delete state.filePreviews[previewKey];
+            if (!options.skipClearMark) {
+                markUploadCleared(previewKey);
+            }
+        }
+
+        input.value = '';
+        input.disabled = false;
+
+        if (host) {
+            const pick = host.querySelector('.upload-pick-panel');
+            const panel = host.querySelector('.upload-selected-panel');
+            const removeBtn = host.querySelector('.upload-file-remove-btn');
+            const replaceTrig = host.querySelector('.upload-replace-trigger');
+            const thumb = host.querySelector('.upload-selected-thumb');
+
+            if (pick) {
+                pick.hidden = false;
+                pick.style.display = '';
+            }
+            if (panel) {
+                panel.hidden = true;
+            }
+            host.classList.remove('has-upload', 'replace-ready');
+            if (removeBtn) {
+                removeBtn.hidden = true;
+            }
+            if (replaceTrig) {
+                replaceTrig.hidden = isUploadHostLocked(host);
+            }
+            if (thumb) {
+                if (previewKey === 'photo' || (host.closest('.compact-upload-wrapper') && input.id === 'photoUpload')) {
+                    thumb.innerHTML = '<i class="bi bi-person-badge-fill"></i>';
+                } else {
+                    thumb.innerHTML = '<i class="bi bi-file-earmark-check-fill"></i>';
+                }
+            }
+            const iconWrapper = host.querySelector('.upload-icon-wrapper');
+            if (iconWrapper && host.closest('.compact-upload-wrapper')) {
+                iconWrapper.innerHTML = '<i class="bi bi-person-fill upload-main-icon"></i>';
+            }
+        }
+
+        const custom = input.closest('.custom-file-upload');
+        if (custom) {
+            custom.classList.remove('has-file');
+            const btn = custom.querySelector('.btn-upload-file');
+            const textEl = custom.querySelector('.upload-btn-text');
+            const defaultLabel = custom.getAttribute('data-default') || 'Upload';
+            if (textEl) {
+                textEl.textContent = defaultLabel;
+                textEl.title = '';
+            }
+            const iconEl = btn && btn.querySelector('i');
+            if (iconEl) {
+                iconEl.className = 'fas fa-file-upload me-1';
+            }
+        }
+
+        const listItem = input.closest('.list-item, .edu-card, .add-card, .bar-item, .practice-item');
+        if (listItem) {
+            listItem.removeAttribute('data-cert-name');
+            if (typeof window.jQuery !== 'undefined') {
+                const $item = window.jQuery(listItem);
+                $item.removeData('supporting-document');
+                $item.removeData('practice-document');
+            }
+        }
+
+        clearUploadFieldError(input);
+
+        if (typeof options.onClear === 'function') {
+            options.onClear(input, host);
+        }
+        input.dispatchEvent(new CustomEvent('file-upload-cleared', { bubbles: true }));
+    }
+
+    function enhanceFileUploadHosts(root) {
+        const scope = root && root.querySelectorAll ? root : document;
+        scope.querySelectorAll('input[type="file"]').forEach(function (input) {
+            if (!isApplicationFormFileInput(input)) {
+                return;
+            }
+            ensureUploadHostForInput(input);
+        });
+    }
+
+    let uploadReplacementUiBound = false;
+
+    function initUploadReplacementUi() {
+        enhanceFileUploadHosts(document);
+        if (uploadReplacementUiBound) {
+            return;
+        }
+        uploadReplacementUiBound = true;
+
+        document.addEventListener('click', function (e) {
+            const replaceTrig = e.target.closest('.upload-replace-trigger');
+            if (replaceTrig) {
+                e.preventDefault();
+                const host = replaceTrig.closest('.file-upload-host');
+                if (!host || isUploadHostLocked(host)) {
+                    return;
+                }
+                host.classList.add('replace-ready');
+                replaceTrig.hidden = true;
+                const removeBtn = host.querySelector('.upload-file-remove-btn');
+                if (removeBtn) {
+                    removeBtn.hidden = false;
+                }
+                return;
+            }
+
+            const removeBtn = e.target.closest('.upload-file-remove-btn');
+            if (!removeBtn) {
+                return;
+            }
+            e.preventDefault();
+            const host = removeBtn.closest('.file-upload-host');
+            if (!host || isUploadHostLocked(host)) {
+                return;
+            }
+            const input = host.querySelector('input[type="file"]');
+            if (input && !input.disabled) {
+                clearFileUpload(input);
+            }
+        });
+    }
+
+    /**
+     * Validate selected file(s) and show/clear inline error immediately.
+     * @returns {boolean} true if valid or empty
+     */
+    function validateFileInputUi(input) {
+        if (!input || input.type !== 'file') {
+            return true;
+        }
+        if (!input.files || !input.files.length) {
+            clearUploadFieldError(input);
+            return true;
+        }
+        const kind = resolveUploadKind(input);
+        const check = validateUploadFiles(input.files, kind);
+        if (!check.ok) {
+            showUploadValidationError(check.message, input);
+            input.value = '';
+            return false;
+        }
+        clearUploadFieldError(input);
+        const displayName = input.files.length === 1
+            ? input.files[0].name
+            : input.files.length + ' file(s) selected';
+        let thumbnailHtml = null;
+        if (kind === 'photo' && input.files[0]) {
+            thumbnailHtml = '<img src="' + URL.createObjectURL(input.files[0]) + '" class="preview-upload-thumb preview-upload-thumb-photo" alt="">';
+        } else if (kind === 'certificate' && input.files[0] && /\.(jpe?g|png|gif|webp)$/i.test(input.files[0].name)) {
+            thumbnailHtml = '<img src="' + URL.createObjectURL(input.files[0]) + '" class="preview-upload-thumb preview-upload-thumb-cert" alt="">';
+        }
+        showFileUploadSelected(input, displayName, {
+            isPhoto: kind === 'photo',
+            thumbnailHtml: thumbnailHtml
+        });
+        return true;
+    }
+
+    function buildCompactUploadHtml(options) {
+        const opts = options || {};
+        const inputId = opts.inputId || 'fileUpload';
+        const title = opts.title || 'Upload file';
+        const subtitle = opts.subtitle || '';
+        const hint = opts.hint != null ? opts.hint : getUploadHint(opts.kind || 'certificate');
+        const accept = opts.accept || (opts.kind === 'photo' ? PHOTO_UPLOAD_ACCEPT : CERT_UPLOAD_ACCEPT);
+        const iconClass = opts.iconClass || 'bi bi-file-earmark-arrow-up-fill';
+        const extraWrapClass = opts.wrapperClass ? ' ' + opts.wrapperClass : '';
+        const hintHtml = '<p class="upload-field-hint small mb-2">' + escapeHtml(hint) + '</p>';
+        const errorHtml = '<p class="upload-field-error small mb-2" role="alert" hidden></p>';
+        return (
+            hintHtml +
+            errorHtml +
+            '<div class="compact-upload-wrapper tab1-compact-upload file-upload-host' + extraWrapClass + '">' +
+            '<input type="file" id="' + escapeHtml(inputId) + '" class="d-none" accept="' + escapeHtml(accept) + '">' +
+            '<div class="upload-pick-panel">' +
+            '<label for="' + escapeHtml(inputId) + '" class="compact-upload-card">' +
+            '<div class="compact-upload-content">' +
+            '<div class="upload-icon-wrapper"><i class="' + escapeHtml(iconClass) + ' upload-main-icon"></i></div>' +
+            '<div class="upload-text-area">' +
+            '<div class="upload-title">' + escapeHtml(title) + '</div>' +
+            '<div class="upload-subtitle">' + escapeHtml(subtitle) + '</div>' +
+            '</div>' +
+            '<div class="upload-action-btn"><i class="bi bi-cloud-arrow-up-fill me-1"></i> Choose</div>' +
+            '</div></label></div>' +
+            buildFileUploadSelectedPanelHtml() +
+            '</div>'
+        );
+    }
+
+    function isApplicationFormFileInput(input) {
+        if (!input || input.type !== 'file') {
+            return false;
+        }
+        return !!input.closest('.form-panel, .main-section, #tab1, #tab2, #tab3, #tab4');
+    }
+
+    function applyFileInputRules(input) {
+        if (!input || input.type !== 'file') {
+            return;
+        }
+        const kind = resolveUploadKind(input);
+        input.setAttribute('data-upload-kind', kind);
+        input.setAttribute('accept', kind === 'photo' ? PHOTO_UPLOAD_ACCEPT : CERT_UPLOAD_ACCEPT);
+    }
+
+    function refreshFileUploadRules(root) {
+        const scope = root && root.querySelectorAll ? root : document;
+        scope.querySelectorAll('input[type="file"]').forEach(applyFileInputRules);
+    }
+
+    let globalFileValidationBound = false;
+
+    function initAllFileUploadValidation() {
+        refreshFileUploadRules(document);
+        if (globalFileValidationBound) {
+            return;
+        }
+        globalFileValidationBound = true;
+        function onFileInputEvent(e) {
+            const input = e.target;
+            if (!isApplicationFormFileInput(input)) {
+                return;
+            }
+            validateFileInputUi(input);
+        }
+        document.addEventListener('change', onFileInputEvent, true);
+        document.addEventListener('input', onFileInputEvent, true);
+    }
+
+    function showUploadValidationError(message, input) {
+        const text = message || 'Invalid file.';
+        if (input) {
+            setUploadFieldError(input, text);
+            return;
+        }
+        if (window.LawPortal && typeof window.LawPortal.alert === 'function') {
+            window.LawPortal.alert({ icon: 'error', title: 'Invalid file', text: text });
+            return;
+        }
+        showToast(text, 'error');
+    }
     function formatDateForInput(val) {
         if (val === undefined || val === null || val === '') {
             return '';
@@ -80,6 +720,97 @@ window.ApplicationForm = (function () {
         });
     }
 
+  function buildPrefillLoaderHtml(message) {
+        const text = message != null ? String(message) : 'Loading…';
+        return (
+            '<div class="af-prefill-loader-inner" role="status" aria-live="polite">' +
+            '<div class="spinner-border text-primary af-prefill-spinner" role="presentation"></div>' +
+            '<p class="af-prefill-loader-text mb-0">' + escapeHtml(text) + '</p>' +
+            '</div>'
+        );
+    }
+
+    function resolvePrefillLoaderHost(host) {
+        if (host && host.nodeType === 1) {
+            return host;
+        }
+        return document.querySelector('.app-container')
+            || document.querySelector('.application-form-page')
+            || document.body;
+    }
+
+    function showPrefillLoader(message, host, options) {
+        options = options || {};
+        const text = message != null ? String(message) : 'Loading…';
+
+        if (options.viewport) {
+            let loader = document.getElementById('af-viewport-loader');
+            if (!loader) {
+                loader = document.createElement('div');
+                loader.id = 'af-viewport-loader';
+                loader.className = 'af-prefill-loader af-prefill-loader--viewport';
+                loader.setAttribute('aria-busy', 'true');
+                loader.innerHTML = buildPrefillLoaderHtml(text);
+                document.body.appendChild(loader);
+            } else {
+                const msgEl = loader.querySelector('.af-prefill-loader-text');
+                if (msgEl) {
+                    msgEl.textContent = text;
+                }
+                loader.hidden = false;
+            }
+            return;
+        }
+
+        const mount = resolvePrefillLoaderHost(host);
+        if (!mount) {
+            return;
+        }
+        const pos = window.getComputedStyle(mount).position;
+        if (pos === 'static' || !pos) {
+            mount.style.position = 'relative';
+        }
+        let loader = mount.querySelector('.af-prefill-loader:not(.af-prefill-loader--viewport)');
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.className = 'af-prefill-loader';
+            loader.setAttribute('aria-busy', 'true');
+            loader.innerHTML = buildPrefillLoaderHtml(text);
+            mount.appendChild(loader);
+        } else {
+            const msgEl = loader.querySelector('.af-prefill-loader-text');
+            if (msgEl) {
+                msgEl.textContent = text;
+            }
+        }
+        loader.hidden = false;
+    }
+
+    function hidePrefillLoader(host, options) {
+        options = options || {};
+        if (options.viewport) {
+            const loader = document.getElementById('af-viewport-loader');
+            if (loader) {
+                loader.remove();
+            }
+            return;
+        }
+        const mount = resolvePrefillLoaderHost(host);
+        if (!mount) {
+            return;
+        }
+        mount.querySelectorAll('.af-prefill-loader:not(.af-prefill-loader--viewport)').forEach(function (el) {
+            el.remove();
+        });
+    }
+
+    function waitForPrefillPaint() {
+        return new Promise(function (resolve) {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(resolve);
+            });
+        });
+    }
     function showToast(message, variant) {
         const text = message != null ? String(message).trim() : '';
         if (!text) return;
@@ -134,7 +865,6 @@ window.ApplicationForm = (function () {
             toastEl.remove();
         }, 3500);
     }
-
     function truncateFileName(name, maxLen) {
         maxLen = maxLen || FILE_NAME_MAX_LEN;
         if (!name) return '';
@@ -151,20 +881,389 @@ window.ApplicationForm = (function () {
         return truncateFileName(input.files[0].name) + ' (+' + (input.files.length - 1) + ')';
     }
 
+    const APPLICANT_UPLOAD_KEYS = {
+        photo: {
+            pathKeys: ['photoPath'],
+            nameKeys: ['photoFileName'],
+            sessionPath: 'photoPath',
+            sessionName: 'photoName',
+            docType: 'PHOTO',
+            personalKeys: ['photoPath', 'photo_path', 'photoFileName', 'photo_name', 'photo_file_name']
+        },
+        enrolmentCert: {
+            pathKeys: ['enrolmentCertPath'],
+            nameKeys: ['enrolmentCertFileName'],
+            sessionPath: 'enrolmentCertPath',
+            sessionName: 'enrolmentCertName',
+            docType: 'ENROLMENT_CERTIFICATE',
+            personalKeys: ['enrolmentCertPath', 'certificate_path', 'enrolmentCertFileName', 'certificate_name', 'enrolment_cert_file_name']
+        }
+    };
+
+    function ensureApplicantUploadsState() {
+        if (!state.applicantUploads) {
+            state.applicantUploads = {
+                photoPath: '',
+                photoFileName: '',
+                enrolmentCertPath: '',
+                enrolmentCertFileName: ''
+            };
+        }
+        return state.applicantUploads;
+    }
+
+    function clearApplicantUploadMeta(key) {
+        const cfg = APPLICANT_UPLOAD_KEYS[key];
+        if (!cfg) {
+            return;
+        }
+        const uploads = ensureApplicantUploadsState();
+        cfg.pathKeys.forEach(function (k) { uploads[k] = ''; });
+        cfg.nameKeys.forEach(function (k) { uploads[k] = ''; });
+        if (cfg.sessionPath) {
+            window.sessionStorage.removeItem(cfg.sessionPath);
+        }
+        if (cfg.sessionName) {
+            window.sessionStorage.removeItem(cfg.sessionName);
+        }
+        markUploadCleared(key);
+        const draftApp = window.AppData && typeof AppData.getApplication === 'function'
+            ? AppData.getApplication(userId, jobId)
+            : existingApp;
+        if (draftApp && draftApp.personal) {
+            if (key === 'photo') {
+                draftApp.personal.photoPath = '';
+                draftApp.personal.photoFileName = '';
+            } else if (key === 'enrolmentCert') {
+                draftApp.personal.enrolmentCertPath = '';
+                draftApp.personal.enrolmentCertFileName = '';
+            }
+        }
+    }
+
+    function setApplicantUploadMeta(key, path, fileName) {
+        const cfg = APPLICANT_UPLOAD_KEYS[key];
+        if (!cfg) {
+            return;
+        }
+        const uploads = ensureApplicantUploadsState();
+        const cleanPath = path != null ? String(path).trim() : '';
+        const cleanName = fileName != null ? String(fileName).trim() : '';
+        if (key === 'enrolmentCert' && cleanPath) {
+            const photoPath = String(uploads.photoPath || '').trim()
+                || (window.sessionStorage.getItem('photoPath') || '').trim();
+            if (photoPath && cleanPath.replace(/\\/g, '/') === photoPath.replace(/\\/g, '/')) {
+                return;
+            }
+        }
+        if (cfg.pathKeys[0]) {
+            uploads[cfg.pathKeys[0]] = cleanPath;
+        }
+        if (cfg.nameKeys[0]) {
+            uploads[cfg.nameKeys[0]] = cleanName;
+        }
+        if (cleanPath) {
+            if (cfg.sessionPath) {
+                window.sessionStorage.setItem(cfg.sessionPath, cleanPath);
+            }
+            if (cleanName && cfg.sessionName) {
+                window.sessionStorage.setItem(cfg.sessionName, cleanName);
+            } else if (cfg.sessionName) {
+                window.sessionStorage.removeItem(cfg.sessionName);
+            }
+            unmarkUploadCleared(key);
+        } else {
+            clearApplicantUploadMeta(key);
+        }
+    }
+
+    function getApplicantUploadMeta(key) {
+        if (isUploadCleared(key)) {
+            return { path: '', fileName: '' };
+        }
+        const cfg = APPLICANT_UPLOAD_KEYS[key];
+        const uploads = ensureApplicantUploadsState();
+        if (!cfg) {
+            return { path: '', fileName: '' };
+        }
+        const path = String(uploads[cfg.pathKeys[0]] || '').trim()
+            || (cfg.sessionPath ? String(window.sessionStorage.getItem(cfg.sessionPath) || '').trim() : '');
+        const fileName = String(uploads[cfg.nameKeys[0]] || '').trim()
+            || (cfg.sessionName ? String(window.sessionStorage.getItem(cfg.sessionName) || '').trim() : '');
+        return { path: path, fileName: fileName };
+    }
+
+    function stripClearedUploadsFromPersonal(personal) {
+        if (!personal || typeof personal !== 'object') {
+            return personal;
+        }
+        const out = Object.assign({}, personal);
+        if (isUploadCleared('photo')) {
+            APPLICANT_UPLOAD_KEYS.photo.personalKeys.forEach(function (k) {
+                out[k] = '';
+            });
+        }
+        if (isUploadCleared('enrolmentCert')) {
+            APPLICANT_UPLOAD_KEYS.enrolmentCert.personalKeys.forEach(function (k) {
+                out[k] = '';
+            });
+        }
+        return out;
+    }
+
+    function filterDocumentsRespectingClears(docs) {
+        return (docs || []).filter(function (d) {
+            if (!d || d.is_deleted) {
+                return false;
+            }
+            if (isUploadCleared('photo') && d.document_type === 'PHOTO') {
+                return false;
+            }
+            if (isUploadCleared('enrolmentCert') && d.document_type === 'ENROLMENT_CERTIFICATE') {
+                return false;
+            }
+            return true;
+        });
+    }
+
+    function markUploadCleared(key) {
+        if (!key) {
+            return;
+        }
+        if (!state.uploadCleared) {
+            state.uploadCleared = {};
+        }
+        state.uploadCleared[key] = true;
+        delete state.filePreviews[key];
+        const cfg = APPLICANT_UPLOAD_KEYS[key];
+        if (cfg) {
+            const uploads = ensureApplicantUploadsState();
+            cfg.pathKeys.forEach(function (k) { uploads[k] = ''; });
+            cfg.nameKeys.forEach(function (k) { uploads[k] = ''; });
+            if (cfg.sessionPath) {
+                window.sessionStorage.removeItem(cfg.sessionPath);
+            }
+            if (cfg.sessionName) {
+                window.sessionStorage.removeItem(cfg.sessionName);
+            }
+        }
+    }
+
+    function isUploadCleared(key) {
+        return !!(state.uploadCleared && state.uploadCleared[key]);
+    }
+
+    function unmarkUploadCleared(key) {
+        if (!state.uploadCleared || !key) {
+            return;
+        }
+        delete state.uploadCleared[key];
+    }
+
+    function getPreviewMediaUrl(preview) {
+        if (!preview) {
+            return '';
+        }
+        const raw = preview.dataUrl || preview.url || '';
+        if (!raw) {
+            return '';
+        }
+        if (/^data:/i.test(raw) || /^https?:\/\//i.test(raw)) {
+            return raw;
+        }
+        return resolveDocumentUrl(raw);
+    }
+
+    function resolveDocumentUrl(path) {
+        if (!path) {
+            return '';
+        }
+        const p = String(path).replace(/\\/g, '/');
+        if (/^https?:\/\//i.test(p) || /^data:/i.test(p)) {
+            return p;
+        }
+        let base = '';
+        if (window.LawPortal && window.LawPortal.secureApiBase) {
+            base = String(window.LawPortal.secureApiBase).replace(/\/?$/, '/');
+        } else if (window.LawPortal && window.LawPortal.apiBase) {
+            base = String(window.LawPortal.apiBase).replace(/\/api\/?$/, '/').replace(/\/?$/, '/');
+        } else {
+            const marker = '/law_application';
+            const pathname = window.location.pathname.replace(/\\/g, '/');
+            const idx = pathname.toLowerCase().indexOf(marker);
+            if (idx !== -1) {
+                base = window.location.origin + pathname.substring(0, idx + marker.length) + '/backend/public/';
+            } else {
+                base = new URL('backend/public/', window.location.href).href.replace(/\/?$/, '/');
+            }
+        }
+        return base + p.replace(/^\//, '');
+    }
+
+    function isPreviewImageUrl(url) {
+        if (!url) {
+            return false;
+        }
+        const s = String(url);
+        if (/^data:image\//i.test(s)) {
+            return true;
+        }
+        return /\.(jpe?g|png|gif|webp)(\?|#|$)/i.test(s);
+    }
+
+    function showPreviewModal(modalId, setup) {
+        const modalEl = document.getElementById(modalId);
+        if (!modalEl) {
+            return;
+        }
+        if (modalEl.parentElement !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+        if (typeof setup === 'function') {
+            setup(modalEl);
+        }
+        if (window.bootstrap && window.bootstrap.Modal) {
+            window.bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        } else if (window.$) {
+            $(modalEl).modal('show');
+        }
+    }
+
+    function resolvePhotoPreviewSrc(url) {
+        const preview = state.filePreviews && state.filePreviews.photo;
+        if (preview && preview.dataUrl) {
+            return preview.dataUrl;
+        }
+        const thumb = document.querySelector('#tab1 #photoUpload')
+            && document.querySelector('#tab1 #photoUpload').closest('.compact-upload-wrapper');
+        const thumbImg = thumb && thumb.querySelector('.preview-upload-thumb-photo');
+        if (thumbImg && thumbImg.src && thumbImg.src.indexOf('data:') === 0) {
+            return thumbImg.src;
+        }
+        if (thumbImg && thumbImg.src && !/pravatar\.cc/i.test(thumbImg.src)) {
+            return thumbImg.src;
+        }
+        return resolveDocumentUrl(url) || url || '';
+    }
+
+    function resolveCertPreviewSrc(url) {
+        const preview = state.filePreviews && state.filePreviews.enrolmentCert;
+        if (preview && preview.dataUrl) {
+            return preview.dataUrl;
+        }
+        const certInput = document.getElementById('enrolmentCertUpload');
+        const certWrap = certInput && certInput.closest('.compact-upload-wrapper');
+        const thumbImg = certWrap && certWrap.querySelector('.preview-upload-thumb-cert');
+        if (thumbImg && thumbImg.src) {
+            return thumbImg.src;
+        }
+        return resolveDocumentUrl(url) || url || '';
+    }
+
+    function openImagePreview(url, options) {
+        options = options || {};
+        const isCert = options.kind === 'certificate';
+        const resolved = isCert ? resolveCertPreviewSrc(url) : resolvePhotoPreviewSrc(url);
+        const title = isCert ? 'Enrolment Certificate Preview' : 'Profile Photo Preview';
+        const modalRoot = document.getElementById('imagePreviewModal');
+        if (modalRoot) {
+            modalRoot.classList.add('image-preview-modal-compact-wrap');
+        }
+        showPreviewModal('imagePreviewModal', function (modalEl) {
+            const img = modalEl.querySelector('.preview-modal-body img');
+            const titleEl = modalEl.querySelector('.preview-modal-title');
+            if (titleEl) {
+                titleEl.innerHTML = '<i class="bi bi-' + (isCert ? 'file-earmark-image' : 'image') + '-fill"></i> ' + title;
+            }
+            if (!img) {
+                return;
+            }
+            img.alt = isCert ? 'Enrolment certificate' : 'Profile photo';
+            img.onerror = function () {
+                const fallback = resolveDocumentUrl(url) || url;
+                if (fallback && img.src !== fallback) {
+                    img.src = fallback;
+                }
+            };
+            img.src = resolved;
+        });
+    }
+
+    function openPdfPreview(url) {
+        const resolved = resolveDocumentUrl(url) || url;
+        showPreviewModal('pdfPreviewModal', function (modalEl) {
+            const iframe = modalEl.querySelector('iframe');
+            if (iframe) {
+                iframe.src = resolved;
+            }
+        });
+    }
+
+    let docViewHandlersReady = false;
+
+    function initDocViewButtonHandlers() {
+        if (docViewHandlersReady) {
+            return;
+        }
+        docViewHandlersReady = true;
+        document.body.addEventListener('click', function (e) {
+            const btn = e.target.closest('.doc-view-btn, .tab1-photo-view-btn');
+            if (!btn) {
+                return;
+            }
+            e.preventDefault();
+            e.stopPropagation();
+            const url = btn.getAttribute('data-doc-url');
+            if (!url) {
+                return;
+            }
+            const kind = btn.getAttribute('data-doc-kind') || 'auto';
+            const scope = btn.getAttribute('data-doc-scope') || '';
+            if (kind === 'pdf') {
+                openPdfPreview(url);
+            } else if (kind === 'image' || kind === 'certificate-image' || (kind === 'auto' && isPreviewImageUrl(url))) {
+                openImagePreview(url, { kind: scope === 'certificate' || kind === 'certificate-image' ? 'certificate' : 'photo' });
+            } else {
+                openPdfPreview(url);
+            }
+        });
+
+        document.body.addEventListener('click', function (e) {
+            const photoThumb = e.target.closest('#tab1 .preview-upload-thumb-photo');
+            if (photoThumb && photoThumb.src) {
+                e.preventDefault();
+                e.stopPropagation();
+                openImagePreview(photoThumb.src, { kind: 'photo' });
+                return;
+            }
+            const certThumb = e.target.closest('#tab1 .preview-upload-thumb-cert');
+            if (certThumb && certThumb.src) {
+                e.preventDefault();
+                e.stopPropagation();
+                openImagePreview(certThumb.src, { kind: 'certificate' });
+            }
+        });
+    }
+
     function storeFilePreview(key, file) {
         if (!file) {
             delete state.filePreviews[key];
             return;
         }
+        unmarkUploadCleared(key);
         const reader = new FileReader();
         reader.onload = function () {
             state.filePreviews[key] = {
                 name: file.name,
                 type: file.type || '',
                 dataUrl: reader.result,
+                url: reader.result,
                 isImage: (file.type || '').indexOf('image/') === 0,
                 isPdf: file.type === 'application/pdf' || /\.pdf$/i.test(file.name)
             };
+            if (key === 'photo' || key === 'enrolmentCert') {
+                mountAllDocPreviewButtons(document.querySelector('.app-container'));
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -216,7 +1315,7 @@ window.ApplicationForm = (function () {
         const drafting = document.getElementById('draftingUpload');
         if (drafting && drafting.files && drafting.files.length) storeFilesPreview('drafting', drafting.files);
         document.querySelectorAll('#eduListContainer .list-item').forEach(function (item, idx) {
-            const fi = item.querySelector('.certificateUpload');
+            const fi = item.querySelector('.edu-cert-file');
             if (fi && fi.files && fi.files[0]) storeFilePreview('edu-' + idx, fi.files[0]);
         });
         document.querySelectorAll('#additionalListContainer .list-item').forEach(function (item, idx) {
@@ -239,19 +1338,150 @@ window.ApplicationForm = (function () {
         });
     }
 
-    function buildFileUploadHtml(inputId, defaultLabel, savedFileName, extraClass, accept, multiple) {
+    function buildFileUploadHtml(inputId, defaultLabel, savedFileName, extraClass, accept, multiple, isExisting, uploadHint) {
         const display = savedFileName ? truncateFileName(savedFileName) : defaultLabel;
         const hasFile = savedFileName ? ' has-file' : '';
         const multi = multiple ? ' multiple' : '';
-        const acceptAttr = accept ? ' accept="' + accept + '"' : '';
+        const resolvedAccept = accept || CERT_UPLOAD_ACCEPT;
+        const resolvedHint = uploadHint != null ? uploadHint : getUploadHint('certificate');
+        const acceptAttr = ' accept="' + resolvedAccept + '"';
         const cls = extraClass ? ' ' + extraClass : '';
+        const iconClass = isExisting ? 'bi bi-pencil-square' : 'fas fa-file-upload';
+        const hintHtml = resolvedHint
+            ? '<p class="upload-field-hint small mb-2">' + escapeHtml(resolvedHint) + '</p>'
+            : '';
+        const errorHtml = '<p class="upload-field-error small mb-2" role="alert" hidden></p>';
         return (
-            '<div class="custom-file-upload' + hasFile + '" data-default="' + escapeHtml(defaultLabel) + '">' +
+            hintHtml +
+            errorHtml +
+            '<div class="custom-file-upload file-upload-host' + hasFile + '" data-default="' + escapeHtml(defaultLabel) + '">' +
             '<input type="file" id="' + inputId + '" class="file-input-hidden' + cls + '"' + acceptAttr + multi + '>' +
+            '<div class="upload-pick-panel">' +
             '<button type="button" class="btn btn-outline-primary btn-upload-file btn-upload-file-sm w-100">' +
-            '<i class="fas fa-file-upload me-1"></i><span class="upload-btn-text" title="' + escapeHtml(savedFileName || '') + '">' + escapeHtml(display) + '</span>' +
+            '<i class="' + iconClass + ' me-1"></i><span class="upload-btn-text" title="' + escapeHtml(savedFileName || '') + '">' + escapeHtml(display) + '</span>' +
+            '</button></div>' +
+            buildFileUploadSelectedPanelHtml() +
+            '</div>'
+        );
+    }
+
+    function getTab1PhotoViewHost() {
+        const photoInput = document.getElementById('photoUpload');
+        if (!photoInput) {
+            return null;
+        }
+        const wrap = photoInput.closest('.compact-upload-wrapper');
+        return (wrap && wrap.parentElement) || photoInput.closest('.field-row') || wrap;
+    }
+
+    function buildViewDocButtonHtml(url, label, options) {
+        options = options || {};
+        if (!url) return '';
+        const resolved = resolveDocumentUrl(url) || url;
+        const kind = options.forceKind
+            || (isPreviewImageUrl(resolved) ? 'image' : 'pdf');
+        const text = escapeHtml(label || 'View Document');
+        const attrUrl = escapeHtml(resolved);
+        const extraBtnClass = options.tab1Photo ? ' tab1-photo-view-btn' : (options.tab1Cert ? ' tab1-cert-view-btn' : '');
+        const wrapClass = options.tab1Photo
+            ? 'doc-view-wrap tab1-photo-view-host mt-1'
+            : (options.tab1Cert ? 'doc-view-wrap tab1-cert-view-host mt-1' : 'doc-view-wrap mt-1');
+        const docScope = options.tab1Cert ? 'certificate' : (options.tab1Photo ? 'photo' : '');
+        const scopeAttr = docScope ? ' data-doc-scope="' + docScope + '"' : '';
+        const resolvedKind = options.tab1Cert && kind === 'image' ? 'certificate-image' : kind;
+        return (
+            '<div class="' + wrapClass + '">' +
+            '<button type="button" class="preview-btn doc-view-btn' + extraBtnClass + '" data-doc-url="' + attrUrl + '" data-doc-kind="' + resolvedKind + '"' + scopeAttr + '>' +
+            '<i class="bi bi-eye-fill"></i> ' + text +
             '</button></div>'
         );
+    }
+
+    function appendViewDocButton(host, preview, label) {
+        const mediaUrl = getPreviewMediaUrl(preview);
+        if (!host || !mediaUrl) return;
+        const existing = host.querySelector('.doc-view-wrap');
+        if (existing) existing.remove();
+        const forceKind = preview && preview.isImage ? 'image' : (preview && preview.isPdf ? 'pdf' : undefined);
+        host.insertAdjacentHTML(
+            'beforeend',
+            buildViewDocButtonHtml(mediaUrl, label || preview.name || 'View Document', { forceKind: forceKind })
+        );
+    }
+
+    function mountAllDocPreviewButtons(root) {
+        root = root || document.querySelector('.app-container');
+        if (!root) return;
+
+        root.querySelectorAll('.doc-view-wrap').forEach(function (el) {
+            el.remove();
+        });
+
+        const previews = state.filePreviews || {};
+
+        if (previews.photo && getPreviewMediaUrl(previews.photo) && !isUploadCleared('photo')) {
+            const host = getTab1PhotoViewHost();
+            if (host) {
+                const mediaUrl = getPreviewMediaUrl(previews.photo);
+                const existing = host.querySelector('.tab1-photo-view-host, .doc-view-wrap');
+                if (existing) {
+                    existing.remove();
+                }
+                host.insertAdjacentHTML(
+                    'beforeend',
+                    buildViewDocButtonHtml(mediaUrl, 'View Photo', { forceKind: 'image', tab1Photo: true })
+                );
+            }
+        }
+
+        if (previews.enrolmentCert && getPreviewMediaUrl(previews.enrolmentCert) && !isUploadCleared('enrolmentCert')) {
+            const certMount = document.getElementById('enrolmentCertUploadMount');
+            const host = certMount && certMount.parentElement ? certMount.parentElement : certMount;
+            if (host) {
+                const mediaUrl = getPreviewMediaUrl(previews.enrolmentCert);
+                const existing = host.querySelector('.tab1-cert-view-host, .doc-view-wrap');
+                if (existing) {
+                    existing.remove();
+                }
+                const certKind = previews.enrolmentCert.isPdf ? 'pdf' : 'certificate-image';
+                host.insertAdjacentHTML(
+                    'beforeend',
+                    buildViewDocButtonHtml(mediaUrl, 'View Certificate', {
+                        forceKind: certKind,
+                        tab1Cert: true
+                    })
+                );
+            }
+        }
+
+        Object.keys(previews).forEach(function (key) {
+            const preview = previews[key];
+            if (!preview || !getPreviewMediaUrl(preview) || isUploadCleared(key)) return;
+
+            let host = null;
+            if (key.indexOf('edu-') === 0) {
+                const idx = parseInt(key.slice(4), 10);
+                const rows = root.querySelectorAll('#eduListContainer .list-item');
+                if (!isNaN(idx) && rows[idx]) host = rows[idx].querySelector('.cert-upload-strip') || rows[idx];
+            } else if (key.indexOf('add-') === 0) {
+                const idx = parseInt(key.slice(4), 10);
+                const rows = root.querySelectorAll('#additionalListContainer .list-item');
+                if (!isNaN(idx) && rows[idx]) host = rows[idx].querySelector('.cert-upload-strip') || rows[idx];
+            } else if (key.indexOf('bar-') === 0) {
+                const idx = parseInt(key.slice(4), 10);
+                const items = root.querySelectorAll('#barExpContainer .bar-item');
+                if (!isNaN(idx) && items[idx]) host = items[idx].querySelector('.cert-upload-strip, .file-upload-host') || items[idx];
+            } else if (key.indexOf('practice-') === 0) {
+                const idx = parseInt(key.slice(9), 10);
+                const items = root.querySelectorAll('#courtPracticeContainer .practice-item');
+                if (!isNaN(idx) && items[idx]) host = items[idx].querySelector('.cert-upload-strip, .file-upload-host') || items[idx];
+            } else if (key === 'drafting') {
+                host = document.getElementById('draftingUploadMount')
+                    || (document.getElementById('draftingUpload') && document.getElementById('draftingUpload').closest('.file-upload-host'));
+            }
+
+            if (host) appendViewDocButton(host, preview);
+        });
     }
 
     function initFileUploadButtons(root) {
@@ -271,32 +1501,43 @@ window.ApplicationForm = (function () {
             if (!input || !btn || !textEl) return;
 
             btn.addEventListener('click', function () { input.click(); });
+            ensureUploadHostForInput(input);
+
             input.addEventListener('change', function () {
                 const previewKey = resolvePreviewKey(input);
                 if (input.files && input.files.length) {
-                    textEl.textContent = getFileLabelText(input, defaultLabel);
-                    textEl.title = Array.from(input.files).map(function (f) { return f.name; }).join(', ');
-                    wrap.classList.add('has-file');
+                    if (!validateFileInputUi(input)) {
+                        return;
+                    }
                     if (previewKey === 'drafting') storeFilesPreview('drafting', input.files);
                     else if (previewKey && input.files.length > 1) storeFilesPreview(previewKey, input.files);
                     else if (previewKey) storeFilePreview(previewKey, input.files[0]);
                     const listItem = input.closest('.list-item');
                     if (listItem) {
                         listItem.setAttribute('data-cert-name', input.files[0].name);
-                        if (listItem.closest('#eduListContainer')) AF.tab2.syncEdu();
-                        else if (listItem.closest('#additionalListContainer')) AF.tab2.syncAdditional();
-                        else if (listItem.closest('#barExpContainer')) AF.tab3.syncBar();
-                        else if (listItem.closest('#courtPracticeContainer')) AF.tab3.syncPractice();
-                        else if (listItem.closest('#judgmentAAGContainer')) AF.tab3.syncJudgmentAAG();
-                        else if (listItem.closest('#judgmentAGPContainer')) AF.tab3.syncJudgmentAGP();
+                        if (listItem.closest('#eduListContainer') && AF.tab2) AF.tab2.syncEdu();
+                        else if (listItem.closest('#additionalListContainer') && AF.tab2) AF.tab2.syncAdditional();
+                        else if (listItem.closest('#barExpContainer') && AF.tab3) AF.tab3.syncBar();
+                        else if (listItem.closest('#courtPracticeContainer') && AF.tab3) AF.tab3.syncPractice();
+                        else if (listItem.closest('#judgmentAAGContainer') && AF.tab3) AF.tab3.syncJudgmentAAG();
+                        else if (listItem.closest('#judgmentAGPContainer') && AF.tab3) AF.tab3.syncJudgmentAGP();
                     }
                 } else {
-                    if (previewKey) delete state.filePreviews[previewKey];
-                    textEl.textContent = defaultLabel;
-                    textEl.title = '';
-                    wrap.classList.remove('has-file');
+                    clearFileUpload(input);
                 }
             });
+
+            wrap.addEventListener('file-upload-cleared', function () {
+                const previewKey = resolvePreviewKey(input);
+                if (previewKey) delete state.filePreviews[previewKey];
+            });
+
+            if (wrap.classList.contains('has-file')) {
+                const savedLabel = (textEl.getAttribute('title') || textEl.textContent || '').trim();
+                if (savedLabel && savedLabel !== defaultLabel) {
+                    showFileUploadSelected(input, savedLabel, { replaceReady: true });
+                }
+            }
         });
     }
 
@@ -309,13 +1550,13 @@ window.ApplicationForm = (function () {
         const jobBanner = document.getElementById('jobContextBanner');
         if (!jobBanner) return;
 
-        let selections = getStoredVacancies();
+        let selections = isSubmittedHyperlinkView() ? getStoredVacanciesForView() : getStoredVacancies();
         if (!selections.length && jobId) {
             selections = jobId.split(',').map(function (part) {
                 const id = part.trim();
                 if (!id) return null;
                 return window.JobSelection
-                    ? JobSelection.normalizeSelection({ jobId: id })
+                    ? JobSelection.enrichSelection({ jobId: id, postName: postName })
                     : { jobId: id, postName: postName, courtBench: sessionStorage.getItem('courtBench') || 'High Court' };
             }).filter(Boolean);
         }
@@ -328,17 +1569,17 @@ window.ApplicationForm = (function () {
         const jobIdsLabel = window.JobSelection
             ? JobSelection.joinJobIds(selections)
             : jobId;
-        const postLines = window.JobSelection
-            ? JobSelection.formatBannerLines(selections)
-            : [postName + ' : ' + jobIdsLabel];
 
         let postsHtml = '';
-        postLines.forEach(function (line) {
-            postsHtml += '<div class="job-banner-post-line">' + escapeHtml(line) + '</div>';
-        });
-
         let courtHtml = '';
+
         if (selections.length === 1) {
+            const postLines = window.JobSelection
+                ? JobSelection.formatBannerLines(selections)
+                : [postName + ' : ' + jobIdsLabel];
+            postLines.forEach(function (line) {
+                postsHtml += '<div class="job-banner-post-line">' + escapeHtml(line) + '</div>';
+            });
             const savedBench = selections[0].courtBench
                 || (existingApp && existingApp.courtBench)
                 || sessionStorage.getItem('courtBench')
@@ -351,28 +1592,33 @@ window.ApplicationForm = (function () {
             courtHtml =
                 '<div class="job-banner-court"><label for="courtBenchSelect" class="job-banner-court-label">Court</label>' +
                 '<select id="courtBenchSelect" class="form-select form-select-sm court-bench-select"' + (formMode === 'previewOnly' ? ' disabled' : '') + '>' + optsHtml + '</select></div>';
+        } else if (selections.length > 1) {
+            selections.forEach(function (s) {
+                const line = window.JobSelection
+                    ? JobSelection.formatSelectionLine(s)
+                    : ((s.postName || s.jobId) + ' — ' + (s.courtBench || '') + ' (' + (s.jobId || '') + ')');
+                postsHtml += '<div class="job-banner-post-line">' + escapeHtml(line) + '</div>';
+            });
         } else {
-            courtHtml = '<div class="job-banner-court-list">' + selections.map(function (s) {
-                return '<span class="job-banner-court-item"><strong>' + escapeHtml(s.jobId) + '</strong> — ' + escapeHtml(s.courtBench || '') + '</span>';
-            }).join(' · ') + '</div>';
+            const fallbackLine = (postName || 'Post') + ' : ' + jobIdsLabel;
+            postsHtml = '<div class="job-banner-post-line">' + escapeHtml(fallbackLine) + '</div>';
         }
 
         jobBanner.innerHTML =
             '<div class="job-banner-inner">' +
             '<div class="job-banner-posts">' + postsHtml + '</div>' +
-            '<div class="job-banner-meta-sub">Job ID: <strong>' + escapeHtml(jobIdsLabel) + '</strong> · User: <strong>' + escapeHtml(userId) + '</strong></div>' +
+            '<div class="job-banner-meta-sub">Job ID: <strong>' + escapeHtml(jobIdsLabel) + '</strong> · User Id: <strong>' + escapeHtml(userId) + '</strong></div>' +
             courtHtml +
             '</div>';
 
         const sel = document.getElementById('courtBenchSelect');
         if (sel && formMode !== 'previewOnly') {
-            sel.onchange = function () {
+            sel.addEventListener('change', function () {
                 sessionStorage.setItem('courtBench', sel.value);
                 saveDraft();
-            };
+            });
         }
     }
-
     const LIST_CONTAINER_IDS = {
         edu: 'eduListContainer',
         add: 'additionalListContainer',
@@ -415,11 +1661,58 @@ window.ApplicationForm = (function () {
             container.addEventListener('click', function (e) {
                 const btn = e.target.closest('.remove-item[data-type="' + type + '"]');
                 if (!btn || !container.contains(btn)) return;
-                handleRemove({ target: btn });
+                e.preventDefault();
+                e.stopPropagation();
+                handleRemove({ target: btn, preventDefault: function () {}, stopPropagation: function () {} });
             });
         });
     }
 
+    // function renderList(containerId, items, renderItemFn, type) {
+    //     const container = document.getElementById(containerId);
+    //     if (!container) return;
+    //     container.innerHTML = '';
+    //     items.forEach(function (item, idx) {
+    //         const div = document.createElement('div');
+    //         div.className = 'list-item';
+    //         if (item.certificateFileName) div.setAttribute('data-cert-name', item.certificateFileName);
+    //         div.innerHTML = renderItemFn(item, idx, type);
+    //         container.appendChild(div);
+    //     });
+    //     attachRemoveEvents(type);
+    //     attachSyncEvents(type);
+    //     initFileUploadButtons(container);
+    // }
+
+    // function attachRemoveEvents(type) {
+    //     document.querySelectorAll('.remove-item[data-type="' + type + '"]').forEach(function (btn) {
+    //         btn.onclick = handleRemove;
+    //     });
+    // }
+
+    // function attachSyncEvents(type) {
+    //     const map = {
+    //         edu: '#eduListContainer input',
+    //         add: '#additionalListContainer input',
+    //         bar: '#barExpContainer input',
+    //         practice: '#courtPracticeContainer input',
+    //         judgmentAAG: '#judgmentAAGContainer input',
+    //         judgmentAGP: '#judgmentAGPContainer input'
+    //     };
+    //     const sel = map[type];
+    //     if (!sel) return;
+    //     const syncMap = {
+    //         edu: function () { AF.tab2.syncEdu(); },
+    //         add: function () { AF.tab2.syncAdditional(); },
+    //         bar: function () { AF.tab3.syncBar(); },
+    //         practice: function () { AF.tab3.syncPractice(); },
+    //         judgmentAAG: function () { AF.tab3.syncJudgmentAAG(); },
+    //         judgmentAGP: function () { AF.tab3.syncJudgmentAGP(); }
+    //     };
+    //     document.querySelectorAll(sel).forEach(function (inp) {
+    //         inp.onchange = syncMap[type];
+    //     });
+    // }
     function renderList(containerId, items, renderItemFn, type) {
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -445,15 +1738,36 @@ window.ApplicationForm = (function () {
             div.innerHTML = renderItemFn(item, idx, type);
             container.appendChild(div);
         });
-        if (container.querySelector('.custom-file-upload')) {
-            initFileUploadButtons(container);
-        }
+        initFileUploadButtons(container);
+        refreshFileUploadRules(container);
     }
 
+    let listRemoveInProgress = false;
+
     function handleRemove(e) {
-        const btn = e.target.closest('.remove-item') || e.target;
+        if (e && e.preventDefault) e.preventDefault();
+        if (e && e.stopPropagation) e.stopPropagation();
+        if (listRemoveInProgress) return;
+
+        const btn = (e && e.target && e.target.closest)
+            ? e.target.closest('.remove-item')
+            : (e && e.target) || null;
+        if (!btn) return;
+
         const idx = parseInt(btn.getAttribute('data-idx'), 10);
         const type = btn.getAttribute('data-type');
+        if (!type || isNaN(idx) || idx < 0) return;
+
+        if ((type === 'edu' || type === 'add') && AF.tab2 && typeof AF.tab2.removeRow === 'function') {
+            listRemoveInProgress = true;
+            try {
+                AF.tab2.removeRow(type, idx, btn);
+            } finally {
+                listRemoveInProgress = false;
+            }
+            return;
+        }
+
         const lists = {
             edu: state.eduItems,
             add: state.additionalItems,
@@ -463,75 +1777,18 @@ window.ApplicationForm = (function () {
             judgmentAGP: state.judgmentAGPItems
         };
 
-        if (type === 'edu' && AF.tab2) {
-            if (typeof AF.tab2.snapshotEduFilesFromDom === 'function') AF.tab2.snapshotEduFilesFromDom();
-            AF.tab2.syncEdu();
-        } else if (type === 'add' && AF.tab2) {
-            if (typeof AF.tab2.snapshotAdditionalFilesFromDom === 'function') AF.tab2.snapshotAdditionalFilesFromDom();
-            AF.tab2.syncAdditional();
+        if (!lists[type] || idx >= lists[type].length) {
+            return;
         }
 
-        const removedItem = lists[type] && !isNaN(idx) ? lists[type][idx] : null;
-
-        function finishRemove() {
-            if (lists[type]) lists[type].splice(idx, 1);
+        listRemoveInProgress = true;
+        try {
+            lists[type].splice(idx, 1);
             reindexFilePreviewsAfterRemove(type, idx);
             renderAll();
+        } finally {
+            listRemoveInProgress = false;
         }
-
-        function refreshTab2AfterServerDelete() {
-            const successMessage = type === 'add'
-                ? 'Additional qualification deleted successfully.'
-                : 'Educational qualification deleted successfully.';
-
-            if ((type === 'edu' || type === 'add')
-                && AF.api
-                && typeof AF.api.refreshTab2QualificationsFromApi === 'function') {
-                return AF.api.refreshTab2QualificationsFromApi()
-                    .then(function () {
-                        showToast(successMessage, 'success');
-                    })
-                    .catch(function (err) {
-                        console.warn('Tab2 refresh after delete:', err && err.message ? err.message : err);
-                        finishRemove();
-                    });
-            }
-            finishRemove();
-            showToast(successMessage, 'success');
-            return Promise.resolve();
-        }
-
-        if (type === 'edu' && removedItem) {
-            const rowEl = btn.closest('.list-item');
-            const educationId = parseInt(removedItem.educationId, 10)
-                || parseInt(rowEl && rowEl.getAttribute('data-education-id'), 10)
-                || 0;
-            if (educationId > 0 && AF.api && typeof AF.api.deleteEducationRecord === 'function') {
-                AF.api.deleteEducationRecord(educationId)
-                    .then(refreshTab2AfterServerDelete)
-                    .catch(function (err) {
-                        alert(err && err.message ? err.message : 'Failed to delete educational qualification.');
-                    });
-                return;
-            }
-        }
-
-        if (type === 'add' && removedItem) {
-            const rowEl = btn.closest('.list-item');
-            const additionalId = parseInt(removedItem.additionalId, 10)
-                || parseInt(rowEl && rowEl.getAttribute('data-additional-id'), 10)
-                || 0;
-            if (additionalId > 0 && AF.api && typeof AF.api.deleteAdditionalQualificationRecord === 'function') {
-                AF.api.deleteAdditionalQualificationRecord(additionalId)
-                    .then(refreshTab2AfterServerDelete)
-                    .catch(function (err) {
-                        alert(err && err.message ? err.message : 'Failed to delete additional qualification.');
-                    });
-                return;
-            }
-        }
-
-        finishRemove();
     }
 
     function reindexFilePreviewsAfterRemove(type, removedIdx) {
@@ -566,6 +1823,7 @@ window.ApplicationForm = (function () {
         });
     }
 
+
     function renderAll() {
         if (AF.tab2) {
             AF.tab2.renderEdu();
@@ -574,30 +1832,92 @@ window.ApplicationForm = (function () {
         if (AF.tab3) {
             AF.tab3.renderBar();
             AF.tab3.renderPractice();
-            AF.tab3.renderJudgmentAAG();
-            AF.tab3.renderJudgmentAGP();
+            if (typeof AF.tab3.renderCitationsFromState === 'function') {
+                AF.tab3.renderCitationsFromState('aag');
+                AF.tab3.renderCitationsFromState('agp');
+            } else {
+                AF.tab3.renderJudgmentAAG();
+                AF.tab3.renderJudgmentAGP();
+            }
         }
     }
 
     function switchTab(tabId) {
+        if (isSubmittedHyperlinkView()) tabId = 4;
         Object.values(tabs).forEach(function (t) { if (t) t.classList.remove('active-panel'); });
         if (tabs[tabId]) tabs[tabId].classList.add('active-panel');
+        if (isSubmittedHyperlinkView()) {
+            applySubmittedHyperlinkView();
+            tabId = 4;
+        }
         tabButtons.forEach(function (btn) {
             const id = parseInt(btn.getAttribute('data-tab'), 10);
             btn.classList.toggle('active', id === tabId);
         });
+        if (tabId === 1 && AF.tab1) {
+            const nameEl = document.getElementById('advocateName');
+            const row = state.applicantRowCache;
+            const needsFullHydrate = row && nameEl && !String(nameEl.value || '').trim();
+            if (needsFullHydrate && typeof AF.tab1.hydrateFromApplicantRow === 'function') {
+                AF.tab1.hydrateFromApplicantRow(row);
+            } else if (typeof AF.tab1.refreshApplicantUploadUi === 'function') {
+                AF.tab1.refreshApplicantUploadUi();
+            }
+        }
         if (tabId === 2 && AF.api && typeof AF.api.onQualificationsTabActivated === 'function') {
             AF.api.onQualificationsTabActivated().catch(function (err) {
                 console.warn('Qualifications tab load:', err && err.message ? err.message : err);
             });
         }
-        if (tabId === 4 && AF.tab4) AF.tab4.generatePreview();
+        if (tabId === 3) {
+            if (state.tab3NeedsRestore && AF.tab3 && typeof AF.tab3.restoreTab3FromState === 'function') {
+                AF.tab3.restoreTab3FromState();
+                state.tab3NeedsRestore = false;
+            }
+            if (AF.tab3 && typeof AF.tab3.loadExperienceData === 'function' && !state.experienceHydrated) {
+                AF.tab3.loadExperienceData().then(function () {
+                    if (AF.files && typeof AF.files.mountAllDocPreviewButtons === 'function') {
+                        AF.files.mountAllDocPreviewButtons(document.querySelector('.app-container'));
+                    }
+                }).catch(function (err) {
+                    console.warn('Experience tab load:', err && err.message ? err.message : err);
+                });
+            }
+        }
+        if (tabId === 4) {
+            if (AF.tab3 && typeof AF.tab3.syncAll === 'function') {
+                AF.tab3.syncAll();
+            }
+            state.tab3NeedsRestore = true;
+        }
+        if (tabId === 4 && AF.tab4) {
+            const runPreview = function () {
+                if (typeof AF.tab4.loadAndPopulatePreview === 'function') {
+                    AF.tab4.loadAndPopulatePreview();
+                } else if (typeof AF.tab4.generatePreview === 'function') {
+                    AF.tab4.generatePreview();
+                }
+            };
+            if (AF.api && typeof AF.api.ensureValidSessionForForm === 'function') {
+                AF.api.ensureValidSessionForForm().then(runPreview).catch(function (err) {
+                    console.warn('Tab 4 session:', err && err.message ? err.message : err);
+                    runPreview();
+                });
+            } else {
+                runPreview();
+            }
+        }
+        document.dispatchEvent(new CustomEvent('af:tabSwitch', { detail: { tab: tabId } }));
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function bindTabButtons() {
         tabButtons.forEach(function (btn) {
             btn.addEventListener('click', function () {
+                if (isSubmittedHyperlinkView()) {
+                    switchTab(4);
+                    return;
+                }
                 switchTab(parseInt(this.getAttribute('data-tab'), 10));
             });
         });
@@ -608,8 +1928,16 @@ window.ApplicationForm = (function () {
         AF.tab2.syncAdditional();
         AF.tab3.syncBar();
         AF.tab3.syncPractice();
-        AF.tab3.syncJudgmentAAG();
-        AF.tab3.syncJudgmentAGP();
+        if (AF.tab3 && typeof AF.tab3.syncAll === 'function') {
+            AF.tab3.syncAll();
+        } else {
+            if (AF.tab3 && typeof AF.tab3.syncJudgmentAAG === 'function') {
+                AF.tab3.syncJudgmentAAG();
+            }
+            if (AF.tab3 && typeof AF.tab3.syncJudgmentAGP === 'function') {
+                AF.tab3.syncJudgmentAGP();
+            }
+        }
         collectLiveFilePreviews();
         const lawDegEl = document.getElementById('lawDegreeRecognized') || document.getElementById('lawDegreeRecognized1');
         return {
@@ -620,13 +1948,17 @@ window.ApplicationForm = (function () {
             additionalItems: state.additionalItems.slice(),
             barItems: state.barItems.slice(),
             practiceItems: state.practiceItems.slice(),
+            judgmentAAGCitations: (state.judgmentAAGCitations || []).slice(),
+            judgmentAGPCitations: (state.judgmentAGPCitations || []).slice(),
             judgmentAAGItems: state.judgmentAAGItems.slice(),
             judgmentAGPItems: state.judgmentAGPItems.slice(),
             draftingYears: document.getElementById('draftingYears') ? document.getElementById('draftingYears').value : '',
             itAssessee: document.getElementById('itAssessee') ? document.getElementById('itAssessee').value : '',
             declDate: document.getElementById('declDate') ? document.getElementById('declDate').value : '',
             declPlace: document.getElementById('declPlace') ? document.getElementById('declPlace').value : '',
-            signature: document.getElementById('signature') ? document.getElementById('signature').value : '',
+            signature: (AF.tab4 && typeof AF.tab4.getDeclarationSignatureText === 'function')
+                ? AF.tab4.getDeclarationSignatureText()
+                : '',
             postName: postName,
             filePreviews: JSON.parse(JSON.stringify(state.filePreviews))
         };
@@ -640,7 +1972,16 @@ window.ApplicationForm = (function () {
 
     function loadApplicationData(app) {
         if (!app) return;
-        if (app.personal) AF.tab1.fillPersonal(app.personal);
+        let personal = app.personal;
+        if (personal && AF.files && typeof AF.files.stripClearedUploadsFromPersonal === 'function') {
+            personal = AF.files.stripClearedUploadsFromPersonal(personal);
+        }
+        if (personal) {
+            AF.tab1.fillPersonal(personal);
+            if (AF.tab1.applySavedApplicantUploads) {
+                AF.tab1.applySavedApplicantUploads(personal);
+            }
+        }
         const lawDegEl = document.getElementById('lawDegreeRecognized') || document.getElementById('lawDegreeRecognized1');
         if (app.lawDegreeRecognized && lawDegEl) lawDegEl.value = app.lawDegreeRecognized;
         if (app.eduItems) state.eduItems = app.eduItems.slice();
@@ -649,21 +1990,38 @@ window.ApplicationForm = (function () {
         if (app.practiceItems) state.practiceItems = app.practiceItems.slice();
         if (app.judgmentAAGItems) state.judgmentAAGItems = app.judgmentAAGItems.slice();
         if (app.judgmentAGPItems) state.judgmentAGPItems = app.judgmentAGPItems.slice();
+        if (app.judgmentAAGCitations && app.judgmentAAGCitations.length) {
+            state.judgmentAAGCitations = app.judgmentAAGCitations.slice();
+        } else if (app.judgmentAAGItems && app.judgmentAAGItems.length && AF.tab3) {
+            state.judgmentAAGCitations = app.judgmentAAGItems.map(function (item, i) {
+                const text = (item && (item.value || item.caseNo || item.case_citation || item.judgment)) || '';
+                return { id: 'cite-draft-aag-' + i, value: String(text).trim() };
+            }).filter(function (c) { return c.value; });
+            if (!state.judgmentAAGCitations.length) {
+                state.judgmentAAGCitations = [{ id: 'cite-draft-aag-0', value: '' }];
+            }
+        }
+        if (app.judgmentAGPCitations && app.judgmentAGPCitations.length) {
+            state.judgmentAGPCitations = app.judgmentAGPCitations.slice();
+        } else if (app.judgmentAGPItems && app.judgmentAGPItems.length && AF.tab3) {
+            state.judgmentAGPCitations = app.judgmentAGPItems.map(function (item, i) {
+                const text = (item && (item.value || item.caseNo || item.case_citation || item.judgment)) || '';
+                return { id: 'cite-draft-agp-' + i, value: String(text).trim() };
+            }).filter(function (c) { return c.value; });
+            if (!state.judgmentAGPCitations.length) {
+                state.judgmentAGPCitations = [{ id: 'cite-draft-agp-0', value: '' }];
+            }
+        }
         if (app.draftingYears) {
             const el = document.getElementById('draftingYears');
             if (el) el.value = app.draftingYears;
-        }
-        if (app.declDate) {
-            const el = document.getElementById('declDate');
-            if (el) el.value = app.declDate;
         }
         if (app.declPlace) {
             const el = document.getElementById('declPlace');
             if (el) el.value = app.declPlace;
         }
-        if (app.signature) {
-            const el = document.getElementById('signature');
-            if (el) el.value = app.signature;
+        if (AF.tab4 && typeof AF.tab4.refreshDeclarationFields === 'function') {
+            AF.tab4.refreshDeclarationFields();
         }
         if (app.itAssessee) {
             const el = document.getElementById('itAssessee');
@@ -673,15 +2031,154 @@ window.ApplicationForm = (function () {
             const el = document.getElementById('specificBarYears');
             if (el) el.value = app.specificBarYears;
         }
+        const personalForFiles = app.personal || {};
+        const serverPhotoPath = String(personalForFiles.photoPath || '').trim();
+        const serverCertPath = String(personalForFiles.enrolmentCertPath || '').trim();
+
         if (app.filePreviews) {
             Object.keys(app.filePreviews).forEach(function (k) {
+                if (k === 'photo' && !serverPhotoPath) return;
+                if (k === 'enrolmentCert' && !serverCertPath) return;
                 state.filePreviews[k] = app.filePreviews[k];
             });
         }
-        if (state.filePreviews.photo && state.filePreviews.photo.name) AF.tab1.setPhotoFileLabel(state.filePreviews.photo.name);
-        if (AF.tab1.mountEnrolmentCertUpload) AF.tab1.mountEnrolmentCertUpload();
+        if (!serverPhotoPath) {
+            delete state.filePreviews.photo;
+        } else if (state.filePreviews.photo && state.filePreviews.photo.name && !state.filePreviews.photo.isExisting) {
+            AF.tab1.setPhotoFileLabel(state.filePreviews.photo.name);
+        }
+        if (!serverCertPath) {
+            delete state.filePreviews.enrolmentCert;
+        }
         renderAll();
         mountJobBanner();
+        if (AF.files && typeof AF.files.mountAllDocPreviewButtons === 'function') {
+            AF.files.mountAllDocPreviewButtons(document.querySelector('.app-container'));
+        }
+    }
+
+    function isFormLockAllowedControl(el) {
+        if (!el || !el.tagName) return false;
+        if (el.classList && el.classList.contains('main-tab')) return true;
+        if (el.id === 'homeApplyPostLink' || el.id === 'logoutLink') return true;
+        if (el.classList && (el.classList.contains('logout-btn') || el.classList.contains('top-menu-btn'))) {
+            return true;
+        }
+        return false;
+    }
+
+    function lockSubmittedForm() {
+        window.sessionStorage.setItem('applicationSubmitted', 'true');
+
+        const appRoot = document.querySelector('.app-container');
+        if (appRoot) {
+            appRoot.classList.add('application-locked');
+        }
+
+        const scope = appRoot || document;
+        scope.querySelectorAll('input, select, textarea, button').forEach(function (el) {
+            if (isFormLockAllowedControl(el)) return;
+            el.disabled = true;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.readOnly = true;
+            }
+        });
+
+        scope.querySelectorAll(
+            'a, label, .add-btn, .remove-item, .btn-upload-file, .upload-replace-trigger, ' +
+            '.upload-file-remove-btn, .compact-upload-card, .upload-pick-panel, ' +
+            '.upload-action-btn, .custom-file-upload, .list-item button, .edu-card button'
+        ).forEach(function (el) {
+            if (isFormLockAllowedControl(el)) return;
+            if (el.classList && (el.classList.contains('preview-btn') || el.classList.contains('doc-view-btn'))) return;
+            if (el.tagName === 'A' && (el.id === 'homeApplyPostLink' || el.id === 'logoutLink')) return;
+            el.setAttribute('aria-disabled', 'true');
+            el.style.pointerEvents = 'none';
+            el.tabIndex = -1;
+        });
+
+        scope.querySelectorAll('.preview-btn, .doc-view-btn').forEach(function (el) {
+            el.disabled = false;
+            el.removeAttribute('aria-disabled');
+            el.style.pointerEvents = 'auto';
+            el.tabIndex = 0;
+        });
+
+        scope.querySelectorAll('.submit-wrapper, .submit-btn, #submitConfirmModal, #finalSubmitBtn').forEach(function (el) {
+            if (el) el.style.display = 'none';
+        });
+        if (isSubmittedHyperlinkView()) {
+            scope.querySelectorAll('.declaration-box').forEach(function (el) {
+                if (el) el.style.display = 'none';
+            });
+        }
+
+        scope.querySelectorAll('[id^="nextToTab"], [id^="prevToTab"]').forEach(function (el) {
+            if (!isFormLockAllowedControl(el)) {
+                el.style.display = 'none';
+            }
+        });
+
+        document.body.classList.add('application-form-readonly');
+
+        const jobBanner = document.getElementById('jobContextBanner');
+        if (jobBanner && !jobBanner.querySelector('.submitted-readonly-alert')) {
+            jobBanner.insertAdjacentHTML(
+                'afterbegin',
+                '<div class="alert alert-info submitted-readonly-alert mb-2">Application already submitted. Form is view-only.</div>'
+            );
+        }
+    }
+
+    /** apply-post Application ID link after successful submit: tab 4 preview only. */
+    function applySubmittedHyperlinkView() {
+        if (!isSubmittedHyperlinkView()) return;
+
+        syncCourtBenchForSubmittedPreview();
+
+        document.body.classList.add('submitted-hyperlink-preview');
+
+        const wizardNav = document.querySelector('.main-tab-container');
+        if (wizardNav) wizardNav.style.display = 'none';
+
+        [1, 2, 3].forEach(function (n) {
+            if (tabs[n]) {
+                tabs[n].style.setProperty('display', 'none', 'important');
+                tabs[n].classList.remove('active-panel');
+            }
+        });
+
+        tabButtons.forEach(function (btn) {
+            const t = parseInt(btn.getAttribute('data-tab'), 10);
+            if (t !== 4) {
+                btn.classList.add('hidden-tab');
+                btn.style.setProperty('display', 'none', 'important');
+            } else {
+                btn.classList.remove('hidden-tab');
+                btn.style.removeProperty('display');
+                btn.classList.add('active');
+            }
+        });
+
+        const declBox = document.querySelector('.declaration-box');
+        const submitWrap = document.querySelector('.submit-wrapper');
+        const prev4 = document.getElementById('prevToTab3');
+        const submitMsg = document.getElementById('submitMessage');
+        const submitModal = document.getElementById('submitConfirmModal');
+        if (declBox) declBox.style.setProperty('display', 'none', 'important');
+        if (submitWrap) submitWrap.style.setProperty('display', 'none', 'important');
+        if (prev4) prev4.style.setProperty('display', 'none', 'important');
+        if (submitMsg) submitMsg.style.setProperty('display', 'none', 'important');
+        if (submitModal) submitModal.style.setProperty('display', 'none', 'important');
+
+        if (tabs[4]) {
+            tabs[4].style.setProperty('display', 'block', 'important');
+            tabs[4].classList.add('active-panel', 'readonly-mode');
+        }
+    }
+
+    function applyPrefilledHyperlinkView() {
+        applySubmittedHyperlinkView();
     }
 
     function applyFormMode() {
@@ -690,6 +2187,16 @@ window.ApplicationForm = (function () {
         const declBox = document.querySelector('.declaration-box');
         const finalBtn = document.getElementById('finalSubmitBtn');
         const prev4 = document.getElementById('prevToTab3');
+
+        if (isSubmittedHyperlinkView()) {
+            applySubmittedHyperlinkView();
+            if (tabs[4] && AF.tab4 && typeof AF.tab4.loadAndPopulatePreview === 'function') {
+                AF.tab4.loadAndPopulatePreview();
+            } else if (tabs[4] && AF.tab4 && typeof AF.tab4.generatePreview === 'function') {
+                AF.tab4.generatePreview();
+            }
+            return;
+        }
 
         if (formMode === 'tab1Only') {
             tabButtons.forEach(function (btn) {
@@ -734,17 +2241,30 @@ window.ApplicationForm = (function () {
             userId: userId,
             jobId: jobId,
             formMode: formMode,
+            readOnlyView: readOnlyView,
+            previewView: previewView,
+            submittedHyperlinkView: isSubmittedHyperlinkView(),
             postName: postName,
             existingApp: existingApp,
-            selectedVacancies: getStoredVacancies()
+            selectedVacancies: getStoredVacanciesForView()
         },
         state: state,
         tabs: tabs,
         utils: {
             escapeHtml: escapeHtml,
             showToast: showToast,
+            showPrefillLoader: showPrefillLoader,
+            hidePrefillLoader: hidePrefillLoader,
+            waitForPrefillPaint: waitForPrefillPaint,
             formatDateForInput: formatDateForInput,
             truncateFileName: truncateFileName,
+            isValidPincode: function (val) {
+                const pin = String(val || '').replace(/\D/g, '').slice(0, 6);
+                return /^[1-9][0-9]{5}$/.test(pin);
+            },
+            normalizePincode: function (val) {
+                return String(val || '').replace(/\D/g, '').slice(0, 6);
+            },
             pv: function (val) { return escapeHtml(val || '—'); },
             previewFieldRow: function (label, value) {
                 return '<tr><th>' + escapeHtml(label) + '</th><td>' + escapeHtml(value || '—') + '</td></tr>';
@@ -754,36 +2274,80 @@ window.ApplicationForm = (function () {
             }
         },
         files: {
+            FILE_UPLOAD_MAX_BYTES: FILE_UPLOAD_MAX_BYTES,
+            FILE_UPLOAD_MAX_MB: FILE_UPLOAD_MAX_MB,
+            PHOTO_UPLOAD_ACCEPT: PHOTO_UPLOAD_ACCEPT,
+            CERT_UPLOAD_ACCEPT: CERT_UPLOAD_ACCEPT,
+            validateUploadFile: validateUploadFile,
+            validateUploadFiles: validateUploadFiles,
+            resolveUploadKind: resolveUploadKind,
+            getUploadHint: getUploadHint,
+            getUploadHintHtml: getUploadHintHtml,
+            showUploadValidationError: showUploadValidationError,
+            setUploadFieldError: setUploadFieldError,
+            clearUploadFieldError: clearUploadFieldError,
+            validateFileInputUi: validateFileInputUi,
+            applyFileInputRules: applyFileInputRules,
+            refreshFileUploadRules: refreshFileUploadRules,
+            initAllFileUploadValidation: initAllFileUploadValidation,
+            buildFileUploadSelectedPanelHtml: buildFileUploadSelectedPanelHtml,
+            ensureUploadHostForInput: ensureUploadHostForInput,
+            showFileUploadSelected: showFileUploadSelected,
+            clearFileUpload: clearFileUpload,
+            enhanceFileUploadHosts: enhanceFileUploadHosts,
+            initUploadReplacementUi: initUploadReplacementUi,
             buildFileUploadHtml: buildFileUploadHtml,
+            buildCompactUploadHtml: buildCompactUploadHtml,
             initFileUploadButtons: initFileUploadButtons,
             storeFilePreview: storeFilePreview,
+            markUploadCleared: markUploadCleared,
+            isUploadCleared: isUploadCleared,
+            unmarkUploadCleared: unmarkUploadCleared,
+            clearApplicantUploadMeta: clearApplicantUploadMeta,
+            setApplicantUploadMeta: setApplicantUploadMeta,
+            getApplicantUploadMeta: getApplicantUploadMeta,
+            stripClearedUploadsFromPersonal: stripClearedUploadsFromPersonal,
+            filterDocumentsRespectingClears: filterDocumentsRespectingClears,
+            getPreviewMediaUrl: getPreviewMediaUrl,
+            resolveDocumentUrl: resolveDocumentUrl,
+            openImagePreview: openImagePreview,
+            openPdfPreview: openPdfPreview,
             storeFilesPreview: storeFilesPreview,
             collectLiveFilePreviews: collectLiveFilePreviews,
+            mountAllDocPreviewButtons: mountAllDocPreviewButtons,
+            buildViewDocButtonHtml: buildViewDocButtonHtml,
             renderDocPreview: function (p) {
                 if (!p) return '<span class="text-muted small">No file uploaded</span>';
                 if (Array.isArray(p)) {
                     if (!p.length) return '<span class="text-muted small">No file uploaded</span>';
                     return '<div class="preview-doc-list">' + p.map(function (f) { return AF.files.renderDocPreview(f); }).join('') + '</div>';
                 }
-                if (!p.dataUrl) return '<span class="text-muted small">' + AF.utils.pv(p.name) + '</span>';
+                const src = p.dataUrl || p.url || '';
+                if (!src) return '<span class="text-muted small">' + AF.utils.pv(p.name) + '</span>';
                 if (p.isImage) {
-                    return '<div class="preview-doc preview-doc-image"><img src="' + p.dataUrl + '" alt="' + AF.utils.pv(p.name) + '"><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
+                    return '<div class="preview-doc preview-doc-image"><img src="' + src + '" alt="' + AF.utils.pv(p.name) + '"><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
                 }
                 if (p.isPdf) {
-                    return '<div class="preview-doc preview-doc-pdf"><iframe src="' + p.dataUrl + '" title="' + AF.utils.pv(p.name) + '"></iframe><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
+                    return '<div class="preview-doc preview-doc-pdf"><iframe src="' + src + '" title="' + AF.utils.pv(p.name) + '"></iframe><p class="small text-muted mb-0">' + AF.utils.pv(p.name) + '</p></div>';
                 }
-                return '<div class="preview-doc preview-doc-file"><a href="' + p.dataUrl + '" download="' + AF.utils.pv(p.name) + '"><i class="fas fa-file-alt me-1"></i>' + AF.utils.pv(p.name) + '</a></div>';
+                return '<div class="preview-doc preview-doc-file"><a href="' + src + '" download="' + AF.utils.pv(p.name) + '" target="_blank" rel="noopener"><i class="fas fa-file-alt me-1"></i>' + AF.utils.pv(p.name) + '</a></div>';
             }
         },
         lists: {
             renderList: renderList,
             renderAll: renderAll,
             handleRemove: handleRemove,
+            reindexFilePreviewsAfterRemove: reindexFilePreviewsAfterRemove,
             initListDelegations: initListDelegations
         },
         nav: {
             switchTab: switchTab,
-            bindTabButtons: bindTabButtons
+            bindTabButtons: bindTabButtons,
+            lockSubmittedForm: lockSubmittedForm,
+            applySubmittedHyperlinkView: applySubmittedHyperlinkView,
+            applyPrefilledHyperlinkView: applyPrefilledHyperlinkView,
+            applyFormMode: applyFormMode,
+            isSubmittedHyperlinkView: isSubmittedHyperlinkView
         },
         data: {
             getCourtBench: getCourtBench,
@@ -800,6 +2364,13 @@ window.ApplicationForm = (function () {
     };
 
     initListDelegations();
+    initDocViewButtonHandlers();
+    window.openImagePreview = openImagePreview;
+    window.openPdfPreview = openPdfPreview;
+
+    if (isSubmittedHyperlinkView()) {
+        applySubmittedHyperlinkView();
+    }
 
     return AF;
 })();

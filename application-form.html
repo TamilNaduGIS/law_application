@@ -10,11 +10,25 @@
   <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
   <!-- <link rel="stylesheet" href="assets/css/sign-up.css"> -->
 
-  <link rel="stylesheet" href="assets/css/application-form.css">
-  <link rel="stylesheet" href="assets/css/print.css">
-  <link rel="stylesheet" href="assets/css/common.css">
+  <link rel="stylesheet" href="assets/css/application-form.css?v=20250603f">
+  <link rel="stylesheet" href="assets/css/print.css?v=20250603b">
+  <link rel="stylesheet" href="assets/css/common.css?v=20250602t">
 
   <style type="text/css">
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .main-section {
+      flex: 1 0 auto;
+    }
+
+    .premium-footer {
+      flex-shrink: 0;
+    }
+
     /* ==========================
    PREMIUM BACK TO TOP
 ========================== */
@@ -193,7 +207,12 @@
 
       </div>
 
-      <a class="logout-btn text-white deco-none" href="index.html">
+      <a class="top-menu-btn deco-none" href="apply-post.html" id="homeApplyPostLink">
+        <i class="bi bi-house-door-fill"></i>
+        Home
+      </a>
+
+      <a class="logout-btn text-white deco-none" href="index.html" id="logoutLink">
 
         <i class="bi bi-box-arrow-right"></i>
 
@@ -234,30 +253,44 @@
                   <label class="form-label fw-semibold mb-2">
                     Upload Photo
                   </label>
-                  <div class="compact-upload-wrapper">
-                    <input type="file" id="photoUpload" class="d-none" accept="image/*">
-                    <label for="photoUpload" class="compact-upload-card">
-                      <div class="compact-upload-content">
-                        <!-- Preview Circle -->
-                        <div class="upload-icon-wrapper">
-                          <i class="bi bi-person-fill upload-main-icon"></i>
-                        </div>
-                        <!-- Text -->
-                        <div class="upload-text-area">
-                          <div class="upload-title">
-                            Upload Photo
+                  <p class="upload-field-hint small mb-2">
+                    Allowed formats: JPG, JPEG, PNG only. Maximum file size: 5 MB.
+                  </p>
+                  <p class="upload-field-error small mb-2" role="alert" hidden></p>
+                  <div class="compact-upload-wrapper tab1-compact-upload file-upload-host">
+                    <input type="file" id="photoUpload" class="d-none" accept=".jpg,.jpeg,.png">
+                    <div class="upload-pick-panel">
+                      <label for="photoUpload" class="compact-upload-card">
+                        <div class="compact-upload-content">
+                          <div class="upload-icon-wrapper">
+                            <i class="bi bi-person-fill upload-main-icon"></i>
                           </div>
-                          <div class="upload-subtitle">
-                            JPG, PNG supported
+                          <div class="upload-text-area">
+                            <div class="upload-title">Upload Photo</div>
+                            <div class="upload-subtitle">JPG, JPEG, PNG — max 5 MB</div>
+                          </div>
+                          <div class="upload-action-btn">
+                            <i class="bi bi-cloud-arrow-up-fill me-1"></i>
+                            Choose
                           </div>
                         </div>
-                        <!-- Upload Button -->
-                        <div class="upload-action-btn">
-                          <i class="bi bi-cloud-arrow-up-fill me-1"></i>
-                          Choose
+                      </label>
+                    </div>
+                    <div class="upload-selected-panel" hidden>
+                      <div class="upload-selected-inner">
+                        <span class="upload-selected-thumb" aria-hidden="true"><i
+                            class="bi bi-person-badge-fill"></i></span>
+                        <div class="upload-selected-meta">
+                          <span class="upload-file-name" title=""></span>
+                          <button type="button" class="upload-replace-trigger btn btn-link btn-sm p-0">Replace
+                            file</button>
                         </div>
+                        <button type="button" class="upload-file-remove-btn" hidden aria-label="Remove file"
+                          title="Remove file">
+                          <i class="bi bi-x-lg"></i>
+                        </button>
                       </div>
-                    </label>
+                    </div>
                   </div>
                 </div>
                 <div class="col-md-6 field-row">
@@ -270,7 +303,7 @@
                   <div class="col-md-6 field-row">
                     <div class="field-row mb-2"><label class="form-label">Bar Council Enrolment No.
                         (Senior)</label><input type="text" class="form-control" id="seniorEnrolmentNo"
-                        placeholder="AB/1234/YYSR (optional)"></div>
+                        placeholder="MS/1234/0123SR (optional)" maxlength="14"></div>
                   </div>
                 </div>
                 <div class="col-md-6 field-row">
@@ -286,7 +319,8 @@
                 </div>
                 <div class="col-md-6 field-row">
                   <div class="field-row mb-2"><label class="form-label">Present Court of practice</label><input
-                      type="text" class="form-control"></div>
+                      type="text" class="form-control" id="yearsOfPracticeHcm" autocomplete="off"
+                      placeholder="Enter present court of practice"></div>
                 </div>
                 <div class="col-md-6 field-row"><label class="form-label">Father's Name</label><input type="text"
                     class="form-control" id="fatherName"></div>
@@ -310,28 +344,42 @@
                 <div class="col-md-6 field-row"><label class="form-label">Date of Birth</label><input type="date"
                     class="form-control" id="dob"></div>
                 <div class="col-md-6 field-row"><label class="form-label">Age</label><input type="text"
-                    class="form-control" id="age" value="36" disabled></div>
+                    class="form-control" id="age" value="" disabled readonly></div>
                 <div class="col-md-6 field-row"><label class="form-label">Nationality</label><input type="text"
                     class="form-control" id="nationality" value="Indian"></div>
-                <div class="col-md-6 field-row"><label class="form-label">Religion</label><input type="text"
-                    class="form-control" id="religion"></div>
                 <div class="col-md-6 field-row">
-                  <label class="form-label">Community</label>
-                  <select class="form-select" id="community">
-                    <option>OC</option>
-                    <option>BC</option>
-                    <option>BCM</option>
-                    <option>MBC</option>
-                    <option>DNC</option>
-                    <option>SC</option>
-                    <option>ST</option>
+                  <label class="form-label">Religion *</label>
+                  <select class="form-select" id="religion" required>
+                    <option value="">Select Religion</option>
+                    <option value="Buddhist">Buddhist</option>
+                    <option value="Christian">Christian</option>
+                    <option value="Hindu">Hindu</option>
+                    <option value="Muslim">Muslim</option>
+                    <option value="Jain">Jain</option>
+                    <option value="Others">Others</option>
+                    <option value="Sikh">Sikh</option>
+                    <option value="Parsi">Parsi</option>
+                    <option value="Not Stated">Not Stated</option>
+                    <option value="Zoroastrian">Zoroastrian</option>
                   </select>
                 </div>
                 <div class="col-md-6 field-row">
-                  <label class="form-label">Sub Caste</label>
-                  <select class="form-select" id="subCaste">
-                    <option>sub caste</option>
-                    <option>sub caste</option>
+                  <label class="form-label">Community *</label>
+                  <select class="form-select" id="community" required>
+                    <option value="">Select Community</option>
+                    <option value="OC">OC</option>
+                    <option value="BC">BC</option>
+                    <option value="BCM">BCM</option>
+                    <option value="MBC">MBC</option>
+                    <option value="DNC">DNC</option>
+                    <option value="SC">SC</option>
+                    <option value="ST">ST</option>
+                  </select>
+                </div>
+                <div class="col-md-6 field-row">
+                  <label class="form-label">Caste *</label>
+                  <select class="form-select" id="subCaste" required>
+                    <option value="">Select Caste</option>
                   </select>
                 </div>
                 <div class="col-md-6 field-row"><label class="form-label">Mobile Number *</label><input type="tel"
@@ -368,7 +416,9 @@
                           <div class="col-md-6">
                             <div class="mb-3">
                               <label class="form-label">Pincode</label>
-                              <input type="text" class="form-control" id="office_pincode" placeholder="Enter Pincode">
+                              <input type="text" class="form-control" id="office_pincode" placeholder="6-digit pincode"
+                                maxlength="6" inputmode="numeric" pattern="[1-9][0-9]{5}"
+                                title="Enter a valid 6-digit Indian pincode">
                             </div>
                           </div>
                         </div>
@@ -405,7 +455,8 @@
                             <div class="mb-3">
                               <label class="form-label">Pincode</label>
                               <input type="text" class="form-control" id="permanent_pincode"
-                                placeholder="Enter Pincode">
+                                placeholder="6-digit pincode" maxlength="6" inputmode="numeric" pattern="[1-9][0-9]{5}"
+                                title="Enter a valid 6-digit Indian pincode">
                             </div>
                           </div>
                         </div>
@@ -499,8 +550,8 @@
                 </div>
                 <div class="col-md-8 field-row">
                   <label class="form-label">
-                    Whether previously worked or presently working as Law Officers in any State / Central
-                    Government / undertakings
+                    Whether previously worked or presently working as Law Officers in any State Govt / Central
+                    Govt / undertakings
                   </label>
                   <select class="form-select" id="previousWorked">
                     <option value="">Select</option>
@@ -570,7 +621,7 @@
                   </div>
                 </div>
                 <!-- CURRENT DETAILS -->
-                <div class="proceeding-details" id="currentProceedingDetails" style="display:none;" >
+                <div class="proceeding-details" id="currentProceedingDetails" style="display:none;">
                   <div class="field-row">
                     <div class="field-label">
                       (i) Details of Criminal Cases
@@ -624,7 +675,7 @@
                   </div>
                 </div>
                 <!-- PAST DETAILS -->
-                <div class="proceeding-details" id="pastProceedingDetails" style="display:none;" >
+                <div class="proceeding-details" id="pastProceedingDetails" style="display:none;">
                   <div class="field-row">
                     <div class="field-label">
                       (i) Details of Criminal Cases
@@ -682,8 +733,7 @@
                     <label class="form-label">
                       Upload Supporting Documents
                     </label>
-                    <input type="file" class="form-control" id="achievementFiles" multiple
-                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png">
+                    <div id="achievementFilesMount"></div>
                   </div>
                 </div>
                 <!-- CONDITIONAL TEXTAREA -->
@@ -704,26 +754,44 @@
                 Add Bar Experience</button>
               <div class="row">
                 <div class="mt-3 field-row col-md-6"><label class="form-label">No of years of practice in High Court
-                    (Auto)</label><input type="text" class="form-control" id="specificBarYears" readonly></div>
+                    (Auto) <span class="experience-info-icon ms-1" role="button" tabindex="0" aria-label="Experience calculation info" data-experience-tooltip="true" data-bs-toggle="tooltip" data-bs-trigger="hover focus" data-bs-placement="top" title="Experience is calculated based on the selected From Date and To Date. Only completed years are considered. Any fractional value is ignored. For example, 3.99 years will be displayed as 3 years, and values below 1 year will be displayed as 0 years."><i class="bi bi-info-circle"></i></span></label><input type="text" class="form-control" id="specificBarYears" readonly></div>
                 <div class="mt-3 field-row col-md-6"><label class="form-label">Total no of years of
-                    practice</label><input type="text" class="form-control" id="totalBarYears" readonly></div>
+                    practice <span class="experience-info-icon ms-1" role="button" tabindex="0" aria-label="Experience calculation info" data-experience-tooltip="true" data-bs-toggle="tooltip" data-bs-trigger="hover focus" data-bs-placement="top" title="Experience is calculated based on the selected From Date and To Date. Only completed years are considered. Any fractional value is ignored. For example, 3.99 years will be displayed as 3 years, and values below 1 year will be displayed as 0 years."><i class="bi bi-info-circle"></i></span></label><input type="text" class="form-control" id="totalBarYears" readonly></div>
               </div>
               <div class="sub-section-title">Practice in High Court / Madurai Bench</div>
               <div id="courtPracticeContainer"></div>
               <button type="button" class="btn btn-outline-primary btn-sm rounded-pill add-btn" id="addPracticeBtn">+
                 Add Court Practice</button>
-              <div class="sub-section-title titlewrap">
-                Details of reported and unreported judgements for the cases appeared in High Court of Madras / Madurai
-                Bench <span class="d-block">(AAG / SGP / GP / SGP category — last 7 years)</span>
+              <div class="judgment-cite-block" data-citation-kind="aag">
+                <div class="sub-section-title titlewrap mb-2">
+                  Details of reported and unreported judgements for the cases appeared in High Court of Madras /
+                  Madurai Bench
+                  <span class="d-block text-muted small fw-normal mt-1">(AAG / SGP / GP / SGP category — last 7 years)</span>
+                </div>
+                <p class="judgment-cite-hint small text-muted mb-2">Enter case citations one per row. You may add up to 30 citations.</p>
+                <div id="judgmentAAGContainer" class="judgment-cite-root">
+                  <div id="judgmentAAGCiteList" class="judgment-cite-list" data-cite-list role="list" aria-label="AAG case citations"></div>
+                  <div class="judgment-cite-actions">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill add-btn"
+                      data-cite-action="add" data-citation-kind="aag" aria-controls="judgmentAAGCiteList">
+                      <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Add Citation (Max 30)
+                    </button>
+                  </div>
+                </div>
               </div>
-              <!-- <div class="sub-section-title"></div> -->
-              <div id="judgmentAAGContainer"></div>
-              <!-- <button type="button" class="btn btn-outline-primary btn-sm rounded-pill add-btn" id="addJudgmentAAGBtn">+
-                Add Judgment</button> -->
-              <div class="sub-section-title">Additional Government Pleader (last 5 years)</div>
-              <div id="judgmentAGPContainer"></div>
-              <!-- <button type="button" class="btn btn-outline-primary btn-sm rounded-pill add-btn" id="addJudgmentAGPBtn">+
-                Add Judgment</button> -->
+              <div class="judgment-cite-block mt-4" data-citation-kind="agp">
+                <div class="sub-section-title mb-2">Additional Government Pleader (last 5 years)</div>
+                <p class="judgment-cite-hint small text-muted mb-2">Enter case citations one per row. You may add up to 30 citations.</p>
+                <div id="judgmentAGPContainer" class="judgment-cite-root">
+                  <div id="judgmentAGPCiteList" class="judgment-cite-list" data-cite-list role="list" aria-label="AGP case citations"></div>
+                  <div class="judgment-cite-actions">
+                    <button type="button" class="btn btn-outline-primary btn-sm rounded-pill add-btn"
+                      data-cite-action="add" data-citation-kind="agp" aria-controls="judgmentAGPCiteList">
+                      <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>Add Citation (Max 30)
+                    </button>
+                  </div>
+                </div>
+              </div>
               <div class="sub-section-title">Drafting Experience</div>
               <div class="row g-3">
                 <div class="col-md-6 field-row"><label class="form-label">No. of Years</label><input type="text"
@@ -752,7 +820,8 @@
             </div> -->
               <div class="d-flex justify-content-between mt-4">
                 <button type="button" class="btn btn-secondary rounded-pill px-4" id="prevToTab2">← Back</button>
-                <button type="button" class="btn btn-primary rounded-pill px-4" id="experienceSave">Save → Continue</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4" id="experienceSave">Save →
+                  Continue</button>
               </div>
             </div>
             <div id="tab4" class="form-panel">
@@ -762,21 +831,6 @@
             PREVIEW WRAPPER
             ========================= -->
               <div class="preview-wrapper">
-
-
-                <!-- =====================================================
-      TOP ACTIONS.placeholder.com/
-      ===================================================== -->
-                <div class="top-actions">
-                  <button class="btn btn-govt" onclick="window.print()">
-                    <i class="bi bi-printer"></i>
-                    Print View
-                  </button>
-                  <button type="button" class="btn btn-govt" id="downloadPdfBtn">
-                    <i class="bi bi-download"></i>
-                    Download PDF
-                  </button>
-                </div>
                 <!-- =====================================================
       FORM START
       ===================================================== -->
@@ -791,26 +845,9 @@
                       AND ITS BENCH AT MADURAI
                     </h2>
                     <h4>FORM</h4>
-                    <!-- APPLICANT PHOTO -->
                     <div class="text-end mb-3">
-                      <div style="
-            width:140px;
-            height:170px;
-            border:1px solid #000;
-            display:inline-flex;
-            align-items:center;
-            justify-content:center;
-            overflow:hidden;
-            background:#f8f8f8;
-            ">
-                        <!-- <img src="https://via.placeholder.com/140x170?text=Photo" alt="Applicant Photo" style="
-              width:100%;
-              height:100%;
-              object-fit:cover;
-              "> -->
-                      </div>
+                      <div id="pdfApplicantPhotoBox" class="pdf-applicant-photo-box" aria-label="Applicant photograph"></div>
                     </div>
-                    <!-- <p>[See Rule 5(3)]</p>           -->
                   </div>
                   <!-- =====================================================
         BASIC DETAILS
@@ -820,13 +857,13 @@
         ===================================================== -->
                   <div class="form-section">
                     <!-- 1 -->
-                    <div class="govt-row">
+                    <div class="govt-row govt-row-posts-applied">
                       <div class="govt-label">
                         1. Name of the post(s) applied for
                       </div>
                       <div class="govt-colon">:</div>
                       <div class="govt-value">
-                        <input type="text" class="govt-input" value="Additional Government Pleader">
+                        <textarea class="govt-input govt-input-wrap" rows="1" readonly></textarea>
                       </div>
                     </div>
                     <!-- 2 -->
@@ -865,16 +902,8 @@
                         3(b). Date of Enrolment
                       </div>
                       <div class="govt-colon">:</div>
-                      <div class="row">
-                        <div class="col-md-6">
-                          <input type="date" class="govt-input">
-                        </div>
-                        <div class="col-md-6">
-                          <button class="preview-btn" data-bs-toggle="modal" data-bs-target=".filePreviewModal">
-                            <i class="bi bi-eye-fill"></i>
-                            View Document
-                          </button>
-                        </div>
+                      <div class="govt-value">
+                        <input type="date" class="govt-input">
                       </div>
                     </div>
                     <!-- 4 -->
@@ -1293,49 +1322,24 @@
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td>1</td>
-                          <td>WP 1023/2022</td>
-                          <!-- <td>Service Matter</td>
-                <td>Allowed</td>
-                <td>Reported</td> -->
-                        </tr>
                       </tbody>
                     </table>
                   </div>
-                  <!--  <div class="section-title">
-        25(b). Additional Government Pleader
-        </div> -->
-                  <!-- <div class="table-wrapper">
-        <table class="table-govt">
-        
-            <thead>
-        
-                <tr>
-                    <th>Sl.No</th>
-                    <th>Case No.</th>
-                    <th>Case Details</th>
-                    <th>Judgement Details</th>
-                    <th>Remarks</th>
-                </tr>
-        
-            </thead>
-        
-            <tbody>
-        
-                <tr>
-                    <td>1</td>
-                    <td>WP 2034/2023</td>
-                    <td>Taxation Matter</td>
-                    <td>Dismissed</td>
-                    <td>Pending Appeal</td>
-                </tr>
-        
-            </tbody>
-        
-        </table>
-        
-        </div> -->
+                  <div class="section-title" id="pdfAgpJudgementsTitle">
+                    25(b). Additional Government Pleader (last 5 years)
+                  </div>
+                  <div class="table-wrapper" id="pdfAgpJudgementsMount">
+                    <table class="table-govt" id="pdfAgpJudgementsTable">
+                      <thead>
+                        <tr>
+                          <th>Sl.No</th>
+                          <th>Case Citation</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                      </tbody>
+                    </table>
+                  </div>
                   <!-- =====================================================
         DRAFTING
         ===================================================== -->
@@ -1429,16 +1433,16 @@ Tamil Nadu
                     <div class="field-value">
                       <div class="d-flex gap-4 mt-1">
                         <div class="form-check">
-                          <input class="form-check-input proceedingToggle" type="radio" name="currentProceeding"
-                            id="currentProceedingYes" value="Yes" data-target="#currentProceedingDetails">
-                          <label class="form-check-label" for="currentProceedingYes">
+                          <input class="form-check-input proceedingToggle tab4-proceeding-radio" type="radio" name="tab4CurrentProceeding"
+                            id="tab4CurrentProceedingYes" value="Yes" data-target="#tab4CurrentProceedingDetails">
+                          <label class="form-check-label" for="tab4CurrentProceedingYes">
                             Yes
                           </label>
                         </div>
                         <div class="form-check">
-                          <input class="form-check-input proceedingToggle" type="radio" name="currentProceeding"
-                            id="currentProceedingNo" value="No" checked data-target="#currentProceedingDetails">
-                          <label class="form-check-label" for="currentProceedingNo">
+                          <input class="form-check-input proceedingToggle tab4-proceeding-radio" type="radio" name="tab4CurrentProceeding"
+                            id="tab4CurrentProceedingNo" value="No" checked data-target="#tab4CurrentProceedingDetails">
+                          <label class="form-check-label" for="tab4CurrentProceedingNo">
                             No
                           </label>
                         </div>
@@ -1446,7 +1450,7 @@ Tamil Nadu
                     </div>
                   </div>
                   <!-- CURRENT DETAILS -->
-                  <div id="currentProceedingDetails" class="proceeding-details d-none">
+                  <div id="tab4CurrentProceedingDetails" class="proceeding-details d-none">
                     <div class="field-row">
                       <div class="field-label">
                         (i) Details of Criminal Cases
@@ -1483,16 +1487,16 @@ Tamil Nadu
                     <div class="field-value">
                       <div class="d-flex gap-4 mt-1">
                         <div class="form-check">
-                          <input class="form-check-input proceedingToggle" type="radio" name="pastProceeding"
-                            id="pastProceedingYes" value="Yes" data-target="#pastProceedingDetails">
-                          <label class="form-check-label" for="pastProceedingYes">
+                          <input class="form-check-input proceedingToggle tab4-proceeding-radio" type="radio" name="tab4PastProceeding"
+                            id="tab4PastProceedingYes" value="Yes" data-target="#tab4PastProceedingDetails">
+                          <label class="form-check-label" for="tab4PastProceedingYes">
                             Yes
                           </label>
                         </div>
                         <div class="form-check">
-                          <input class="form-check-input proceedingToggle" type="radio" name="pastProceeding"
-                            id="pastProceedingNo" value="No" checked data-target="#pastProceedingDetails">
-                          <label class="form-check-label" for="pastProceedingNo">
+                          <input class="form-check-input proceedingToggle tab4-proceeding-radio" type="radio" name="tab4PastProceeding"
+                            id="tab4PastProceedingNo" value="No" checked data-target="#tab4PastProceedingDetails">
+                          <label class="form-check-label" for="tab4PastProceedingNo">
                             No
                           </label>
                         </div>
@@ -1500,7 +1504,7 @@ Tamil Nadu
                     </div>
                   </div>
                   <!-- PAST DETAILS -->
-                  <div id="pastProceedingDetails" class="proceeding-details d-none">
+                  <div id="tab4PastProceedingDetails" class="proceeding-details d-none">
                     <div class="field-row">
                       <div class="field-label">
                         (i) Details of Criminal Cases
@@ -1565,6 +1569,16 @@ Handled Constitutional Matters before High Court.
 
 
               </div>
+              <div class="top-actions tab4-form-actions">
+                <button class="btn btn-govt" type="button" onclick="window.print()">
+                  <i class="bi bi-printer"></i>
+                  Print View
+                </button>
+                <button type="button" class="btn btn-govt" id="downloadPdfBtn">
+                  <i class="bi bi-download"></i>
+                  Download PDF
+                </button>
+              </div>
               <!-- =========================
             FILE PREVIEW MODAL
             ========================= -->
@@ -1606,13 +1620,20 @@ Handled Constitutional Matters before High Court.
                 <label class="d-flex gap-2 mt-2"><input type="checkbox" id="declarationCheck2"
                     class="form-check-input mt-1"> b) I have read the rules of Law Officers of High Court of Madras and
                   its Bench at Madurai (Appointment) Rules, 2017 and I fulfill the qualification for the post.</label>
-                <div class="row g-2 mt-2">
-                  <div class="col-md-4"><label class="form-label">Date</label><input type="date" class="form-control"
-                      id="declDate"></div>
-                  <div class="col-md-4"><label class="form-label">Place</label><input type="text" class="form-control"
-                      id="declPlace"></div>
-                  <div class="col-md-4"><label class="form-label">Signature</label><input type="text"
-                      class="form-control" id="signature"></div>
+                <div class="row g-2 mt-2 decl-fields-row">
+                  <div class="col-md-4">
+                    <div class="decl-field-label">Date &amp; Time</div>
+                    <div class="decl-field-value" id="declDateDisplay" aria-live="polite">—</div>
+                    <input type="hidden" id="declDate" value="">
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label decl-place-label" for="declPlace">Place</label>
+                    <input type="text" class="form-control decl-place-input" id="declPlace" autocomplete="off">
+                  </div>
+                  <div class="col-md-4">
+                    <div class="decl-field-label">Applicant details</div>
+                    <div class="decl-applicant-info" id="declApplicantInfo" aria-readonly="true"></div>
+                  </div>
                 </div>
               </div>
               <!-- SUBMIT -->
@@ -1698,7 +1719,7 @@ Handled Constitutional Matters before High Court.
               </div>
               <div class="success-desc">
                 Your application has been submitted successfully.
-                Redirecting to applicant list...
+                Redirecting to Apply Post page...
               </div>
               <div class="success-progress">
                 <div class="success-progress-bar"></div>
@@ -1706,169 +1727,14 @@ Handled Constitutional Matters before High Court.
             </div>
           </div>
         </div>
-        <!-- =========================================
-      IMAGE MODAL
-      ========================================= -->
-        <div class="modal fade" id="imagePreviewModal" tabindex="-1">
-          <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content preview-modal-content">
-              <div class="preview-modal-header">
-                <div class="preview-modal-title">
-                  <i class="bi bi-image-fill"></i>
-                  Profile Photo Preview
-                </div>
-                <button class="preview-close-btn" data-bs-dismiss="modal">
-                  <i class="bi bi-x-lg"></i>
-                </button>
-              </div>
-              <div class="preview-modal-body text-center">
-                <img src="https://i.pravatar.cc/600?img=12" class="img-fluid rounded-4 shadow">
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- =========================================
-      PDF MODAL
-      ========================================= -->
-        <div class="modal fade" id="pdfPreviewModal" tabindex="-1">
-          <div class="modal-dialog modal-dialog-centered modal-xl">
-            <div class="modal-content preview-modal-content">
-              <div class="preview-modal-header">
-                <div class="preview-modal-title">
-                  <i class="bi bi-file-earmark-pdf-fill"></i>
-                  Degree Certificate Preview
-                </div>
-                <button class="preview-close-btn" data-bs-dismiss="modal">
-                  <i class="bi bi-x-lg"></i>
-                </button>
-              </div>
-              <iframe src="assets/pdf/sample.pdf" class="pdf-preview-frame"></iframe>
-            </div>
-          </div>
-        </div>
-
-
-
       </section>
     </div>
   </section>
 
 
   <footer class="premium-footer">
-    <!-- TOP -->
-    <div class="footer-top-area">
-      <!-- LEFT -->
-      <div class="footer-brand-area">
-        <div class="footer-logo-wrap">
-          <img src="assets/img/tn_logo.png" class="footer-tn-logo" alt="TN Logo">
-        </div>
-        <div class="footer-brand-content">
-          <div class="footer-gov-title">
-            Government of Tamil Nadu
-          </div>
-          <div class="footer-portal-title">
-            <i class="bi bi-bank2"></i>
-            Law Officers Recruitment Portal
-          </div>
-          <div class="footer-desc">
-            Official digital recruitment platform for Law Officers appointments,
-            managed under Government of Tamil Nadu standards and secure application workflow.
-          </div>
-        </div>
-      </div>
-      <!-- RIGHT -->
-      <div class="footer-right-grid">
-        <!-- VISITOR -->
-        <div class="footer-widget-card">
-          <div class="footer-widget-icon">
-            <i class="bi bi-people-fill"></i>
-          </div>
-          <div>
-            <div class="footer-widget-label">
-              Visitor Count
-            </div>
-            <div class="footer-widget-value" id="visitorCount">12,48,923</div>
-          </div>
-        </div>
-        <!-- UPDATED -->
-        <div class="footer-widget-card">
-          <div class="footer-widget-icon blue">
-            <i class="bi bi-clock-history"></i>
-          </div>
-          <div>
-            <div class="footer-widget-label">
-              Last Updated
-            </div>
-            <div class="footer-widget-value small" id="lastUpdatedTime">29 May 2026, 06:31:12 pm</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <!-- MIDDLE -->
-    <div class="footer-middle-area">
-      <!-- QUICK LINKS -->
-      <div class="footer-links-section">
-        <div class="footer-section-title">
-          <i class="bi bi-grid-fill"></i>
-          Quick Links
-        </div>
-        <div class="footer-links-list">
-          <a href="#" class="footer-link-item">
-            <i class="bi bi-chevron-right"></i>
-            Download Notification
-          </a>
-          <a href="job-post.html" class="footer-link-item">
-            <i class="bi bi-chevron-right"></i>
-            Job Post
-          </a>
-        </div>
-      </div>
-      <!-- SECURITY -->
-      <div class="footer-links-section">
-        <div class="footer-section-title">
-          <i class="bi bi-shield-check"></i>
-          Security &amp; Compliance
-        </div>
-        <div class="security-badges">
-          <div class="security-badge">
-            <i class="bi bi-patch-check-fill"></i>
-            Secure Portal
-          </div>
-          <div class="security-badge">
-            <i class="bi bi-lock-fill"></i>
-            SSL Protected
-          </div>
-          <div class="security-badge">
-            <i class="bi bi-fingerprint"></i>
-            Secure Authentication
-          </div>
-        </div>
-      </div>
-      <!-- SOCIAL -->
-      <div class="footer-links-section">
-        <div class="footer-section-title">
-          <i class="bi bi-share-fill"></i>
-          Social Media
-        </div>
-        <div class="social-icons-wrap">
-          <a href="#" class="social-icon">
-            <i class="bi bi-facebook"></i>
-          </a>
-          <a href="#" class="social-icon">
-            <i class="bi bi-twitter-x"></i>
-          </a>
-          <a href="#" class="social-icon">
-            <i class="bi bi-instagram"></i>
-          </a>
-          <a href="#" class="social-icon">
-            <i class="bi bi-youtube"></i>
-          </a>
-          <a href="#" class="social-icon">
-            <i class="bi bi-linkedin"></i>
-          </a>
-        </div>
-      </div>
-    </div>
+
+
     <!-- BOTTOM -->
     <div class="footer-bottom-area">
       <div class="footer-copyright">
@@ -1883,7 +1749,6 @@ Handled Constitutional Matters before High Court.
   </footer>
 
 
-
   <button id="backToTopBtn" class="back-to-top-btn">
 
     <span class="btn-ripple"></span>
@@ -1892,33 +1757,69 @@ Handled Constitutional Matters before High Court.
 
   </button>
 
-
-
+  <!-- Document preview modals (outside tab panels so Tab 1 View Photo works) -->
+  <div class="modal fade" id="imagePreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm image-preview-modal-compact">
+      <div class="modal-content preview-modal-content">
+        <div class="preview-modal-header">
+          <div class="preview-modal-title">
+            <i class="bi bi-image-fill"></i>
+            Profile Photo Preview
+          </div>
+          <button type="button" class="preview-close-btn" data-bs-dismiss="modal" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <div class="preview-modal-body text-center">
+          <img src="" alt="Profile photo" class="img-fluid rounded-4 shadow">
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal fade" id="pdfPreviewModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+      <div class="modal-content preview-modal-content">
+        <div class="preview-modal-header">
+          <div class="preview-modal-title">
+            <i class="bi bi-file-earmark-pdf-fill"></i>
+            Document Preview
+          </div>
+          <button type="button" class="preview-close-btn" data-bs-dismiss="modal" aria-label="Close">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+        <iframe src="" class="pdf-preview-frame" title="Document preview"></iframe>
+      </div>
+    </div>
+  </div>
 
   <!-- JS -->
   <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
   <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
-  <script src="assets/js/main.js"></script>
+  <!-- <script src="assets/js/main.js"></script> -->
 
   <script src="assets/js/api-config.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-  <script src="assets/js/secure-api.js"></script>
+  <!-- hashed  --><!--<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script> -->
+  <!-- Local --><script src="assets/vendor/crypto/crypto_v4.4.1.js"></script>
+  <script src="assets/js/secure-api.js?v=20250602x"></script>
   <script src="assets/js/law-portal-api.js"></script>
   <script src="assets/js/app-data.js"></script>
-  <script src="assets/js/job-selection.js"></script>
+  <script src="assets/js/job-selection.js?v=20250603g"></script>
   <script src="assets/js/portal-nav.js"></script>
-  <script src="assets/js/application-form-core.js?v=20250531g"></script>
-  <script src="assets/js/application-form-api.js?v=20250531h"></script>
-  <script src="assets/js/application-form-tab1.js?v=20250530"></script>
-  <script src="assets/js/application-form-tab2.js?v=20250530h"></script>
-  <script src="assets/js/application-form-tab3.js?v=20250530"></script>
-  <script src="assets/js/application-form-tab4.js?v=20250530"></script>
-  <script src="assets/js/application-form.js?v=20250531f"></script>
+  <script src="assets/js/application-form-core.js?v=20250603g"></script>
+  <script src="assets/js/application-form-api.js?v=20250603f"></script>
+  <script src="assets/js/application-form-tab1.js?v=20250603f"></script>
+  <script src="assets/js/application-form.js?v=20250602z"></script>
+  <script src="assets/js/application-form-tab3.js?v=20250602z"></script>
+  <script src="assets/js/application-form-tab4.js?v=20250603g"></script>
+  <script src="assets/js/application-form-tab2.js?v=20250601p"></script>
 
 
   <!-- WORKING PDF LIBRARY -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script> --> <!-- hashed -->
+   <script src="/assets/vendor/canvas/canvas_v1.4.4.js"></script><!-- local -->
+  <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script> --><!-- hashed -->
+   <script src="assets/vendor/Jspdf/jspdf_v2.5.1.js"></script><!-- local -->
 
 </body>
 

@@ -1517,6 +1517,28 @@ input:focus {
   display: block;
 }
 
+#errorMsg.signup-error-toast {
+  position: fixed;
+  top: 12px;
+  right: 28px;
+  z-index: 1300;
+  max-width: min(420px, calc(100vw - 32px));
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(185, 28, 28, 0.22);
+  box-shadow:
+    0 14px 36px rgba(185, 28, 28, 0.16),
+    0 6px 16px rgba(15, 23, 42, 0.1);
+  pointer-events: auto;
+}
+
+#errorMsg.signup-error-toast.success-msg {
+  border-color: rgba(21, 128, 61, 0.22);
+  box-shadow:
+    0 14px 36px rgba(21, 128, 61, 0.14),
+    0 6px 16px rgba(15, 23, 42, 0.1);
+}
+
 .error-msg-list {
   margin: 0;
   padding-left: 1.25rem;
@@ -1538,6 +1560,14 @@ input:focus {
 }
 
 @media(max-width:768px) {
+
+  #errorMsg.signup-error-toast {
+    top: 8px;
+    right: 12px;
+    left: 12px;
+    max-width: none;
+    font-size: 0.8rem;
+  }
 
   .hero-section h1 {
     font-size: 32px;
@@ -2616,12 +2646,15 @@ input:focus {
 }
 
 .premium-checkbox input:checked + span:after{
-    content:"✓";
+    content:"";
     position:absolute;
-    color:#fff;
-    left:8px;
-    top:2px;
-    font-size:18px;
+    left:9px;
+    top:4px;
+    width:6px;
+    height:12px;
+    border:solid #fff;
+    border-width:0 2px 2px 0;
+    transform:rotate(45deg);
 }
 
 
@@ -2763,5 +2796,32 @@ input:focus {
 
 h3 {
     font-size: 18px;
+}
+
+/* Softer placeholder text (see common.css — kept for pages without common.css) */
+:root {
+    --placeholder-color: rgba(100, 116, 139, 0.42);
+}
+
+input::placeholder,
+textarea::placeholder,
+.form-control::placeholder,
+.form-input::placeholder,
+.premium-input::placeholder {
+    color: var(--placeholder-color);
+    opacity: 1;
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder,
+.form-control::-webkit-input-placeholder {
+    color: var(--placeholder-color);
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder,
+.form-control::-moz-placeholder {
+    color: var(--placeholder-color);
+    opacity: 1;
 }
 

@@ -11,6 +11,60 @@
         return y !== null ? String(y) : '';
     }
 
+    function getDocUploadHintHtml() {
+        if (AF.files && typeof AF.files.getUploadHintHtml === 'function') {
+            return AF.files.getUploadHintHtml('certificate');
+        }
+        return '<p class="upload-field-hint small mb-2">Allowed formats: JPG, JPEG, PNG or PDF only. Maximum file size: 5 MB.</p>';
+    }
+
+    function getDocUploadAccept() {
+        return (AF.files && AF.files.CERT_UPLOAD_ACCEPT) || '.pdf,.jpg,.jpeg,.png';
+    }
+
+    function getSelectedPanelHtml() {
+        if (AF.files && typeof AF.files.buildFileUploadSelectedPanelHtml === 'function') {
+            return AF.files.buildFileUploadSelectedPanelHtml();
+        }
+        return '';
+    }
+
+    function renderCertUploadBlock(inputClass) {
+        return (
+            '<div class="cert-upload-strip file-upload-host">' +
+            getDocUploadHintHtml() +
+            '<p class="upload-field-error small mb-2" role="alert" hidden></p>' +
+            '<div class="upload-pick-panel">' +
+            '<label class="edu-upload-box edu-upload-compact" role="button" tabindex="0">' +
+            '<input type="file" class="edu-upload-input ' + inputClass + '" accept="' + getDocUploadAccept() + '">' +
+            '<div class="edu-upload-content">' +
+            '<span class="edu-upload-icon"><i class="bi bi-file-earmark-arrow-up-fill"></i></span>' +
+            '<span class="edu-upload-title">Certificate</span>' +
+            '<span class="edu-upload-btn"><i class="bi bi-cloud-upload-fill"></i>Choose</span>' +
+            '</div></label></div>' +
+            getSelectedPanelHtml() +
+            '</div>'
+        );
+    }
+
+    function renderAddCertUploadBlock() {
+        return (
+            '<div class="cert-upload-strip file-upload-host">' +
+            getDocUploadHintHtml() +
+            '<p class="upload-field-error small mb-2" role="alert" hidden></p>' +
+            '<div class="upload-pick-panel">' +
+            '<label class="add-upload-box add-upload-compact" role="button" tabindex="0">' +
+            '<input type="file" class="add-upload-input add-cert-file" accept="' + getDocUploadAccept() + '">' +
+            '<div class="add-upload-content">' +
+            '<span class="add-upload-icon"><i class="bi bi-file-earmark-arrow-up-fill"></i></span>' +
+            '<span class="add-upload-title">Certificate</span>' +
+            '<span class="add-upload-btn"><i class="bi bi-cloud-upload-fill"></i>Choose</span>' +
+            '</div></label></div>' +
+            getSelectedPanelHtml() +
+            '</div>'
+        );
+    }
+
     function renderEduItem(item, idx) {
         let defaultExam = '';
         if (idx === 0) defaultExam = '10th';
@@ -21,28 +75,23 @@
             '<div class="edu-card">' +
             '<div class="d-flex justify-content-between align-items-center mb-3">' +
             '<div class="edu-card-number"><span class="edu-count-badge">' + (idx + 1) + '</span> Educational Qualification</div>' +
-            '<button type="button" style="position:initial !important" class="edu-remove-btn remove-item" data-idx="' + idx + '" data-type="edu">' +
+            '<button type="button" class="edu-remove-btn remove-item" data-idx="' + idx + '" data-type="edu" aria-label="Remove qualification">' +
             '<i class="bi bi-x-circle-fill me-1"></i> Remove</button></div>' +
             '<div class="row g-2 clear-both">' +
             '<div class="col-md-2"><label class="edu-label"><i class="bi bi-journal-bookmark-fill"></i>Examination</label>' +
             '<input class="form-control edu-input edu-exam" value="' + escapeHtml(item.exam || defaultExam) + '"></div>' +
-            '<div class="col-md-2"><label class="edu-label"><i class="bi bi-calendar-event-fill"></i>Year</label>' +
-            '<input type="number" class="form-control edu-input edu-year" min="1950" max="' + new Date().getFullYear() + '" placeholder="YYYY" value="' + escapeHtml(formatYearForInput(item.year)) + '"></div>' +
-            '<div class="col-md-3"><label class="edu-label"><i class="bi bi-building-fill"></i>University</label>' +
+            '<div class="col-md-2"><label class="edu-label"><i class="bi bi-calendar-event-fill"></i>Year of Passing</label>' +
+            '<input type="text" class="form-control edu-input edu-year" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="YYYY" value="' + escapeHtml(formatYearForInput(item.year)) + '"></div>' +
+            '<div class="col-md-3"><label class="edu-label"><i class="bi bi-building-fill"></i>Board / University</label>' +
             '<input class="form-control edu-input edu-board" value="' + escapeHtml(item.board || '') + '"></div>' +
             '<div class="col-md-2"><label class="edu-label"><i class="bi bi-bank2"></i>Institution</label>' +
             '<input class="form-control edu-input edu-inst" value="' + escapeHtml(item.institution || '') + '"></div>' +
             '<div class="col-md-2"><label class="edu-label"><i class="bi bi-book-half"></i>Main Subject/special</label>' +
             '<input class="form-control edu-input edu-special" value="' + escapeHtml(item.special || '') + '"></div>' +
-            '<div class="col-md-1"><label class="edu-label"><i class="bi bi-percent"></i>Marks</label>' +
-            '<input class="form-control edu-input edu-perc" value="' + escapeHtml(item.percentage || '') + '"></div></div>' +
-            '<div class="edu-upload-box mt-3">' +
-            '<input type="file" class="edu-upload-input certificateUpload" multiple accept=".pdf,.doc,.docx">' +
-            '<div class="edu-upload-content"><div class="edu-upload-left">' +
-            '<div class="edu-upload-icon"><i class="bi bi-file-earmark-arrow-up-fill"></i></div>' +
-            '<div><div class="edu-upload-title">Upload Certificate</div>' +
-            '<div class="edu-upload-subtitle">PDF, DOC, DOCX supported</div></div></div>' +
-            '<div class="edu-upload-btn"><i class="bi bi-cloud-upload-fill"></i>Choose</div></div></div></div>'
+            '<div class="col-md-1"><label class="edu-label"><i class="bi bi-percent"></i>Marks (%)</label>' +
+            '<input type="text" class="form-control edu-input edu-perc" maxlength="3" inputmode="numeric" autocomplete="off" placeholder="0–100" value="' + escapeHtml(normalizeMarksForDisplay(item.percentage)) + '"></div></div>' +
+            renderCertUploadBlock('certificateUpload') +
+            '</div>'
         );
     }
 
@@ -51,28 +100,23 @@
             '<div class="add-card">' +
             '<div class="d-flex justify-content-between align-items-center mb-3">' +
             '<div class="edu-card-number"><span class="edu-count-badge">' + (idx + 1) + '</span> Additional Qualification</div>' +
-            '<button type="button" class="add-remove-btn remove-item align-center" data-idx="' + idx + '" data-type="add">' +
+            '<button type="button" class="add-remove-btn remove-item align-center" data-idx="' + idx + '" data-type="add" aria-label="Remove qualification">' +
             '<i class="bi bi-x-lg"></i></button></div>' +
             '<div class="row g-2">' +
             '<div class="col-md-3"><label class="add-label"><i class="bi bi-journal-bookmark-fill"></i>Examination</label>' +
             '<input class="form-control add-input add-exam" value="' + escapeHtml(item.exam || '') + '"></div>' +
-            '<div class="col-md-2"><label class="add-label"><i class="bi bi-calendar-event-fill"></i>Year</label>' +
-            '<input type="number" class="form-control add-input add-year" min="1950" max="' + new Date().getFullYear() + '" placeholder="YYYY" value="' + escapeHtml(formatYearForInput(item.year)) + '"></div>' +
-            '<div class="col-md-3"><label class="add-label"><i class="bi bi-building-fill"></i>Board</label>' +
+            '<div class="col-md-2"><label class="add-label"><i class="bi bi-calendar-event-fill"></i>Year of Passing</label>' +
+            '<input type="text" class="form-control add-input add-year" maxlength="4" inputmode="numeric" autocomplete="off" placeholder="YYYY" value="' + escapeHtml(formatYearForInput(item.year)) + '"></div>' +
+            '<div class="col-md-3"><label class="add-label"><i class="bi bi-building-fill"></i>Board / University</label>' +
             '<input class="form-control add-input add-board" value="' + escapeHtml(item.board || '') + '"></div>' +
             '<div class="col-md-3"><label class="add-label"><i class="bi bi-bank2"></i>Institution</label>' +
             '<input class="form-control add-input add-inst" value="' + escapeHtml(item.institution || '') + '"></div>' +
             '<div class="col-md-2"><label class="add-label"><i class="bi bi-book-half"></i>Subject</label>' +
             '<input class="form-control add-input add-subject" value="' + escapeHtml(item.subject || '') + '"></div>' +
-            '<div class="col-md-2"><label class="add-label"><i class="bi bi-percent"></i>Marks</label>' +
-            '<input class="form-control add-input add-perc" value="' + escapeHtml(item.percentage || '') + '"></div></div>' +
-            '<div class="add-upload-box">' +
-            '<input type="file" class="add-upload-input add-cert-file" multiple accept=".pdf,.doc,.docx">' +
-            '<div class="add-upload-content"><div class="add-upload-left">' +
-            '<div class="add-upload-icon"><i class="bi bi-file-earmark-arrow-up-fill"></i></div>' +
-            '<div><div class="add-upload-title">Upload Certificate</div>' +
-            '<div class="add-upload-subtitle">PDF, DOC, DOCX supported</div></div></div>' +
-            '<div class="add-upload-btn"><i class="bi bi-cloud-upload-fill"></i>Choose</div></div></div></div>'
+            '<div class="col-md-2"><label class="add-label"><i class="bi bi-percent"></i>Marks (%)</label>' +
+            '<input type="text" class="form-control add-input add-perc" maxlength="3" inputmode="numeric" autocomplete="off" placeholder="0–100" value="' + escapeHtml(normalizeMarksForDisplay(item.percentage)) + '"></div></div>' +
+            renderAddCertUploadBlock() +
+            '</div>'
         );
     }
 
@@ -103,9 +147,10 @@
                 || row.getAttribute('data-cert-name');
             if (!label) return;
             row.setAttribute('data-cert-name', label);
-            const uploadTitle = row.querySelector('.edu-upload-title');
-            if (uploadTitle) {
-                uploadTitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(label);
+            const fileInput = row.querySelector('.certificateUpload');
+            if (fileInput && AF.files && typeof AF.files.showFileUploadSelected === 'function') {
+                const hasServerFile = !!(item && item.certificatePath);
+                AF.files.showFileUploadSelected(fileInput, label, { replaceReady: hasServerFile });
             }
         });
     }
@@ -124,9 +169,10 @@
             }
             if (!label) return;
             row.setAttribute('data-cert-name', label);
-            const uploadTitle = row.querySelector('.add-upload-title');
-            if (uploadTitle) {
-                uploadTitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(label);
+            const fileInput = row.querySelector('.add-cert-file');
+            if (fileInput && AF.files && typeof AF.files.showFileUploadSelected === 'function') {
+                const hasServerFile = !!(item && item.certificatePath);
+                AF.files.showFileUploadSelected(fileInput, label, { replaceReady: hasServerFile });
             }
         });
     }
@@ -148,14 +194,16 @@
             } else if (!certName && preview && preview.name) {
                 certName = preview.name;
             }
+            const yearEl = item.querySelector('.edu-year');
+            const percEl = item.querySelector('.edu-perc');
             AF.state.eduItems.push({
                 educationId: prev.educationId || parseInt(item.getAttribute('data-education-id'), 10) || 0,
                 exam: item.querySelector('.edu-exam') && item.querySelector('.edu-exam').value,
-                year: item.querySelector('.edu-year') && item.querySelector('.edu-year').value,
+                year: yearEl ? normalizeYearInput(yearEl.value) : '',
                 board: item.querySelector('.edu-board') && item.querySelector('.edu-board').value,
                 institution: item.querySelector('.edu-inst') && item.querySelector('.edu-inst').value,
                 special: item.querySelector('.edu-special') && item.querySelector('.edu-special').value,
-                percentage: item.querySelector('.edu-perc') && item.querySelector('.edu-perc').value,
+                percentage: percEl ? normalizeMarksInput(percEl.value) : '',
                 certificatePath: prev.certificatePath || item.getAttribute('data-cert-path') || '',
                 certificateFileName: certName,
                 isDeleted: false
@@ -186,14 +234,16 @@
                     certName = preview.name;
                 }
             }
+            const addYearEl = item.querySelector('.add-year');
+            const addPercEl = item.querySelector('.add-perc');
             AF.state.additionalItems.push({
                 additionalId: prev.additionalId || parseInt(item.getAttribute('data-additional-id'), 10) || 0,
                 exam: item.querySelector('.add-exam') && item.querySelector('.add-exam').value,
-                year: item.querySelector('.add-year') && item.querySelector('.add-year').value,
+                year: addYearEl ? normalizeYearInput(addYearEl.value) : '',
                 board: item.querySelector('.add-board') && item.querySelector('.add-board').value,
                 institution: item.querySelector('.add-inst') && item.querySelector('.add-inst').value,
                 subject: item.querySelector('.add-subject') && item.querySelector('.add-subject').value,
-                percentage: item.querySelector('.add-perc') && item.querySelector('.add-perc').value,
+                percentage: addPercEl ? normalizeMarksInput(addPercEl.value) : '',
                 certificatePath: prev.certificatePath || item.getAttribute('data-cert-path') || '',
                 certificateFileName: certName,
                 isDeleted: false
@@ -203,33 +253,86 @@
 
     function renderEdu() {
         AF.lists.renderList('eduListContainer', AF.state.eduItems, renderEduItem, 'edu');
+        if (AF.files && typeof AF.files.enhanceFileUploadHosts === 'function') {
+            AF.files.enhanceFileUploadHosts(document.getElementById('eduListContainer'));
+        }
         restoreEduCertificateUi();
+        if (AF.files && typeof AF.files.refreshFileUploadRules === 'function') {
+            AF.files.refreshFileUploadRules(document.getElementById('eduListContainer'));
+        }
     }
 
     function renderAdditional() {
         AF.lists.renderList('additionalListContainer', AF.state.additionalItems, renderAddItem, 'add');
+        if (AF.files && typeof AF.files.enhanceFileUploadHosts === 'function') {
+            AF.files.enhanceFileUploadHosts(document.getElementById('additionalListContainer'));
+        }
         restoreAdditionalCertificateUi();
+        if (AF.files && typeof AF.files.refreshFileUploadRules === 'function') {
+            AF.files.refreshFileUploadRules(document.getElementById('additionalListContainer'));
+        }
+    }
+
+    function onCertUploadCleared(e) {
+        const input = e.target;
+        if (!input || input.type !== 'file') {
+            return;
+        }
+        const row = input.closest('.list-item');
+        if (!row) {
+            return;
+        }
+        if (input.classList.contains('certificateUpload')) {
+            const rows = document.querySelectorAll('#eduListContainer .list-item');
+            const idx = Array.prototype.indexOf.call(rows, row);
+            if (idx >= 0 && AF.state.eduItems && AF.state.eduItems[idx]) {
+                AF.state.eduItems[idx].certificateFileName = '';
+                AF.state.eduItems[idx].certificatePath = '';
+            }
+            if (idx >= 0 && AF.state.filePreviews) {
+                delete AF.state.filePreviews['edu-' + idx];
+            }
+            syncEdu();
+        } else if (input.classList.contains('add-cert-file')) {
+            const rows = document.querySelectorAll('#additionalListContainer .list-item');
+            const idx = Array.prototype.indexOf.call(rows, row);
+            if (idx >= 0 && AF.state.additionalItems && AF.state.additionalItems[idx]) {
+                AF.state.additionalItems[idx].certificateFileName = '';
+                AF.state.additionalItems[idx].certificatePath = '';
+            }
+            if (idx >= 0 && AF.state.filePreviews) {
+                delete AF.state.filePreviews['add-' + idx];
+            }
+            syncAdditional();
+        }
     }
 
     function initUploadHandlers() {
+        if (!document._tab2CertClearBound) {
+            document._tab2CertClearBound = true;
+            document.addEventListener('file-upload-cleared', onCertUploadCleared);
+        }
+
         const eduContainer = document.getElementById('eduListContainer');
         if (eduContainer && eduContainer.getAttribute('data-cert-ui-bound') !== '1') {
             eduContainer.setAttribute('data-cert-ui-bound', '1');
             eduContainer.addEventListener('change', function (e) {
                 if (!e.target.classList.contains('certificateUpload')) return;
+                if (AF.files && typeof AF.files.validateFileInputUi === 'function') {
+                    if (!AF.files.validateFileInputUi(e.target)) {
+                        return;
+                    }
+                }
                 const row = e.target.closest('.list-item');
                 const rows = document.querySelectorAll('#eduListContainer .list-item');
                 const idx = row ? Array.prototype.indexOf.call(rows, row) : -1;
                 const fileCount = e.target.files ? e.target.files.length : 0;
-                const box = e.target.closest('.edu-upload-box');
-                const uploadTitle = box ? box.querySelector('.edu-upload-title') : null;
                 if (idx >= 0 && fileCount > 0 && AF.files && typeof AF.files.storeFilePreview === 'function') {
                     AF.files.storeFilePreview('edu-' + idx, e.target.files[0]);
                 }
-                if (uploadTitle && fileCount > 0) {
+                if (row && fileCount > 0) {
                     const label = fileCount === 1 ? e.target.files[0].name : fileCount + ' file(s) selected';
-                    uploadTitle.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(label);
-                    if (row) row.setAttribute('data-cert-name', label);
+                    row.setAttribute('data-cert-name', label);
                 }
                 syncEdu();
             });
@@ -240,58 +343,266 @@
             addContainer.setAttribute('data-cert-ui-bound', '1');
             addContainer.addEventListener('change', function (e) {
                 if (!e.target.classList.contains('add-cert-file')) return;
+                if (AF.files && typeof AF.files.validateFileInputUi === 'function') {
+                    if (!AF.files.validateFileInputUi(e.target)) {
+                        return;
+                    }
+                }
                 const row = e.target.closest('.list-item');
                 const rows = document.querySelectorAll('#additionalListContainer .list-item');
                 const idx = row ? Array.prototype.indexOf.call(rows, row) : -1;
                 const fileCount = e.target.files ? e.target.files.length : 0;
-                const box = e.target.closest('.add-upload-box');
-                const title = box ? box.querySelector('.add-upload-title') : null;
                 if (idx >= 0 && fileCount > 0 && AF.files && typeof AF.files.storeFilesPreview === 'function') {
                     AF.files.storeFilesPreview('add-' + idx, e.target.files);
                 }
-                if (title && fileCount > 0) {
+                if (row && fileCount > 0) {
                     const label = fileCount === 1 ? e.target.files[0].name : fileCount + ' file(s) selected';
-                    title.innerHTML = '<i class="bi bi-check-circle-fill text-success me-1"></i>' + escapeHtml(label);
-                    if (row) row.setAttribute('data-cert-name', label);
+                    row.setAttribute('data-cert-name', label);
                 }
                 syncAdditional();
             });
         }
     }
 
-    function initDefaultEduItems() {
-        if (AF.state.eduItems && AF.state.eduItems.length) {
-            return;
+    function ensureDefaultEduItems() {
+        if (!AF.state.eduItems) {
+            AF.state.eduItems = [];
         }
         if (!AF.state.eduItems.length) {
-            AF.state.eduItems.push({
-                exam: '10th', year: '', board: '', institution: '', special: '', percentage: ''
-            });
-            AF.state.eduItems.push({
-                exam: '12th', year: '', board: '', institution: '', special: '', percentage: ''
-            });
+            AF.state.eduItems = [
+                { exam: '10th', year: '', board: '', institution: '', special: '', percentage: '' },
+                { exam: '12th', year: '', board: '', institution: '', special: '', percentage: '' }
+            ];
         }
+    }
+
+    function bindCompactUploadKeyboard(container) {
+        if (!container || container.getAttribute('data-upload-keybound') === '1') {
+            return;
+        }
+        container.setAttribute('data-upload-keybound', '1');
+        container.addEventListener('keydown', function (e) {
+            const label = e.target.closest('.edu-upload-compact, .add-upload-compact');
+            if (!label || (e.key !== 'Enter' && e.key !== ' ')) {
+                return;
+            }
+            e.preventDefault();
+            const input = label.querySelector('input[type="file"]');
+            if (input) {
+                input.click();
+            }
+        });
     }
 
     function trimVal(value) {
         return value != null ? String(value).trim() : '';
     }
 
-    function parseYearOfPassing(val) {
+    function showTab2Toast(message) {
+        const text = message != null ? String(message).trim() : '';
+        if (!text) return;
+        if (AF.utils && typeof AF.utils.showToast === 'function') {
+            AF.utils.showToast(text, 'error');
+            return;
+        }
+        if (window.LawPortal && typeof window.LawPortal.alert === 'function') {
+            window.LawPortal.alert({ icon: 'error', title: 'Validation', text: text });
+            return;
+        }
+        alert(text);
+    }
+
+    function normalizeYearInput(val) {
+        return String(val != null ? val : '').replace(/\D/g, '').slice(0, 4);
+    }
+
+    function normalizeMarksInput(val) {
+        let s = String(val != null ? val : '').replace(/\D/g, '').slice(0, 3);
+        if (s !== '' && parseInt(s, 10) > 100) {
+            s = '100';
+        }
+        return s;
+    }
+
+    function normalizeMarksForDisplay(val) {
         const s = trimVal(val);
-        if (!s) return null;
-        const iso = s.match(/^(\d{4})-\d{2}-\d{2}/);
-        if (iso) return parseInt(iso[1], 10);
-        const yearOnly = s.match(/^(\d{4})$/);
-        if (yearOnly) return parseInt(yearOnly[1], 10);
-        const d = new Date(s);
-        if (!isNaN(d.getTime())) return d.getFullYear();
-        return null;
+        if (!s) return '';
+        return normalizeMarksInput(s);
+    }
+
+    function parseYearOfPassing(val) {
+        const s = normalizeYearInput(trimVal(val));
+        if (!/^\d{4}$/.test(s)) return null;
+        return parseInt(s, 10);
     }
 
     function isValidMarks(val) {
-        const n = parseFloat(String(val || '').replace(/[^\d.]/g, ''));
-        return !isNaN(n) && n >= 0 && n <= 100;
+        const s = normalizeMarksInput(trimVal(val));
+        if (!s || !/^\d{1,3}$/.test(s)) return false;
+        const n = parseInt(s, 10);
+        return n >= 0 && n <= 100;
+    }
+
+    function markFieldInvalid(input, invalid) {
+        if (!input) return;
+        input.classList.toggle('is-invalid', !!invalid);
+    }
+
+    function validateYearInput(input, showToastOnError) {
+        if (!input) return true;
+        const currentYear = new Date().getFullYear();
+        const raw = normalizeYearInput(input.value);
+        if (input.value !== raw) {
+            input.value = raw;
+        }
+        if (!raw) {
+            markFieldInvalid(input, true);
+            if (showToastOnError) {
+                showTab2Toast('Please enter the year of passing (4 digits, e.g. 2018).');
+            }
+            return false;
+        }
+        if (raw.length < 4) {
+            markFieldInvalid(input, true);
+            if (showToastOnError) {
+                showTab2Toast('Year of passing must be exactly 4 digits (e.g. 2018).');
+            }
+            return false;
+        }
+        const year = parseInt(raw, 10);
+        const invalid = year < 1950 || year > currentYear;
+        markFieldInvalid(input, invalid);
+        if (invalid && showToastOnError) {
+            showTab2Toast('Year of passing must be between 1950 and ' + currentYear + '.');
+        }
+        return !invalid;
+    }
+
+    function validateMarksInput(input, showToastOnError) {
+        if (!input) return true;
+        const raw = normalizeMarksInput(input.value);
+        if (input.value !== raw) {
+            input.value = raw;
+        }
+        const invalid = !isValidMarks(raw);
+        markFieldInvalid(input, invalid);
+        if (invalid && showToastOnError) {
+            if (!raw) {
+                showTab2Toast('Please enter marks (0 to 100, up to 3 digits).');
+            } else {
+                showTab2Toast('Marks must be a whole number from 0 to 100.');
+            }
+        }
+        return !invalid;
+    }
+
+    function bindTab2FieldValidation(container) {
+        if (!container || container.getAttribute('data-field-validation-bound') === '1') {
+            return;
+        }
+        container.setAttribute('data-field-validation-bound', '1');
+        container.addEventListener('blur', function (e) {
+            const t = e.target;
+            if (!t || !t.classList) return;
+            if (t.classList.contains('edu-year') || t.classList.contains('add-year')) {
+                validateYearInput(t, true);
+            } else if (t.classList.contains('edu-perc') || t.classList.contains('add-perc')) {
+                validateMarksInput(t, true);
+            }
+        }, true);
+        container.addEventListener('input', function (e) {
+            const t = e.target;
+            if (!t || !t.classList) return;
+            if (t.classList.contains('edu-year') || t.classList.contains('add-year')) {
+                const v = normalizeYearInput(t.value);
+                if (t.value !== v) t.value = v;
+                markFieldInvalid(t, false);
+            } else if (t.classList.contains('edu-perc') || t.classList.contains('add-perc')) {
+                const v = normalizeMarksInput(t.value);
+                if (t.value !== v) t.value = v;
+                markFieldInvalid(t, false);
+            }
+        });
+        container.addEventListener('keypress', function (e) {
+            const t = e.target;
+            if (!t || !t.classList) return;
+            if (t.classList.contains('edu-year') || t.classList.contains('add-year')
+                || t.classList.contains('edu-perc') || t.classList.contains('add-perc')) {
+                if (e.key && e.key.length === 1 && !/\d/.test(e.key)) {
+                    e.preventDefault();
+                }
+            }
+        });
+    }
+
+    function deleteSavedEducationRow(removed, rowEl) {
+        const educationId = parseInt(removed && removed.educationId, 10)
+            || parseInt(rowEl && rowEl.getAttribute('data-education-id'), 10)
+            || 0;
+        if (educationId > 0 && AF.api && typeof AF.api.deleteEducationRecord === 'function') {
+            AF.api.deleteEducationRecord(educationId).catch(function (err) {
+                showTab2Toast(err && err.message ? err.message : 'Failed to delete educational qualification on server.');
+            });
+        }
+    }
+
+    function deleteSavedAdditionalRow(removed, rowEl) {
+        const additionalId = parseInt(removed && removed.additionalId, 10)
+            || parseInt(rowEl && rowEl.getAttribute('data-additional-id'), 10)
+            || 0;
+        if (additionalId > 0 && AF.api && typeof AF.api.deleteAdditionalQualificationRecord === 'function') {
+            AF.api.deleteAdditionalQualificationRecord(additionalId).catch(function (err) {
+                showTab2Toast(err && err.message ? err.message : 'Failed to delete additional qualification on server.');
+            });
+        }
+    }
+
+    /**
+     * Remove one Tab 2 row (education or additional). UI updates immediately; server delete runs in background.
+     */
+    function removeRow(type, idx, btn) {
+        const index = parseInt(idx, 10);
+        if (isNaN(index) || index < 0) {
+            return false;
+        }
+
+        const rowEl = btn && btn.closest ? btn.closest('.list-item') : null;
+
+        if (type === 'edu') {
+            snapshotEduFilesFromDom();
+            syncEdu();
+            const items = AF.state.eduItems || [];
+            if (index >= items.length) {
+                return false;
+            }
+            const removed = items[index];
+            items.splice(index, 1);
+            if (AF.lists && typeof AF.lists.reindexFilePreviewsAfterRemove === 'function') {
+                AF.lists.reindexFilePreviewsAfterRemove('edu', index);
+            }
+            renderEdu();
+            deleteSavedEducationRow(removed, rowEl);
+            return true;
+        }
+
+        if (type === 'add') {
+            snapshotAdditionalFilesFromDom();
+            syncAdditional();
+            const items = AF.state.additionalItems || [];
+            if (index >= items.length) {
+                return false;
+            }
+            const removed = items[index];
+            items.splice(index, 1);
+            if (AF.lists && typeof AF.lists.reindexFilePreviewsAfterRemove === 'function') {
+                AF.lists.reindexFilePreviewsAfterRemove('add', index);
+            }
+            renderAdditional();
+            deleteSavedAdditionalRow(removed, rowEl);
+            return true;
+        }
+
+        return false;
     }
 
     function hasEduCertificate(item, idx) {
@@ -345,17 +656,16 @@
         syncEdu();
         syncAdditional();
 
-        const applicantId = AF.api && typeof AF.api.requireApplicantId === 'function'
-            ? parseInt(sessionStorage.getItem('applicantId'), 10)
-            : 0;
+        const applicantId = parseInt(sessionStorage.getItem('applicantId'), 10);
+
         if (!applicantId) {
-            alert('Applicant ID is missing. Please log in again.');
+            showTab2Toast('Applicant ID is missing. Please log in again.');
             return false;
         }
 
         const eduItems = AF.state.eduItems || [];
         if (!eduItems.length) {
-            alert('Please add at least one educational qualification.');
+            showTab2Toast('Please add at least one educational qualification.');
             return false;
         }
 
@@ -366,49 +676,59 @@
             const rowLabel = 'Educational qualification #' + (i + 1);
 
             if (!trimVal(item.exam)) {
-                alert(rowLabel + ': Please enter the examination passed.');
+                showTab2Toast(rowLabel + ': Please enter the examination passed.');
                 scrollToEduRow(i);
                 return false;
             }
 
+            if (!trimVal(item.year)) {
+                showTab2Toast(rowLabel + ': Please enter the year of passing (4 digits).');
+                scrollToEduRow(i);
+                return false;
+            }
             const year = parseYearOfPassing(item.year);
             if (year === null) {
-                alert(rowLabel + ': Please enter a valid year of passing.');
+                showTab2Toast(rowLabel + ': Year of passing must be exactly 4 digits (e.g. 2018).');
                 scrollToEduRow(i);
                 return false;
             }
             if (year < 1950 || year > currentYear) {
-                alert(rowLabel + ': Year of passing must be between 1950 and ' + currentYear + '.');
+                showTab2Toast(rowLabel + ': Year of passing must be between 1950 and ' + currentYear + '.');
                 scrollToEduRow(i);
                 return false;
             }
 
             if (!trimVal(item.board)) {
-                alert(rowLabel + ': Please enter the university / board.');
+                showTab2Toast(rowLabel + ': Please enter the board / university.');
                 scrollToEduRow(i);
                 return false;
             }
 
             if (!trimVal(item.institution)) {
-                alert(rowLabel + ': Please enter the institution name.');
+                showTab2Toast(rowLabel + ': Please enter the institution name.');
                 scrollToEduRow(i);
                 return false;
             }
 
             if (!trimVal(item.special)) {
-                alert(rowLabel + ': Please enter the main subject / specialization.');
+                showTab2Toast(rowLabel + ': Please enter the main subject / specialization.');
                 scrollToEduRow(i);
                 return false;
             }
 
+            if (!trimVal(item.percentage)) {
+                showTab2Toast(rowLabel + ': Please enter marks (0 to 100).');
+                scrollToEduRow(i);
+                return false;
+            }
             if (!isValidMarks(item.percentage)) {
-                alert(rowLabel + ': Please enter marks between 0 and 100.');
+                showTab2Toast(rowLabel + ': Marks must be a whole number from 0 to 100 (up to 3 digits).');
                 scrollToEduRow(i);
                 return false;
             }
 
             if (!hasEduCertificate(item, i)) {
-                alert(rowLabel + ': Please upload the certificate (PDF, DOC, or DOCX).');
+                showTab2Toast(rowLabel + ': Please upload the certificate (JPG, PNG, or PDF, max 5 MB).');
                 scrollToEduRow(i);
                 return false;
             }
@@ -424,49 +744,59 @@
             const addLabel = 'Additional qualification #' + (j + 1);
 
             if (!trimVal(add.exam)) {
-                alert(addLabel + ': Please enter the examination passed.');
+                showTab2Toast(addLabel + ': Please enter the examination passed.');
                 scrollToAdditionalRow(j);
                 return false;
             }
 
+            if (!trimVal(add.year)) {
+                showTab2Toast(addLabel + ': Please enter the year of passing (4 digits).');
+                scrollToAdditionalRow(j);
+                return false;
+            }
             const addYear = parseYearOfPassing(add.year);
             if (addYear === null) {
-                alert(addLabel + ': Please enter a valid year of passing.');
+                showTab2Toast(addLabel + ': Year of passing must be exactly 4 digits (e.g. 2018).');
                 scrollToAdditionalRow(j);
                 return false;
             }
             if (addYear < 1950 || addYear > currentYear) {
-                alert(addLabel + ': Year of passing must be between 1950 and ' + currentYear + '.');
+                showTab2Toast(addLabel + ': Year of passing must be between 1950 and ' + currentYear + '.');
                 scrollToAdditionalRow(j);
                 return false;
             }
 
             if (!trimVal(add.board)) {
-                alert(addLabel + ': Please enter the board.');
+                showTab2Toast(addLabel + ': Please enter the board / university.');
                 scrollToAdditionalRow(j);
                 return false;
             }
 
             if (!trimVal(add.institution)) {
-                alert(addLabel + ': Please enter the institution name.');
+                showTab2Toast(addLabel + ': Please enter the institution name.');
                 scrollToAdditionalRow(j);
                 return false;
             }
 
             if (!trimVal(add.subject)) {
-                alert(addLabel + ': Please enter the subject.');
+                showTab2Toast(addLabel + ': Please enter the subject.');
                 scrollToAdditionalRow(j);
                 return false;
             }
 
+            if (!trimVal(add.percentage)) {
+                showTab2Toast(addLabel + ': Please enter marks (0 to 100).');
+                scrollToAdditionalRow(j);
+                return false;
+            }
             if (!isValidMarks(add.percentage)) {
-                alert(addLabel + ': Please enter marks between 0 and 100.');
+                showTab2Toast(addLabel + ': Marks must be a whole number from 0 to 100 (up to 3 digits).');
                 scrollToAdditionalRow(j);
                 return false;
             }
 
             if (!hasAdditionalCertificate(add, j)) {
-                alert(addLabel + ': Please upload the certificate (PDF, DOC, or DOCX).');
+                showTab2Toast(addLabel + ': Please upload the certificate (JPG, PNG, or PDF, max 5 MB).');
                 scrollToAdditionalRow(j);
                 return false;
             }
@@ -480,7 +810,13 @@
         initDone = true;
 
         initUploadHandlers();
-        initDefaultEduItems();
+        ensureDefaultEduItems();
+        renderEdu();
+        renderAdditional();
+
+        bindCompactUploadKeyboard(document.getElementById('eduListContainer'));
+        bindCompactUploadKeyboard(document.getElementById('additionalListContainer'));
+        bindTab2FieldValidation(document.getElementById('tab2'));
 
         const addEduBtn = document.getElementById('addEduBtn');
         if (addEduBtn) {
@@ -534,7 +870,7 @@
                 AF.nav.switchTab(3);
             })
             .catch(function (err) {
-                alert(err && err.message ? err.message : 'Failed to save qualifications. Please try again.');
+                showTab2Toast(err && err.message ? err.message : 'Failed to save qualifications. Please try again.');
             })
             .finally(function () {
                 tab2Saving = false;
@@ -553,6 +889,8 @@
         syncAdditional: syncAdditional,
         snapshotEduFilesFromDom: snapshotEduFilesFromDom,
         snapshotAdditionalFilesFromDom: snapshotAdditionalFilesFromDom,
-        validateStep2: validateStep2
+        validateStep2: validateStep2,
+        ensureDefaultEduItems: ensureDefaultEduItems,
+        removeRow: removeRow
     };
 })(window.ApplicationForm);

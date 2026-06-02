@@ -4,18 +4,21 @@
 (function ($, global) {
     'use strict';
 
-    localStorage.clear();
-    sessionStorage.clear();
-
     const MOBILE_REGEX = /^[6-9]\d{9}$/;
-    const ENROLMENT_REGEX = /^[A-Z]{2}\/[0-9]{1,5}\/[0-9]{2,4}$/;
+    const ENROLMENT_REGEX = /^[A-Z]{2}\/[0-9]{5}\/[0-9]{4}$/;
     const OTP_TIMER_SECONDS = 300;
 
     let loginContext = null;
     let otpTimer = null;
     let otpCountdown = OTP_TIMER_SECONDS;
+    let otpModal = null;
 
-    const otpModal = new bootstrap.Modal(document.getElementById('otpModal'));
+    function redirectIfAlreadyLoggedIn() {
+        if (global.AppData && typeof global.AppData.redirectIfAuthenticated === 'function') {
+            return global.AppData.redirectIfAuthenticated();
+        }
+        return false;
+    }
 
     function fieldVal(id) {
         const el = document.getElementById(id);
@@ -121,6 +124,9 @@
     }
 
     function openOtpModal() {
+        if (!otpModal) {
+            return;
+        }
         resetOtpBoxes();
         startOtpTimer();
         otpModal.show();
@@ -147,6 +153,15 @@
     }
 
     $(function () {
+        if (redirectIfAlreadyLoggedIn()) {
+            return;
+        }
+
+        const otpModalEl = document.getElementById('otpModal');
+        if (otpModalEl) {
+            otpModal = new bootstrap.Modal(otpModalEl);
+        }
+
         if (typeof applyInputValidation === 'function') {
             applyInputValidation('enrolmentNumber', [11]);
             applyInputValidation('mobileNumber', [3]);
@@ -189,7 +204,7 @@
             $('#enrolmentNumber').val(enrollmentNo);
 
             if (!ENROLMENT_REGEX.test(enrollmentNo)) {
-                showError('Enter a valid Bar Council enrolment number (e.g. MS/1234/2015).');
+                showError('Enter a valid Bar Council enrolment number (e.g. MS/12345/2015).');
                 return;
             }
 
@@ -290,7 +305,9 @@
                 .done(function (res) {
                     if (res && res.ok && res.session) {
                         saveSession(res.session);
-                        otpModal.hide();
+                        if (otpModal) {
+                            otpModal.hide();
+                        }
                         const returnTo = new URLSearchParams(global.location.search).get('return');
                         global.location.href = returnTo || 'apply-post.html';
                         return;

@@ -44,6 +44,49 @@
         }
     }
 
+    function readVacancyCatalog() {
+        try {
+            const raw = global.sessionStorage.getItem('vacancyCatalog');
+            if (!raw) return [];
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function findCatalogRow(postId) {
+        const catalog = readVacancyCatalog();
+        const pid = String(postId || '');
+        return catalog.find(function (row) {
+            return String(row.id || row.postId || '') === pid;
+        }) || null;
+    }
+
+    function resolveCourtIdFromCatalog(row, benchKey) {
+        if (!row) {
+            return benchKey === 'madurai' ? 2 : 1;
+        }
+        if (benchKey === 'madurai') {
+            return parseInt(row.maduraiCourtId, 10) || 2;
+        }
+        return parseInt(row.madrasCourtId, 10)
+            || parseInt(row.courtId, 10)
+            || 1;
+    }
+
+    function resolveVacancyIdFromCatalog(row, benchKey) {
+        if (!row) return 0;
+        if (benchKey === 'madurai') {
+            return parseInt(row.maduraiVacancyId, 10)
+                || parseInt(row.vacancyId, 10)
+                || 0;
+        }
+        return parseInt(row.madrasVacancyId, 10)
+            || parseInt(row.vacancyId, 10)
+            || 0;
+    }
+
     function normalizeSelection(item) {
         if (!item || typeof item !== 'object') return null;
         const postId = String(item.postId || item.post_id || '');
@@ -51,14 +94,42 @@
             || (item.courtBench === BENCH_MADURAI ? 'madurai' : 'madras');
         const jobId = item.jobId || buildJobId(postId, benchKey);
         const parsed = parseJobId(jobId);
+        const catalogRow = findCatalogRow(parsed.postId || postId);
+        const effectiveBench = parsed.benchKey || benchKey;
+
+        let vacancyId = parseInt(item.vacancyId || item.vacancy_id, 10);
+        if (isNaN(vacancyId) || vacancyId <= 0) {
+            vacancyId = resolveVacancyIdFromCatalog(catalogRow, effectiveBench);
+        }
+
+        let courtId = parseInt(item.courtId || item.court_id, 10);
+        if (isNaN(courtId) || courtId <= 0) {
+            courtId = resolveCourtIdFromCatalog(catalogRow, effectiveBench);
+        }
+
+        let postName = String(item.postName || item.post_name || '');
+        if (!postName && catalogRow) {
+            postName = String(catalogRow.postName || '');
+        }
 
         return {
             postId: parsed.postId || postId,
-            postName: String(item.postName || item.post_name || ''),
+            postName: postName,
             benchKey: parsed.benchKey,
             jobId: parsed.jobId,
-            courtBench: item.courtBench || parsed.courtBench
+            courtBench: item.courtBench || parsed.courtBench,
+            vacancyId: vacancyId,
+            courtId: courtId
         };
+    }
+
+    function enrichSelection(item) {
+        return normalizeSelection(item);
+    }
+
+    function enrichSelections(selections) {
+        if (!Array.isArray(selections)) return [];
+        return selections.map(enrichSelection).filter(Boolean);
     }
 
     function groupSelectionsByPost(selections) {
@@ -97,14 +168,36 @@
         });
     }
 
-    function formatPostLine(postName, jobIds) {
+    function formatPostLine(postName, jobIds, courtBenches) {
         const name = postName || 'Post';
-        return name + ' : ' + jobIds.join(', ');
+        const ids = Array.isArray(jobIds) ? jobIds.join(', ') : String(jobIds || '');
+        if (Array.isArray(courtBenches) && courtBenches.length > 1) {
+            return name + ' (' + courtBenches.join(', ') + ') : ' + ids;
+        }
+        return name + ' : ' + ids;
+    }
+
+    function formatSelectionLine(sel) {
+        const normalized = normalizeSelection(sel);
+        if (!normalized) return '';
+        const name = normalized.postName || ('Post ' + normalized.postId);
+        return name + ' — ' + (normalized.courtBench || '') + ' (' + normalized.jobId + ')';
     }
 
     function formatBannerLines(selections) {
-        return groupSelectionsByPost(selections).map(function (g) {
-            return formatPostLine(g.postName, g.jobIds);
+        return groupSelectionsByPost(enrichSelections(selections)).map(function (g) {
+            const benches = selections
+                .filter(function (item) {
+                    const sel = normalizeSelection(item);
+                    return sel && String(sel.postId) === String(g.postId);
+                })
+                .map(function (item) {
+                    return normalizeSelection(item).courtBench;
+                })
+                .filter(function (bench, idx, arr) {
+                    return bench && arr.indexOf(bench) === idx;
+                });
+            return formatPostLine(g.postName, g.jobIds, benches);
         });
     }
 
@@ -121,6 +214,104 @@
         }).join(',');
     }
 
+    /**
+     * Keep only selections matching job id(s), e.g. "5A" from submitted Application ID link.
+     * @param {Array} selections
+     * @param {string|string[]} jobIds
+     */
+    function filterSelectionsByJobIds(selections, jobIds) {
+        const ids = (Array.isArray(jobIds) ? jobIds : String(jobIds || '').split(','))
+            .map(function (s) { return String(s).trim().toUpperCase(); })
+            .filter(Boolean);
+        if (!ids.length) {
+            return enrichSelections(selections);
+        }
+        const enriched = enrichSelections(selections || []);
+        const filtered = enriched.filter(function (sel) {
+            return sel && ids.indexOf(String(sel.jobId).toUpperCase()) !== -1;
+        });
+        if (filtered.length) {
+            return filtered;
+        }
+        return ids.map(function (id) {
+            return enrichSelection({ jobId: id });
+        }).filter(Boolean);
+    }
+
+    /** Parse DB value e.g. "1a,3b,4a" into selection objects */
+    function parseSelectedCheckboxes(raw) {
+        const str = String(raw || '').trim();
+        if (!str) return [];
+
+        return str.split(',').map(function (part) {
+            const token = String(part || '').trim().toLowerCase();
+            const match = token.match(/^(\d+)([ab])$/);
+            if (!match) return null;
+
+            const postId = match[1];
+            const benchKey = match[2] === 'b' ? 'madurai' : 'madras';
+
+            return normalizeSelection({
+                postId: postId,
+                benchKey: benchKey,
+                jobId: buildJobId(postId, benchKey)
+            });
+        }).filter(Boolean);
+    }
+
+    function isSubmittedCheckboxes(raw) {
+        return String(raw || '').trim().length > 0;
+    }
+
+    /** Display ID e.g. 9876543210-1A (mobile + job selection code). */
+    function buildApplicationNo(mobile, jobId) {
+        const digits = String(mobile || '').replace(/\D/g, '');
+        const jid = String(jobId || '').trim().toUpperCase();
+        if (!jid) {
+            return digits;
+        }
+        if (!digits) {
+            return jid;
+        }
+        return digits + '-' + jid;
+    }
+
+    function applicationIdsForPost(postId, selections, mobile) {
+        const pid = String(postId || '');
+        const list = [];
+        const seen = {};
+
+        (selections || []).forEach(function (item) {
+            const sel = normalizeSelection(item);
+            if (!sel || String(sel.postId) !== pid) {
+                return;
+            }
+            const jobId = String(sel.jobId || '').toUpperCase();
+            if (!jobId || seen[jobId]) {
+                return;
+            }
+            seen[jobId] = true;
+            list.push({
+                jobId: jobId,
+                applicationNo: buildApplicationNo(mobile, jobId)
+            });
+        });
+
+        list.sort(function (a, b) {
+            return a.jobId.localeCompare(b.jobId, undefined, { numeric: true });
+        });
+
+        return list;
+    }
+
+    function benchToCourtCode(benchKey) {
+        return String(benchKey || '').toLowerCase() === 'madurai' ? 'b' : 'a';
+    }
+
+    function courtCodeToBench(courtCode) {
+        return String(courtCode || '').toLowerCase() === 'b' ? 'madurai' : 'madras';
+    }
+
     global.JobSelection = {
         BENCH_MADRAS: BENCH_MADRAS,
         BENCH_MADURAI: BENCH_MADURAI,
@@ -128,9 +319,20 @@
         parseJobId: parseJobId,
         readStoredVacancies: readStoredVacancies,
         normalizeSelection: normalizeSelection,
+        enrichSelection: enrichSelection,
+        enrichSelections: enrichSelections,
+        readVacancyCatalog: readVacancyCatalog,
         groupSelectionsByPost: groupSelectionsByPost,
         formatPostLine: formatPostLine,
+        formatSelectionLine: formatSelectionLine,
         formatBannerLines: formatBannerLines,
-        joinJobIds: joinJobIds
+        filterSelectionsByJobIds: filterSelectionsByJobIds,
+        joinJobIds: joinJobIds,
+        parseSelectedCheckboxes: parseSelectedCheckboxes,
+        isSubmittedCheckboxes: isSubmittedCheckboxes,
+        buildApplicationNo: buildApplicationNo,
+        applicationIdsForPost: applicationIdsForPost,
+        benchToCourtCode: benchToCourtCode,
+        courtCodeToBench: courtCodeToBench
     };
 })(typeof window !== 'undefined' ? window : global);

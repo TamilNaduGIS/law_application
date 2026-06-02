@@ -1,111 +1,122 @@
 ﻿<!DOCTYPE html>
 <!-- saved from url=(0043)http://localhost:8080/applications/register -->
 <html lang="en" katalonextensionid="ljdobmomdgdljniojadhoplhkpialdid">
-  <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Law Officers Application Portal</title>
-    <!-- Bootstrap + Icons -->
-    <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
-    <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    <link rel="stylesheet" href="assets/css/sign-up.css">
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-    <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
-    <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
-    <style>
-        .mandatory {
-            color: red;
-            font-weight: bold;
-        }
-        .mandatory-text {
-            color: #ff7575 !important;
-            font-weight: bold !important;
-            margin-bottom: 10px;
-        }
-    </style>
-  </head>
-  <body>
-    <header class="premium-topbar">
-      <!-- LEFT -->
-      <div class="topbar-left">
-        <!-- TN LOGO -->
-        <div class="tn-logo-wrapper">
-          <a href="#"><img src="assets/img/tn_logo.png" alt="Tamil Nadu Logo" class="tn-logo"></a>
+
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Law Officers Application Portal</title>
+  <!-- Bootstrap + Icons -->
+  <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
+  <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/sign-up.css">
+  <link rel="stylesheet" href="assets/css/common.css?v=20250601a">
+  <!-- <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet"> -->
+   <link href="assets/vendor/sweet-alert/sweetalert2.min.css" rel="stylesheet">
+
+  <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
+  <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
+  <style>
+    .mandatory {
+      color: red;
+      font-weight: bold;
+    }
+
+    .mandatory-text {
+      color: #ff7575 !important;
+      font-weight: bold !important;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="errorMsg" class="error-msg signup-error-toast" role="alert" aria-live="polite"></div>
+  <header class="premium-topbar">
+    <!-- LEFT -->
+    <div class="topbar-left">
+      <!-- TN LOGO -->
+      <div class="tn-logo-wrapper">
+        <a href="#"><img src="assets/img/tn_logo.png" alt="Tamil Nadu Logo" class="tn-logo"></a>
+      </div>
+      <!-- PROJECT INFO -->
+      <div class="project-info">
+        <div class="gov-title">
+          Government of Tamil Nadu
         </div>
-        <!-- PROJECT INFO -->
-        <div class="project-info">
-          <div class="gov-title">
-            Government of Tamil Nadu
-          </div>
-          <div class="project-title">
-            <i class="bi bi-bank2"></i>
-            Law Officers Application Portal
-          </div>
+        <div class="project-title">
+          <i class="bi bi-bank2"></i>
+          Law Officers Application Portal
         </div>
       </div>
-      <!-- RIGHT --> 
-      <button class="premium-login-btn" onclick="window.location.href='login.html'">
+    </div>
+    <!-- RIGHT -->
+    <button class="premium-login-btn" onclick="window.location.href='login.html'">
       <span class="login-btn-glow"></span>
       <span class="login-btn-content">
-      <span class="login-icon-wrap">
-      <i class="bi bi-shield-lock-fill"></i>
+        <span class="login-icon-wrap">
+          <i class="bi bi-shield-lock-fill"></i>
+        </span>
+        <span class="login-text-wrap">
+          <span class="login-main-text">
+            Login
+          </span>
+          <span class="login-sub-text">
+            Secure Portal Access
+          </span>
+        </span>
+        <span class="login-arrow">
+          <i class="bi bi-arrow-right-circle-fill"></i>
+        </span>
       </span>
-      <span class="login-text-wrap">
-      <span class="login-main-text">
-      Login
-      </span>
-      <span class="login-sub-text">
-      Secure Portal Access
-      </span>
-      </span>
-      <span class="login-arrow">
-      <i class="bi bi-arrow-right-circle-fill"></i>
-      </span>
-      </span>
-      </button>
-    </header>
-    <section class="container-fluid main-section whitebg">
-      <div class="wrap container">
-        <div class="card">
-          <div class="card-header">
-            <h1>Create Applicant Account</h1>
-            <p class="text-white">Register to apply for Law Officer positions — High Court of Madras</p>
-            <p class="mandatory-text">All fields marked with * are mandatory</p>
-          </div>
-          <div class="card-body">
-            <div id="errorMsg" class="error-msg" role="alert" aria-live="polite"></div>
-            <form method="post" novalidate id="signupForm" action="#">
-              <div style="display:none;"><input type="hidden" name="_csrfToken" value="gyyfRdJaqdStuGmIdB6csRAsbZt6DuTb9Q5VDXFwWTpiDYzipdGGY4kSit+MRCzLjplv1KYqCokTGnren3aj5GsA5ZFLQypXcUgJrkk30O+RP2E0ExU4WFJr7dXHsuMAuSO9uuh2FPrq+grjkRxu6w=="></div>
-              <div class="grid">
-                <div class="field">
-                  <label class="reqd">Name of the Advocate <span class="mandatory">*</span></label>
-                  <input type="text" id="advocateName" name="advocateName" required="">
+    </button>
+  </header>
+  <section class="container-fluid main-section whitebg">
+    <div class="wrap container">
+      <div class="card">
+        <div class="card-header">
+          <h1>Create Applicant Account</h1>
+          <p class="text-white">Register to apply for Law Officer positions — High Court of Madras</p>
+          <p class="mandatory-text">All fields marked with * are mandatory</p>
+        </div>
+        <div class="card-body">
+          <div id="errorMsg" class="error-msg" role="alert" aria-live="polite"></div>
+          <form method="post" novalidate id="signupForm" action="#">
+            <div style="display:none;"><input type="hidden" name="_csrfToken"
+                value="gyyfRdJaqdStuGmIdB6csRAsbZt6DuTb9Q5VDXFwWTpiDYzipdGGY4kSit+MRCzLjplv1KYqCokTGnren3aj5GsA5ZFLQypXcUgJrkk30O+RP2E0ExU4WFJr7dXHsuMAuSO9uuh2FPrq+grjkRxu6w==">
+            </div>
+            <div class="grid">
+              <div class="field">
+                <label class="reqd">Name of the Advocate <span class="mandatory">*</span></label>
+                <input type="text" id="advocateName" name="advocateName" required="">
+              </div>
+              <div class="field">
+                <label>Father's Name <span class="mandatory">*</span></label>
+                <input type="text" id="fatherName" name="fathername">
+              </div>
+              <div class="field">
+                <div class="field-row mb-2">
+                  <label class="form-label reqd">
+                    Bar Council Enrolment No. (e.g., MS/12345/2015) <span class="mandatory">*</span>
+                  </label>
+                  <input type="text" id="enrolmentNo" name="enrolmentno" required="" maxlength="13"
+                    placeholder="MS/12345/2015" pattern="[A-Za-z]{2}/[0-9]{5}/[0-9]{4}" title="Format: MS/12345/2015" autocomplete="off">
                 </div>
-                <div class="field">
-                  <label>Father's Name <span class="mandatory">*</span></label>
-                  <input type="text" id="fatherName" name="fathername">
-                </div>
-                <div class="field">
-                  <div class="field-row mb-2">
-                    <label class="form-label reqd">
-                    Bar Council Enrolment No. (e.g., MS/12345/01) <span class="mandatory">*</span>
-                    </label>
-                    <input type="text" id="enrolmentNo" name="enrolmentno" required="">
-                  </div>
-                </div>
-                <div class="col-md-6 field">
-                  <label>Enrolment Date <span class="mandatory">*</span></label>
-                  <input type="date" id="enrolmentDate" name="enrolmentdate" required>
-                </div>
-                <div class="col-md-6 field">
-                  <label>PAN Number <span class="mandatory">*</span></label>
-                  <input type="text" id="pan" name="pan" maxlength="10" required placeholder="ABCDE1234F" autocomplete="off" title="Format: ABCDE1234F">
-                </div>
-                <div class="col-md-6 field">
-                  <label>Total Years of Practice <span class="mandatory">*</span></label>
-                  <input type="number" id="expyears" name="expyears" min="0" max="50" step="0.01">
-                </div>
-                <!-- <div class="col-md-6 field">
+              </div>
+              <div class="col-md-6 field">
+                <label>Enrolment Date <span class="mandatory">*</span></label>
+                <input type="date" id="enrolmentDate" name="enrolmentdate" required>
+              </div>
+              <div class="col-md-6 field">
+                <label>PAN Number <span class="mandatory">*</span></label>
+                <input type="text" id="pan" name="pan" maxlength="10" required placeholder="ABCDE1234F"
+                  autocomplete="off" title="Format: ABCDE1234F">
+              </div>
+              <div class="col-md-6 field">
+                <label>Total Years of Practice <span class="mandatory">*</span></label>
+                <input type="number" id="expyears" name="expyears" min="0" max="50" step="0.01">
+              </div>
+              <!-- <div class="col-md-6 field">
                   <label class="reqd">
                   Mobile Number
                   <span class="sendotp" id="otpbtn">
@@ -124,39 +135,33 @@
                   </label>
                   <input type="number" id="otp" minlength="4" maxlength="4" required="">
                   </div> -->
-                <!-- MOBILE + OTP UX FLOW -->
-                <div class="col-md-6 field otp-flow-wrapper">
-                  <!-- MOBILE LABEL -->
-                  <label class="reqd otp-label">
+              <!-- MOBILE + OTP UX FLOW -->
+              <div class="col-md-6 field otp-flow-wrapper">
+                <!-- MOBILE LABEL -->
+                <label class="reqd otp-label">
                   Mobile Number <span class="mandatory">*</span>
-                  </label>
-                  <div class="mobile-input-group">
-                    <div class="mobile-input-wrap">
-                      <i class="bi bi-phone-fill"></i>
-                      <input
-                        type="tel"
-                        id="mobile"
-                        name="mobile"
-                        maxlength="10"
-                        placeholder="Enter mobile number"
-                        required
-                        >
-                    </div>
-                    <button type="button" class="send-otp-btn" id="sendOtp">
-                        <i class="bi bi-shield-check"></i>
-                        Verify
-                    </button>
-                  </div> 
+                </label>
+                <div class="mobile-input-group">
+                  <div class="mobile-input-wrap">
+                    <i class="bi bi-phone-fill"></i>
+                    <input type="tel" id="mobile" name="mobile" maxlength="10" placeholder="Enter mobile number"
+                      required>
+                  </div>
+                  <button type="button" class="send-otp-btn" id="sendOtp">
+                    <i class="bi bi-shield-check"></i>
+                    Verify
+                  </button>
                 </div>
-                <div class="col-md-6 field">
-                  <label>Phone Number</label>
-                  <input type="text" id="phone" name="phone" maxlength="30">
-                </div>
-                <div class="col-md-6 field">
-                  <label class="reqd">Email ID <span class="mandatory">*</span></label>
-                  <input type="email" id="email" name="email" maxlength="30" required="">
-                </div>   
-                <!-- <div class="col-md-6 field">
+              </div>
+              <div class="col-md-6 field">
+                <label>Phone Number</label>
+                <input type="text" id="phone" name="phone" maxlength="30">
+              </div>
+              <div class="col-md-6 field">
+                <label class="reqd">Email ID <span class="mandatory">*</span></label>
+                <input type="email" id="email" name="email" maxlength="30" required="">
+              </div>
+              <!-- <div class="col-md-6 field">
                   <label class="reqd">Password</label>
                   <input type="password" id="password" name="passwd" minlength="6" required="">
                 </div>
@@ -164,36 +169,48 @@
                   <label class="reqd">Confirm Password</label>
                   <input type="password" id="confirmPassword" minlength="6" required="">
                 </div> -->
-                <div class="col-md-6 field">
-                  <label class="reqd">Gender <span class="mandatory">*</span></label>
-                  <select id="gender" name="gender">
-                    <option value="M">Male</option>
-                    <option value="F">Female</option>
-                    <option value="O">Other <span class="mandatory">*</span></option>
-                  </select>
-                </div>
-                <div class="col-md-6 field">
-                  <label class="form-label">Marital Status <span class="mandatory">*</span></label>
-                  <select class="form-select" id="maritalStatus" name="maritalstatus">
-                    <option value="S">Single</option>
-                    <option value="M">Married</option>
-                    <option value="D">Divorced</option>
-                    <option value="W">Widowed</option>
-                  </select>
-                </div>
-                <div class="field">
-                  <label class="reqd">Date of Birth <span class="mandatory">*</span></label>
-                  <input type="date" id="dob" name="dob" required>
-                </div>
-                <div class="field">
-                  <label>Nationality <span class="mandatory">*</span></label>
-                  <input type="text" value="Indian" id="nationality" name="nationality" maxlength="30">
-                </div>
-                <div class="field">
-                  <label>Religion </label>
-                  <input type="text" id="religion" name="religion" maxlength="30">
-                </div>
-                <!-- <div class="field">
+              <div class="col-md-6 field">
+                <label class="reqd">Gender <span class="mandatory">*</span></label>
+                <select id="gender" name="gender">
+                  <option value="F">Female</option>
+                  <option value="M">Male</option>
+                  <option value="O">Other</option>
+                </select>
+              </div>
+              <div class="col-md-6 field">
+                <label class="form-label">Marital Status <span class="mandatory">*</span></label>
+                <select class="form-select" id="maritalStatus" name="maritalstatus">
+                  <option value="D">Divorced</option>
+                  <option value="M">Married</option>
+                  <option value="S">Single</option>
+                  <option value="W">Widowed</option>
+                </select>
+              </div>
+              <div class="field">
+                <label class="reqd">Date of Birth <span class="mandatory">*</span></label>
+                <input type="date" id="dob" name="dob" required>
+              </div>
+              <div class="field">
+                <label>Nationality <span class="mandatory">*</span></label>
+                <input type="text" value="Indian" id="nationality" name="nationality" maxlength="30">
+              </div>
+              <div class="field">
+                <label class="reqd">Religion <span class="mandatory">*</span></label>
+                <select id="religion" name="religion" required>
+                  <option value="">Select Religion</option>
+                  <option value="Buddhist">Buddhist</option>
+                  <option value="Christian">Christian</option>
+                  <option value="Hindu">Hindu</option>
+                  <option value="Jain">Jain</option>
+                  <option value="Muslim">Muslim</option>
+                  <option value="Not Stated">Not Stated</option>
+                  <option value="Others">Others</option>
+                  <option value="Parsi">Parsi</option>
+                  <option value="Sikh">Sikh</option>
+                  <option value="Zoroastrian">Zoroastrian</option>
+                </select>
+              </div>
+              <!-- <div class="field">
                   <label>Community</label>
                   
                   
@@ -206,8 +223,8 @@
                   </select>
                   
                   </div> -->
-                <!-- COMMUNITY -->
-                <!-- <div class="field">
+              <!-- COMMUNITY -->
+              <!-- <div class="field">
                   <label class="reqd">Community</label>
                   
                   <select id="community" name="community" required>
@@ -220,224 +237,168 @@
                       <option value="BC Muslim">BC Muslim</option>
                   </select>
                   </div> -->
-                <!-- CASTE -->
-                <!-- <div class="field">
+              <!-- CASTE -->
+              <!-- <div class="field">
                   <label class="reqd">Caste</label>
                   
                   <select id="caste" name="caste" required>
                       <option value="">Select Caste</option>
                   </select>
                   </div> -->
-                <!-- COMMUNITY -->
-                <div class="field">
-                  <label class="reqd">
-                  Community
-                  </label>
-                  <select id="community" name="community" required>
-                    <option value="">
-                      Select Community
-                    </option>
-                    <option value="BC">BC</option>
-                    <option value="MBC">MBC</option>
-                    <option value="DNC/DNT">
-                      DNC / DNT
-                    </option>
-                    <option value="SC">SC</option>
-                    <option value="ST">ST</option>
-                    <option value="BC Muslim">
-                      BC Muslim
-                    </option>
-                  </select>
-                </div>
-                <!-- CASTE -->
-                <div class="field">
-                  <label class="reqd">
-                  Caste
-                  </label>
-                  <select id="caste" name="caste" required>
-                    <option value="">
-                      Select Caste
-                    </option>
-                  </select>
-                </div>
-                <!-- OTHER CASTE -->
-                <div
-                  class="field"
-                  id="otherCasteWrapper"
-                  style="display:none;">
-                  <label class="reqd">
+              <!-- COMMUNITY -->
+              <div class="field">
+                <label class="reqd">
+                  Community <span class="mandatory">*</span>
+                </label>
+                <select id="community" name="community" required>
+                  <option value="">Select Community</option>
+                  <option value="BC">BC</option>
+                  <option value="BC Muslim">BC Muslim</option>
+                  <option value="DNC/DNT">DNC / DNT</option>
+                  <option value="MBC">MBC</option>
+                  <option value="OC">OC</option>
+                  <option value="SC">SC</option>
+                  <option value="ST">ST</option>
+                </select>
+              </div>
+              <!-- CASTE -->
+              <div class="field">
+                <label class="reqd">
+                  Caste <span class="mandatory">*</span>
+                </label>
+                <select id="caste" name="caste" required>
+                  <option value="">
+                    Select Caste
+                  </option>
+                </select>
+              </div>
+              <!-- OTHER CASTE -->
+              <div class="field" id="otherCasteWrapper" style="display:none;">
+                <label class="reqd">
                   Enter Caste Name
-                  </label>
-                  <input
-                    type="text"
-                    id="otherCaste"
-                    name="otherCaste"
-                    placeholder="Enter caste name">
-                </div>
-                <div class="row-cols-1">
-                  <!-- <div class="col-lg-4">
+                </label>
+                <input type="text" id="otherCaste" name="otherCaste" placeholder="Enter caste name">
+              </div>
+              <div class="row-cols-1">
+                <!-- <div class="col-lg-4">
                     <img src="http://localhost:8080/applications/register">
                   </div> -->
-                  <div class="col-lg-12">
-                    <label>Enter Captcha <span class="mandatory">*</span></label>
-                    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
-                      <img id="captchaImage" src="" alt="CAPTCHA" title="Click to refresh" style="cursor:pointer;max-height:48px;border:1px solid #ccc;border-radius:4px;">
-                      <span class="text-muted small">Click image to refresh</span>
-                    </div>
-                    <input type="hidden" id="captchaToken" name="captchaToken">
-                    <input type="text" id="captcha" name="captcha" maxlength="10" placeholder="Enter characters shown" autocomplete="off">
+                <div class="col-lg-12">
+                  <label>Enter Captcha <span class="mandatory">*</span></label>
+                  <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <img id="captchaImage" src="" alt="CAPTCHA" title="Click to refresh"
+                      style="cursor:pointer;max-height:48px;border:1px solid #ccc;border-radius:4px;">
+                    <span class="text-muted small">Click image to refresh</span>
                   </div>
-                  <div class="col-lg-12 mt-3">
-                    
-                    <button id="btnlogin" class="register-btn" type="submit">
+                  <input type="hidden" id="captchaToken" name="captchaToken">
+                  <input type="text" id="captcha" name="captcha" maxlength="10" placeholder="Enter characters shown"
+                    autocomplete="off">
+                </div>
+                <div class="col-lg-12 mt-3">
+
+                  <button id="btnlogin" class="register-btn" type="submit">
                     <span class="btn-bg"></span>
                     <span class="btn-content">
-                    <span class="btn-icon">
-                    <i class="bi bi-shield-lock-fill"></i>
+                      <span class="btn-icon">
+                        <i class="bi bi-shield-lock-fill"></i>
+                      </span>
+                      <span class="btn-text">
+                        <span class="main-text">Register & Login</span>
+                        <span class="sub-text">Secure Portal Access</span>
+                      </span>
+                      <span class="arrow-icon">
+                        <i class="bi bi-arrow-right-short"></i>
+                      </span>
                     </span>
-                    <span class="btn-text">
-                    <span class="main-text">Register & Login</span>
-                    <span class="sub-text">Secure Portal Access</span>
-                    </span>
-                    <span class="arrow-icon">
-                    <i class="bi bi-arrow-right-short"></i>
-                    </span>
-                    </span>
-                    </button>
+                  </button>
 
 
 
-                    
-                  </div>
+
                 </div>
-                <!-- <div class="col-md-12 field">
+              </div>
+              <!-- <div class="col-md-12 field">
                   <p class="footer-link">Already registered? <a href="http://localhost:8080/applications/login">Login here</a> · <a href="http://localhost:8080/">Home</a></p>
                 </div> -->
-              </div>
-            </form>
-          </div>
+            </div>
+          </form>
         </div>
       </div>
-      <!-- OTP MODAL -->
-      <div class="otp-modal-overlay" id="otpModal">
-        <div class="otp-modal-box">
-          <!-- CLOSE -->
-          <button type="button" class="otp-close" id="closeOtpModal">
+    </div>
+    <!-- OTP MODAL -->
+    <div class="otp-modal-overlay" id="otpModal">
+      <div class="otp-modal-box">
+        <!-- CLOSE -->
+        <button type="button" class="otp-close" id="closeOtpModal">
           <i class="bi bi-x-lg"></i>
-          </button>
-          <!-- ICON -->
-          <div class="otp-modal-icon">
-            <i class="bi bi-shield-lock-fill"></i>
-          </div>
-          <!-- TITLE -->
-          <h3>OTP Verification</h3>
-          <p>
-            Enter the 6-digit OTP sent to
-            <span id="maskedMobile"></span>
-          </p>
-          <!-- TIMER -->
-          <div class="otp-timer" id="otpTimer">
-            <i class="bi bi-clock-history"></i>
-            <span id="countdown">05:00</span>
-          </div>
-          <!-- OTP BOXES -->
-          <div class="otp-boxes">
-            <input type="text" class="otp-input" maxlength="1">
-            <input type="text" class="otp-input" maxlength="1">
-            <input type="text" class="otp-input" maxlength="1">
-            <input type="text" class="otp-input" maxlength="1">
-            <input type="text" class="otp-input" maxlength="1">
-            <input type="text" class="otp-input" maxlength="1">
-          </div>
-          <!-- HIDDEN -->
-          <input type="hidden" id="otp">
-          <!-- VERIFY -->
-          <button type="button" class="verify-btn" id="verifyOtp">
+        </button>
+        <!-- ICON -->
+        <div class="otp-modal-icon">
+          <i class="bi bi-shield-lock-fill"></i>
+        </div>
+        <!-- TITLE -->
+        <h3>OTP Verification</h3>
+        <p>
+          Enter the 6-digit OTP sent to
+          <span id="maskedMobile"></span>
+        </p>
+        <!-- TIMER -->
+        <div class="otp-timer" id="otpTimer">
+          <i class="bi bi-clock-history"></i>
+          <span id="countdown">05:00</span>
+        </div>
+        <!-- OTP BOXES -->
+        <div class="otp-boxes">
+          <input type="text" class="otp-input" maxlength="1">
+          <input type="text" class="otp-input" maxlength="1">
+          <input type="text" class="otp-input" maxlength="1">
+          <input type="text" class="otp-input" maxlength="1">
+          <input type="text" class="otp-input" maxlength="1">
+          <input type="text" class="otp-input" maxlength="1">
+        </div>
+        <!-- HIDDEN -->
+        <input type="hidden" id="otp">
+        <!-- VERIFY -->
+        <button type="button" class="verify-btn" id="verifyOtp">
           <i class="bi bi-patch-check-fill"></i>
           Verify OTP
-          </button>
-          <!-- RESEND -->
-          <button type="button" class="resend-btn" id="resendOtp">
+        </button>
+        <!-- RESEND -->
+        <button type="button" class="resend-btn" id="resendOtp">
           <i class="bi bi-arrow-repeat"></i>
           Resend OTP
-          </button>
-          <!-- STATUS -->
-          <div class="otp-status success" id="status"></div>
-        </div>
+        </button>
+        <!-- STATUS -->
+        <div class="otp-status success" id="status"></div>
       </div>
-    </section>
-    
+    </div>
+  </section>
 
-    <footer class="premium-footer">
-      <!-- TOP -->
-      <div class="footer-top-area">
-        <!-- LEFT -->
-        <div class="footer-brand-area">
-          <div class="footer-logo-wrap">
-            <img src="assets/img/tn_logo.png" class="footer-tn-logo" alt="TN Logo">
-          </div>
-          <div class="footer-brand-content">
-            <div class="footer-gov-title">
-              Government of Tamil Nadu
-            </div>
-            <div class="footer-portal-title">
-              <i class="bi bi-bank2"></i>
-              Law Officers Recruitment Portal
-            </div>
-            <div class="footer-desc">
-              Official digital recruitment platform for Law Officers appointments,
-              managed under Government of Tamil Nadu standards and secure application workflow.
-            </div>
-          </div>
+  <footer class="premium-footer">
+    <!-- TOP -->
+    <div class="footer-top-area">
+      <!-- LEFT -->
+      <div class="footer-brand-area">
+        <div class="footer-logo-wrap">
+          <img src="assets/img/tn_logo.png" class="footer-tn-logo" alt="TN Logo">
         </div>
-        <!-- RIGHT -->
-        <div class="footer-right-grid">
-          <!-- VISITOR -->
-          <div class="footer-widget-card">
-            <div class="footer-widget-icon">
-              <i class="bi bi-people-fill"></i>
-            </div>
-            <div>
-              <div class="footer-widget-label">
-                Visitor Count
-              </div>
-              <div class="footer-widget-value" id="visitorCount">12,48,923</div>
-            </div>
+        <div class="footer-brand-content">
+          <div class="footer-gov-title">
+            Government of Tamil Nadu
           </div>
-          <!-- UPDATED -->
-          <div class="footer-widget-card">
-            <div class="footer-widget-icon blue">
-              <i class="bi bi-clock-history"></i>
-            </div>
-            <div>
-              <div class="footer-widget-label">
-                Last Updated
-              </div>
-              <div class="footer-widget-value small" id="lastUpdatedTime">29 May 2026, 06:31:12 pm</div>
-            </div>
+          <div class="footer-portal-title">
+            <i class="bi bi-bank2"></i>
+            Law Officers Application Portal
+          </div>
+          <div class="footer-desc">
+            Official digital application platform for Law Officers appointments,
+            managed under Government of Tamil Nadu standards and secure application workflow.
           </div>
         </div>
       </div>
-      <!-- MIDDLE -->
-      <div class="footer-middle-area">
-        <!-- QUICK LINKS -->
-        <div class="footer-links-section">
-          <div class="footer-section-title">
-            <i class="bi bi-grid-fill"></i>
-            Quick Links
-          </div>
-          <div class="footer-links-list">
-            <a href="#" class="footer-link-item">
-            <i class="bi bi-chevron-right"></i>
-            Download Notification
-            </a>
-            <a href="job-post.html" class="footer-link-item">
-            <i class="bi bi-chevron-right"></i>
-            Job Post
-            </a>
-          </div>
-        </div>
-        <!-- SECURITY -->
+      <!-- RIGHT -->
+      <div class="footer-right-grid">
+        <!-- VISITOR -->
         <div class="footer-links-section">
           <div class="footer-section-title">
             <i class="bi bi-shield-check"></i>
@@ -458,50 +419,40 @@
             </div>
           </div>
         </div>
-        <!-- SOCIAL -->
-        <div class="footer-links-section">
-          <div class="footer-section-title">
-            <i class="bi bi-share-fill"></i>
-            Social Media
-          </div>
-          <div class="social-icons-wrap">
-            <a href="#" class="social-icon">
-            <i class="bi bi-facebook"></i>
-            </a>
-            <a href="#" class="social-icon">
-            <i class="bi bi-twitter-x"></i>
-            </a>
-            <a href="#" class="social-icon">
-            <i class="bi bi-instagram"></i>
-            </a>
-            <a href="#" class="social-icon">
-            <i class="bi bi-youtube"></i>
-            </a>
-            <a href="#" class="social-icon">
-            <i class="bi bi-linkedin"></i>
-            </a>
-          </div>
-        </div>
+        <!-- UPDATED -->
+
       </div>
-      <!-- BOTTOM -->
-      <div class="footer-bottom-area">
-        <div class="footer-copyright">
-          <i class="bi bi-c-circle"></i>
-          Copyright 2026 TNeGA. All Rights Reserved.
-        </div>
-        <div class="footer-dev-text">
-          <i class="bi bi-code-slash"></i>
-          Designed &amp; Developed by TNeGA
-        </div>
+    </div>
+    <!-- MIDDLE -->
+
+    <!-- BOTTOM -->
+    <div class="footer-bottom-area">
+      <div class="footer-copyright">
+        <i class="bi bi-c-circle"></i>
+        Copyright 2026 TNeGA. All Rights Reserved.
       </div>
-    </footer>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-    <script src="assets/js/portal-alert.js"></script>
-    <script src="assets/js/api-config.js"></script>
-    <script src="assets/js/secure-api.js"></script>
-    <script src="assets/js/law-portal-api.js"></script>
-    <script src="assets/js/helper.js"></script>
-    <script src="assets/js/sign-up.js"></script>
-  </body>
+      <div class="footer-dev-text">
+        <i class="bi bi-code-slash"></i>
+        Designed &amp; Developed by TNeGA
+      </div>
+    </div>
+  </footer>
+
+  <!-- hashed--><!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
+  <!-- Local --><script src="assets/vendor/sweet-alert/sweetalert2 v11.26.25.js"></script>
+  <!-- hashed  --><!--<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script> -->
+  <!-- Local --><script src="assets/vendor/crypto/crypto_v4.4.1.js"></script>
+  <script src="assets/js/portal-alert.js"></script>
+  <script src="assets/js/api-config.js"></script>
+  <script src="assets/js/secure-api.js"></script>
+  <script src="assets/js/law-portal-api.js"></script>
+  <script src="assets/js/helper.js?v=20250601t"></script>
+  <script src="assets/js/sign-up.js?v=20250601v"></script>
+  <script>
+    document.getElementById('headerLoginBtn').addEventListener('click', function () {
+      AppData.navigateToLogin();
+    });
+  </script>
+</body>
+
 </html>

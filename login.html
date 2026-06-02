@@ -3,14 +3,15 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Applicant Login | Law Officers Recruitment</title>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>Applicant Login | Law Officers Application</title>
+    <link href="assets/fonts/poppins.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <!-- <link rel="stylesheet" href="font/bootstrap-icons.min.css"> -->
     <!-- Bootstrap + Icons -->
     <link href="assets/vendor/bootstrap-css/bootstrap.min.css" rel="stylesheet">
     <link href="assets/vendor/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/common.css?v=20250601a">
+    <link href="assets/vendor/sweet-alert/sweetalert2.min.css" rel="stylesheet">
     <style>
         .mandatory {
             color: red;
@@ -118,20 +119,32 @@
 .register-link:hover{
     text-decoration:underline;
 }
+
+html.auth-redirect-active body {
+        visibility: hidden;
+      }
     </style>
+    <script src="assets/js/app-data.js"></script>
+    <script>
+      (function () {
+        if (window.AppData && AppData.isLoggedIn()) {
+          document.documentElement.classList.add('auth-redirect-active');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div class="login-card">
       <div class="login-header">
         <h1>Applicant Login</h1>
-        <p>High Court of Madras — Law Officers Recruitment</p>
+        <p>High Court of Madras — Law Officers Application</p>
       </div>
       <div class="login-body">
         <div id="successMsg" class="success-msg"></div>
         <div id="errorMsg" class="error-msg"></div>
         <form id="loginForm" novalidate>
             <label for="enrolmentNumber">Bar Council Enrolment No. <span class="mandatory">*</span></label>
-            <input type="text" id="enrolmentNumber" placeholder="e.g. MS/1234/2015" required autocomplete="username">
+            <input type="text" id="enrolmentNumber" placeholder="MS/12345/2015" maxlength="13" pattern="[A-Za-z]{2}/[0-9]{5}/[0-9]{4}" title="Format: MS/12345/2015" required autocomplete="username">
             <label for="mobileNumber">Mobile Number <span class="mandatory">*</span></label>
             <input type="tel" id="mobileNumber" placeholder="Enter mobile number" maxlength="10" required>
             <button type="submit" class="btn-primary">Get OTP</button>
@@ -212,10 +225,12 @@
      <!-- JS -->
     <script src="assets/vendor/jquery/jquery-3.7.1.min.js"></script>
     <script src="assets/vendor/bootstrap-js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- hashed--><!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
+  <!-- Local --><script src="assets/vendor/sweet-alert/sweetalert2 v11.26.25.js"></script>
     <script src="assets/js/portal-alert.js"></script>
     <script src="assets/js/api-config.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+  <!-- hashed  --><!--<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script> -->
+  <!-- Local --><script src="assets/vendor/crypto/crypto_v4.4.1.js"></script>
     <script src="assets/js/secure-api.js"></script>
     <script src="assets/js/law-portal-api.js"></script>
     <script src="assets/js/helper.js"></script>

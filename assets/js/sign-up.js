@@ -6,10 +6,22 @@
 
     const MARITAL_LABELS = { S: 'Single', M: 'Married', D: 'Divorced', W: 'Widowed' };
     const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-    const ENROLMENT_REGEX = /^[A-Z]{2}\/[0-9]{1,5}\/[0-9]{2}$/;
-    const ENROLMENT_SR_REGEX = /^[A-Z]{2}\/[0-9]{1,5}\/[0-9]{2}SR$/;
+    const ENROLMENT_REGEX = /^[A-Z]{2}\/[0-9]{5}\/[0-9]{4}$/;
+    const ENROLMENT_SR_REGEX = /^[A-Z]{2}\/[0-9]{4}\/[0-9]{4}SR$/;
     const MOBILE_REGEX = /^[6-9]\d{9}$/;
     const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const RELIGION_OPTIONS = [
+        'Buddhist',
+        'Christian',
+        'Hindu',
+        'Jain',
+        'Muslim',
+        'Not Stated',
+        'Others',
+        'Parsi',
+        'Sikh',
+        'Zoroastrian'
+    ];
 
     let mobileVerified = false;
     let verifiedMobile = '';
@@ -19,13 +31,20 @@
     const OTP_TIMER_SECONDS = 300;
 
     const casteMaster = {
-        BC: ['Agamudayar', 'Nadar', 'Maravars', 'Muthuraja', 'Kaikolar', 'Sengunthar', 'Kallar', 'Vannan', 'Gounder', 'Others'],
-        MBC: ['Ambalakarar', 'Isaivellalar', 'Kurumba', 'Navithar', 'Maruthuvar', 'Vettuva Gounder', 'Paravar', 'Others'],
-        'DNC/DNT': ['Koravars', 'Kootappal Kallars', 'Piramalai Kallars', 'Vettaikarar', 'Padayachi', 'Valayars', 'Others'],
-        SC: ['Adi Dravida', 'Adi Karnataka', 'Arunthathiyar', 'Parayan', 'Pallan', 'Chakkiliyan', 'Kuravan', 'Others'],
-        ST: ['Irular', 'Kattunayakan', 'Toda', 'Kota', 'Kurumbas', 'Paniyan', 'Others'],
-        'BC Muslim': ['Labbais', 'Rowthar', 'Marakayar', 'Sheik', 'Syed', 'Others']
+        BC: ['Agamudayar', 'Gounder', 'Kaikolar', 'Kallar', 'Maravars', 'Muthuraja', 'Nadar', 'Others', 'Sengunthar', 'Vannan'],
+        MBC: ['Ambalakarar', 'Isaivellalar', 'Kurumba', 'Maruthuvar', 'Navithar', 'Others', 'Paravar', 'Vettuva Gounder'],
+        'DNC/DNT': ['Kootappal Kallars', 'Koravars', 'Others', 'Padayachi', 'Piramalai Kallars', 'Valayars', 'Vettaikarar'],
+        OC: ['Others'],
+        SC: ['Adi Dravida', 'Adi Karnataka', 'Arunthathiyar', 'Chakkiliyan', 'Kuravan', 'Others', 'Pallan', 'Parayan'],
+        ST: ['Irular', 'Kattunayakan', 'Kota', 'Kurumbas', 'Others', 'Paniyan', 'Toda'],
+        'BC Muslim': ['Labbais', 'Marakayar', 'Others', 'Rowthar', 'Sheik', 'Syed']
     };
+
+    function sortLabels(list) {
+        return list.slice().sort(function (a, b) {
+            return a.localeCompare(b, undefined, { sensitivity: 'base' });
+        });
+    }
 
     function fieldVal(selector) {
         const el = $(selector);
@@ -66,8 +85,7 @@
 
         errorEl.innerHTML = html;
         errorEl.classList.remove('success-msg');
-        errorEl.classList.add('error-msg', 'is-visible');
-        errorEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        errorEl.classList.add('error-msg', 'signup-error-toast', 'is-visible');
     }
 
     function clearError() {
@@ -123,178 +141,359 @@
         return age;
     }
 
+    function yearsSinceDate(fromDateStr) {
+        const from = parseLocalDate(fromDateStr);
+        if (!from) {
+            return null;
+        }
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        from.setHours(0, 0, 0, 0);
+        const diffDays = (today - from) / (1000 * 60 * 60 * 24);
+        return Math.max(0, Math.round((diffDays / 365.25) * 100) / 100);
+    }
+
+    function isEnrolmentAfterDob(enrolmentDate, dob) {
+        if (!enrolmentDate || !dob || !isValidDate(enrolmentDate) || !isValidDate(dob)) {
+            return true;
+        }
+        const enrolDt = parseLocalDate(enrolmentDate);
+        const birthDt = parseLocalDate(dob);
+        enrolDt.setHours(0, 0, 0, 0);
+        birthDt.setHours(0, 0, 0, 0);
+        return enrolDt > birthDt;
+    }
+
+    const CROSS_DATE_FIELDS = ['enrolmentDate', 'dob', 'expyears'];
+
     function isValidPan(value) {
         return PAN_REGEX.test((value || '').trim().toUpperCase());
     }
 
+    const VALIDATED_FIELD_IDS = [
+        'advocateName', 'fatherName', 'enrolmentNo', 'enrolmentnosr', 'enrolmentDate',
+        'pan', 'expyears', 'mobile', 'phone', 'email', 'gender', 'maritalStatus',
+        'dob', 'nationality', 'religion', 'otherCaste', 'captcha'
+    ];
+
+    const touchedFields = new Set();
+
+    function normalizeField(fieldId) {
+        if (fieldId === 'enrolmentNo' || fieldId === 'enrolmentnosr' || fieldId === 'pan') {
+            const $el = $('#' + fieldId);
+            if ($el.length) {
+                $el.val(fieldVal('#' + fieldId).toUpperCase());
+            }
+        }
+    }
+
+    function getFieldError(fieldId) {
+        switch (fieldId) {
+            case 'advocateName': {
+                const advocateName = fieldVal('#advocateName');
+                if (!advocateName) {
+                    return 'Advocate name is required.';
+                }
+                if (advocateName.length < 2) {
+                    return 'Advocate name must be at least 2 characters.';
+                }
+                return null;
+            }
+            case 'fatherName':
+                return fieldVal('#fatherName') ? null : "Father's name is required.";
+            case 'enrolmentNo': {
+                const enrolmentNo = fieldVal('#enrolmentNo').toUpperCase();
+                if (!enrolmentNo) {
+                    return 'Bar Council enrolment number is required.';
+                }
+                if (!ENROLMENT_REGEX.test(enrolmentNo)) {
+                    return 'Invalid format. Use MS/12345/2015';
+                }
+                return null;
+            }
+            case 'enrolmentnosr': {
+                if (!$('#enrolmentnosr').length) {
+                    return null;
+                }
+                const enrolmentNoSr = fieldVal('#enrolmentnosr').toUpperCase();
+                if (enrolmentNoSr && !ENROLMENT_SR_REGEX.test(enrolmentNoSr)) {
+                    return 'Invalid format. Use MS/1234/0123SR';
+                }
+                return null;
+            }
+            case 'enrolmentDate': {
+                const enrolmentDate = fieldVal('#enrolmentDate');
+                if (!enrolmentDate) {
+                    return 'Enrolment date is required.';
+                }
+                if (!isValidDate(enrolmentDate)) {
+                    return 'Enter a valid enrolment date.';
+                }
+                const enrolDt = parseLocalDate(enrolmentDate);
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (enrolDt > today) {
+                    return 'Enrolment date cannot be in the future.';
+                }
+                const dob = fieldVal('#dob');
+                if (dob && isValidDate(dob) && !isEnrolmentAfterDob(enrolmentDate, dob)) {
+                    return 'Enrolment date must be after date of birth.';
+                }
+                return null;
+            }
+            case 'pan': {
+                const pan = fieldVal('#pan').toUpperCase();
+                if (!pan) {
+                    return 'PAN number is required.';
+                }
+                if (!isValidPan(pan)) {
+                    return 'Enter a valid PAN (format: ABCDE1234F).';
+                }
+                return null;
+            }
+            case 'expyears': {
+                const expyears = fieldVal('#expyears');
+                if (expyears === '') {
+                    return 'Total years of practice is required.';
+                }
+                if (isNaN(expyears) || Number(expyears) < 0 || Number(expyears) > 50) {
+                    return 'Years of practice must be between 0 and 50.';
+                }
+                const enrolmentDate = fieldVal('#enrolmentDate');
+                if (enrolmentDate && isValidDate(enrolmentDate)) {
+                    const maxPracticeYears = yearsSinceDate(enrolmentDate);
+                    if (maxPracticeYears != null && Number(expyears) > maxPracticeYears) {
+                        return 'Years of practice cannot exceed ' + maxPracticeYears + ' year(s) since enrolment date.';
+                    }
+                }
+                return null;
+            }
+            case 'mobile': {
+                const mobile = fieldVal('#mobile');
+                if (!mobile) {
+                    return 'Mobile number is required.';
+                }
+                if (!MOBILE_REGEX.test(mobile)) {
+                    return 'Enter a valid 10-digit mobile number starting with 6–9.';
+                }
+                if (!mobileVerified) {
+                    return 'Please verify your mobile number using OTP.';
+                }
+                return null;
+            }
+            case 'phone': {
+                const phone = fieldVal('#phone').replace(/\D/g, '');
+                if (phone && (phone.length < 10 || phone.length > 15)) {
+                    return 'Enter a valid phone number.';
+                }
+                return null;
+            }
+            case 'email': {
+                const email = fieldVal('#email');
+                if (!email) {
+                    return 'Email is required.';
+                }
+                if (!EMAIL_REGEX.test(email)) {
+                    return 'Enter a valid email address.';
+                }
+                return null;
+            }
+            case 'gender':
+                return ['M', 'F', 'O'].includes(fieldVal('#gender')) ? null : 'Select a valid gender.';
+            case 'maritalStatus':
+                return MARITAL_LABELS[fieldVal('#maritalStatus')] ? null : 'Select a valid marital status.';
+            case 'dob': {
+                const dob = fieldVal('#dob');
+                if (!dob) {
+                    return 'Date of birth is required.';
+                }
+                if (!isValidDate(dob)) {
+                    return 'Enter a valid date of birth.';
+                }
+                if (ageFromDob(dob) < 18) {
+                    return 'You must be at least 18 years old to register.';
+                }
+                const enrolmentDate = fieldVal('#enrolmentDate');
+                if (enrolmentDate && isValidDate(enrolmentDate) && !isEnrolmentAfterDob(enrolmentDate, dob)) {
+                    return 'Date of birth must be before enrolment date.';
+                }
+                return null;
+            }
+            case 'nationality':
+                return fieldVal('#nationality') ? null : 'Nationality is required.';
+            case 'religion': {
+                const religion = fieldVal('#religion');
+                if (!religion) {
+                    return 'Religion is required.';
+                }
+                if (RELIGION_OPTIONS.indexOf(religion) === -1) {
+                    return 'Select a valid religion.';
+                }
+                return null;
+            }
+            case 'community':
+                return fieldVal('#community') ? null : 'Community is required.';
+            case 'caste': {
+                if (!fieldVal('#community')) {
+                    return 'Community is required.';
+                }
+                if (!fieldVal('#caste')) {
+                    return 'Caste is required.';
+                }
+                return null;
+            }
+            case 'otherCaste':
+                if (fieldVal('#caste') === 'Others' && !fieldVal('#otherCaste')) {
+                    return 'Please enter your caste name.';
+                }
+                return null;
+            case 'captcha': {
+                const captchaAnswer = fieldVal('#captcha');
+                const captchaToken = fieldVal('#captchaToken');
+                if (!captchaToken) {
+                    return 'Captcha expired. Click the image to refresh.';
+                }
+                if (!captchaAnswer) {
+                    return 'Captcha is required.';
+                }
+                return null;
+            }
+            default:
+                return null;
+        }
+    }
+
+    function markFieldState(fieldId, hasError) {
+        const el = document.getElementById(fieldId);
+        if (el) {
+            el.classList.toggle('field-invalid', !!hasError);
+        }
+    }
+
+    function refreshValidationBanner() {
+        const errors = {};
+        touchedFields.forEach(function (fieldId) {
+            const err = getFieldError(fieldId);
+            if (err) {
+                errors[fieldId] = err;
+            }
+        });
+
+        if (Object.keys(errors).length) {
+            showError(null, errors);
+        } else {
+            clearError();
+        }
+    }
+
+    function validateSingleField(fieldId, options) {
+        options = options || {};
+        if (!fieldId || !document.getElementById(fieldId)) {
+            return true;
+        }
+
+        normalizeField(fieldId);
+        const error = getFieldError(fieldId);
+        markFieldState(fieldId, !!error);
+
+        if (options.trackTouch !== false) {
+            touchedFields.add(fieldId);
+            refreshValidationBanner();
+        }
+
+        return !error;
+    }
+
+    function revalidateCrossDateFields(changedFieldId) {
+        if (CROSS_DATE_FIELDS.indexOf(changedFieldId) === -1) {
+            return;
+        }
+
+        CROSS_DATE_FIELDS.forEach(function (fieldId) {
+            if (fieldId !== changedFieldId && fieldVal('#' + fieldId) !== '') {
+                validateSingleField(fieldId);
+            }
+        });
+    }
+
+    function collectAllErrors() {
+        const errors = {};
+        const fieldIds = VALIDATED_FIELD_IDS.concat(['community', 'caste']);
+
+        fieldIds.forEach(function (fieldId) {
+            if (!document.getElementById(fieldId)) {
+                return;
+            }
+            normalizeField(fieldId);
+            const err = getFieldError(fieldId);
+            if (err) {
+                errors[fieldId] = err;
+            }
+        });
+        return errors;
+    }
+
     function validateForm() {
         clearError();
-        const errors = {};
+        touchedFields.clear();
 
-        const advocateName = fieldVal('#advocateName');
-        if (!advocateName) {
-            errors.advocateName = 'Advocate name is required.';
-        } else if (advocateName.length < 2) {
-            errors.advocateName = 'Advocate name must be at least 2 characters.';
-        }
-
-        const fatherName = fieldVal('#fatherName');
-        if (!fatherName) {
-            errors.fatherName = "Father's name is required.";
-        }
-
-        const enrolmentNo = fieldVal('#enrolmentNo').toUpperCase();
-        $('#enrolmentNo').val(enrolmentNo);
-        if (!enrolmentNo) {
-            errors.enrolmentNo = 'Bar Council enrolment number is required.';
-        } else if (!ENROLMENT_REGEX.test(enrolmentNo)) {
-            errors.enrolmentNo = 'Invalid format. Use AB/1234/YY';
-        }
-
-        const enrolmentNoSr = fieldVal('#enrolmentnosr').toUpperCase();
-        if ($('#enrolmentnosr').length) {
-            $('#enrolmentnosr').val(enrolmentNoSr);
-            if (enrolmentNoSr && !ENROLMENT_SR_REGEX.test(enrolmentNoSr)) {
-                errors.enrolmentnosr = 'Invalid format. Use AB/1234/YYSR';
-            }
-        }
-
-        const enrolmentDate = fieldVal('#enrolmentDate');
-        if (!enrolmentDate) {
-            errors.enrolmentDate = 'Enrolment date is required.';
-        } else if (!isValidDate(enrolmentDate)) {
-            errors.enrolmentDate = 'Enter a valid enrolment date.';
-        } else {
-            const enrolDt = parseLocalDate(enrolmentDate);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            if (enrolDt > today) {
-                errors.enrolmentDate = 'Enrolment date cannot be in the future.';
-            }
-        }
-
-        const pan = fieldVal('#pan').toUpperCase();
-        $('#pan').val(pan);
-        if (!pan) {
-            errors.pan = 'PAN number is required.';
-        } else if (!isValidPan(pan)) {
-            errors.pan = 'Enter a valid PAN (format: ABCDE1234F).';
-        }
-
-        const expyears = fieldVal('#expyears');
-        if (expyears === '') {
-            errors.expyears = 'Total years of practice is required.';
-        } else if (isNaN(expyears) || Number(expyears) < 0 || Number(expyears) > 50) {
-            errors.expyears = 'Years of practice must be between 0 and 50.';
-        }
-
-        const mobile = fieldVal('#mobile');
-        if (!mobile) {
-            errors.mobile = 'Mobile number is required.';
-        } else if (!MOBILE_REGEX.test(mobile)) {
-            errors.mobile = 'Enter a valid 10-digit mobile number starting with 6–9.';
-        } else if (!mobileVerified) {
-            errors.mobile = 'Please verify your mobile number using OTP.';
-        }
-
-        const phone = fieldVal('#phone').replace(/\D/g, '');
-        if (phone && (phone.length < 10 || phone.length > 15)) {
-            errors.phone = 'Enter a valid phone number.';
-        }
-
-        const email = fieldVal('#email');
-        if (!email) {
-            errors.email = 'Email is required.';
-        } else if (!EMAIL_REGEX.test(email)) {
-            errors.email = 'Enter a valid email address.';
-        }
-
-        const gender = fieldVal('#gender');
-        if (!['M', 'F', 'O'].includes(gender)) {
-            errors.gender = 'Select a valid gender.';
-        }
-
-        const maritalStatus = fieldVal('#maritalStatus');
-        if (!MARITAL_LABELS[maritalStatus]) {
-            errors.maritalStatus = 'Select a valid marital status.';
-        }
-
-        const dob = fieldVal('#dob');
-        if (!dob) {
-            errors.dob = 'Date of birth is required.';
-        } else if (!isValidDate(dob)) {
-            errors.dob = 'Enter a valid date of birth.';
-        } else if (ageFromDob(dob) < 18) {
-            errors.dob = 'You must be at least 18 years old to register.';
-        }
-
-        const nationality = fieldVal('#nationality');
-        if (!nationality) {
-            errors.nationality = 'Nationality is required.';
-        }
-
-        const community = fieldVal('#community');
-        if (!community) {
-            errors.community = 'Community is required.';
-        }
-
-        const caste = fieldVal('#caste');
-        if (community && !caste) {
-            errors.caste = 'Caste is required.';
-        }
-
-        if (caste === 'Others') {
-            const otherCaste = fieldVal('#otherCaste');
-            if (!otherCaste) {
-                errors.otherCaste = 'Please enter your caste name.';
-            }
-        }
-
-        const captchaAnswer = fieldVal('#captcha');
-        const captchaToken = fieldVal('#captchaToken');
-        if (!captchaToken) {
-            errors.captcha = 'Captcha expired. Click the image to refresh.';
-        } else if (!captchaAnswer) {
-            errors.captcha = 'Captcha is required.';
-        }
-
+        const errors = collectAllErrors();
         const keys = Object.keys(errors);
+
         if (keys.length) {
-            showError(null, errors);
             keys.forEach(function (key) {
-                const el = document.getElementById(key);
-                if (el) {
-                    el.classList.add('field-invalid');
-                }
+                touchedFields.add(key);
+                markFieldState(key, true);
             });
+            showError(null, errors);
             markInvalid(keys[0]);
             return null;
         }
 
+        const enrolmentNo = fieldVal('#enrolmentNo').toUpperCase();
+        const enrolmentNoSr = fieldVal('#enrolmentnosr').toUpperCase();
+        const pan = fieldVal('#pan').toUpperCase();
+        const expyears = fieldVal('#expyears');
+        const mobile = fieldVal('#mobile');
+
         return {
-            advocateName: advocateName,
-            fatherName: fatherName,
+            advocateName: fieldVal('#advocateName'),
+            fatherName: fieldVal('#fatherName'),
             enrolmentNo: enrolmentNo,
             enrolmentNoSr: enrolmentNoSr,
             isSeniorAdvocate: !!enrolmentNoSr,
-            enrolmentDate: enrolmentDate,
+            enrolmentDate: fieldVal('#enrolmentDate'),
             pan: pan,
             expyears: Number(expyears),
             mobile: mobile,
             mobileVerified: mobileVerified,
             phone: fieldVal('#phone'),
-            email: email,
-            gender: gender,
-            maritalStatus: maritalStatus,
-            dob: dob,
-            nationality: nationality,
+            email: fieldVal('#email'),
+            gender: fieldVal('#gender'),
+            maritalStatus: fieldVal('#maritalStatus'),
+            dob: fieldVal('#dob'),
+            nationality: fieldVal('#nationality'),
             religion: fieldVal('#religion'),
-            community: community,
-            caste: caste,
+            community: fieldVal('#community'),
+            caste: fieldVal('#caste'),
             otherCaste: fieldVal('#otherCaste'),
             captcha_token: fieldVal('#captchaToken'),
             captcha_answer: fieldVal('#captcha')
         };
+    }
+
+    function initChangeValidation() {
+        VALIDATED_FIELD_IDS.forEach(function (fieldId) {
+            const el = document.getElementById(fieldId);
+            if (!el) {
+                return;
+            }
+
+            $('#' + fieldId).on('change', function () {
+                validateSingleField(fieldId);
+                revalidateCrossDateFields(fieldId);
+            });
+        });
     }
 
     function submitRegistration(payload) {
@@ -335,6 +534,10 @@
     }
 
     function initCommunityCaste() {
+        $('#religion').on('change', function () {
+            validateSingleField('religion');
+        });
+
         $('#community').on('change', function () {
             const selected = $(this).val();
             const $caste = $('#caste');
@@ -344,12 +547,19 @@
             $('#otherCaste').val('').prop('required', false);
 
             if (!selected || !casteMaster[selected]) {
+                validateSingleField('community');
+                validateSingleField('caste');
+                validateSingleField('otherCaste');
                 return;
             }
 
-            casteMaster[selected].forEach(function (name) {
+            sortLabels(casteMaster[selected]).forEach(function (name) {
                 $caste.append($('<option></option>').val(name).text(name));
             });
+
+            validateSingleField('community');
+            validateSingleField('caste');
+            validateSingleField('otherCaste');
         });
 
         $('#caste').on('change', function () {
@@ -360,6 +570,8 @@
                 $('#otherCasteWrapper').slideUp(200);
                 $('#otherCaste').prop('required', false).val('');
             }
+            validateSingleField('caste');
+            validateSingleField('otherCaste');
         });
     }
 
@@ -378,65 +590,9 @@
         applyInputValidation('phone', [2]);
     }
 
-    function initEnrolmentValidation() {
-        $('#enrolmentNo').on('change', function () {
-            const $el = $(this);
-            const value = fieldVal('#enrolmentNo').toUpperCase();
-            $el.val(value);
-
-            if (!value) {
-                return;
-            }
-
-            if (!ENROLMENT_REGEX.test(value)) {
-                showValidationAlert('Use format AB/1234/YY', 'Invalid Enrolment Number');
-                $el.val('');
-                $el.focus();
-            }
-        });
-
-        if ($('#enrolmentnosr').length) {
-            $('#enrolmentnosr').on('change', function () {
-                const $el = $(this);
-                const value = fieldVal('#enrolmentnosr').toUpperCase();
-                $el.val(value);
-
-                if (!value) {
-                    return;
-                }
-
-                if (!ENROLMENT_SR_REGEX.test(value)) {
-                    showValidationAlert('Use format AB/1234/YYSR', 'Invalid Senior Advocate Enrolment');
-                    $el.val('');
-                    $el.focus();
-                }
-            });
-        }
-    }
-
     function initPanValidation() {
         $('#pan').on('input', function () {
             this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 10);
-        });
-
-        $('#pan').on('change blur', function () {
-            const $el = $(this);
-            const value = fieldVal('#pan').toUpperCase();
-            $el.val(value);
-
-            if (!value) {
-                return;
-            }
-
-            if (!isValidPan(value)) {
-                showValidationAlert(
-                    'PAN must be 10 characters: 5 letters + 4 digits + 1 letter (e.g. ABCDE1234F).',
-                    'Invalid PAN'
-                );
-                $el.val('');
-                $el.focus();
-                markInvalid('pan');
-            }
         });
     }
 
@@ -527,6 +683,8 @@
             setTimeout(function () {
                 otpModal.classList.remove('active');
             }, 1200);
+
+            validateSingleField('mobile');
         }
 
         function openOtpModal(mobile) {
@@ -747,8 +905,8 @@
 
         initInputHelpers();
         initCommunityCaste();
-        initEnrolmentValidation();
         initPanValidation();
+        initChangeValidation();
         initOtpFlow();
 
         if (global.LawPortal && typeof global.LawPortal.bindCaptchaUi === 'function') {
